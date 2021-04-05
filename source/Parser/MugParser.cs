@@ -378,13 +378,21 @@ namespace Mug.Models.Parser
 
         private void CollectParameters(ref NodeBuilder parameters)
         {
+            var lastiscomma = false;
             while (!MatchAdvance(TokenKind.ClosePar))
             {
                 parameters.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar}));
 
+                lastiscomma = Back.Kind == TokenKind.Comma;
                 if (Back.Kind == TokenKind.ClosePar)
+                {
+                    lastiscomma = false;
                     _currentIndex--;
+                }
             }
+
+            if (lastiscomma)
+                Report(Back.Position, "Expected parameter's expression");
         }
 
         private List<MugType> CollectGenericParameters()

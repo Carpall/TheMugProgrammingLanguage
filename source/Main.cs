@@ -12,9 +12,16 @@ try
     var test = @"
 
 func add<T>(a: T, b: T): T { return a + b }
+func add<T, T1>(a: T) { /*return a + b*/ }
+func add<T, T1>(a: T, b: T1) { /*return a + b*/ }
+func add<T, T1>(a: T, b: T) { /*return a + b*/ }
+func (self: T) add<T>(a: T) { /*return a + b*/ }
 
 func main() {
-  add<i32>(10, 1)
+  'a'.add<chr>('a')
+  'a'.add<chr>('a')
+  add<i32, u8>(1, 2)
+  add<i32, u8>(1, 2)
 }
 ";
 

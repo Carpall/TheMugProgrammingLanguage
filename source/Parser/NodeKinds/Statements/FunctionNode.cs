@@ -17,5 +17,28 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public Range Position { get; set; }
         public TokenKind Modifier { get; set; }
         public ParameterNode? Base { get; set; }
+
+        public override string ToString()
+        {
+            var parameters = new MugType[ParameterList.Length];
+            var i = 0;
+            ParameterList.Parameters.ForEach(parameter =>
+            {
+                // avoid ambiguity between generic type and defined type
+                parameters[i] = IsGenericParameter(parameter.Type.ToString(), out var index) ? new MugType(new(), TypeKind.DefinedType, "@"+index) : parameter.Type;
+                i++;
+            });
+
+            return $"{(Base.HasValue ? $"{Base.Value.Type}." : "")}{Name}<{Generics.Count}>({string.Join<MugType>(", ", parameters)})";
+        }
+
+        private bool IsGenericParameter(string name, out int i)
+        {
+            for (i = 0; i < Generics.Count; i++)
+                if (Generics[i].Value == name)
+                    return true;
+
+            return false;
+        }
     }
 }

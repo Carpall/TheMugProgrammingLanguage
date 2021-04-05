@@ -12,7 +12,7 @@ namespace Mug.Compilation.Symbols
     public struct FunctionSymbol
     {
         public MugValueType ReturnType { get; }
-        public MugValue Value { get; }
+        public MugValue Value { get; set; }
         public MugValueType? BaseType { get; }
         public MugValueType[] GenericParameters { get; }
         public MugValueType[] Parameters { get; }
@@ -86,13 +86,14 @@ namespace Mug.Compilation.Symbols
         public readonly List<FunctionNode> DeclaredFunctions = new();
         public readonly List<TypeStatement> DeclaredTypes = new();
 
+        // generic prototypes
+        public readonly List<TypeStatement> DeclaredGenericTypes = new();
+        public readonly List<FunctionNode> DeclaredGenericFunctions = new();
+
         // implementations
         public readonly Dictionary<string, List<FunctionSymbol>> DefinedFunctions = new();
+        public readonly Dictionary<string, List<FunctionSymbol>> DefinedGenericFunctions = new();
         public readonly Dictionary<string, List<TypeSymbol>> DefinedTypes = new();
-
-        // generic prototypes
-        public readonly List<TypeStatement> DefinedGenericTypes = new();
-        public readonly List<FunctionNode> DefinedGenericFunctions = new();
 
         // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
@@ -104,16 +105,28 @@ namespace Mug.Compilation.Symbols
 
         public void DeclareFunctionSymbol(string name, FunctionSymbol identifier, Range position)
         {
-            if (!DefinedFunctions.TryAdd(name, new() { identifier }))
-            {
-                if (DefinedFunctions[name].FindIndex(id => id.Equals(identifier)) != -1)
-                {
-                    _generator.Report(position, $"Function '{name}' already declared");
-                    return;
-                }
+            if (DefinedFunctions.TryAdd(name, new() { identifier }))
+                return;
 
-                DefinedFunctions[name].Add(identifier);
+            if (DefinedFunctions[name].FindIndex(id => id.Equals(identifier)) != -1)
+            {
+                _generator.Report(position, $"Function '{name}' already declared");
+                return;
             }
+
+            DefinedFunctions[name].Add(identifier);
+            
+        }
+
+        public void DeclareGenericFunctionSymbol(string name, FunctionSymbol identifier)
+        {
+            if (DefinedGenericFunctions.TryAdd(name, new() { identifier }))
+                return;
+
+            if (DefinedGenericFunctions[name].FindIndex(id => id.Equals(identifier)) != -1)
+                return;
+
+            DefinedGenericFunctions[name].Add(identifier);
         }
 
         public void DeclareType(string name, TypeSymbol identifier, Range position)
@@ -132,30 +145,67 @@ namespace Mug.Compilation.Symbols
 
         public void DeclareGenericFunction(FunctionNode function)
         {
-            var symbol = DefinedGenericFunctions.Find(t =>
+            var functionstring = function.ToString();
+            
+            var symbol = DeclaredGenericFunctions.Find(t =>
             {
-                return t.Name == function.Name && t.Generics.Count == function.Generics.Count;
+                return t.ToString() == functionstring;
             });
 
             if (symbol is not null)
             {
-                _generator.Report(function.Position, $"A generic function named '{function.Name}', which accepts {function.Generics.Count} generic parameters, is already declared");
+                _generator.Report(function.Position, $"A generic function named '{function.Name}', which accepts {function.Generics.Count} generic parameter{IRGenerator.GetPlural(function.Generics.Count)}, is already declared");
                 return;
             }
 
-            DefinedGenericFunctions.Add(function);
+            DeclaredGenericFunctions.Add(function);
+        }
+
+        public List<FunctionNode> GetOverloadsOFGenericFunction(string name)
+        {
+            var result = new List<FunctionNode>();
+            foreach (var genericFunction in DeclaredGenericFunctions)
+                if (genericFunction.Name == name)
+                    result.Add(genericFunction);
+
+            return result;
+        }
+
+        public bool GetGenericFunctionSymbol(string name, MugValueType? basetype, MugValueType[] parameters, MugValueType returntype, out FunctionSymbol identifier)
+        {
+            identifier = new();
+
+            if (!DefinedGenericFunctions.TryGetValue(name, out var overloads))
+                return false;
+
+            for (int i = 0; i < overloads.Count; i++)
+            {
+                var function = overloads[i];
+                if (!overloads[i].BaseType.Equals(basetype) || parameters.Length != function.Parameters.Length || !returntype.Equals(function.ReturnType))
+                    continue;
+
+                for (int j = 0; j < parameters.Length; j++)
+                    if (!parameters[j].Equals(function.Parameters[j]))
+                        goto unequalContinue;
+
+                identifier = function;
+                return true;
+            unequalContinue:;
+            }
+
+            return false;
         }
 
         public void DeclareGenericType(TypeStatement type)
         {
-            var symbol = DefinedGenericTypes.Find(t => t.Name == type.Name && t.Generics.Count == type.Generics.Count);
+            var symbol = DeclaredGenericTypes.Find(t => t.Name == type.Name && t.Generics.Count == type.Generics.Count);
             if (symbol is not null)
             {
                 _generator.Report(type.Position, $"A generic type named '{type.Name}', which accepts {type.Generics.Count} generic parameters, is already declared");
                 return;
             }
 
-            DefinedGenericTypes.Add(type);
+            DeclaredGenericTypes.Add(type);
         }
 
         public bool DeclareCompilerSymbol(string name, Range position)
@@ -168,11 +218,6 @@ namespace Mug.Compilation.Symbols
 
             CompilerSymbols.Add(name);
             return true;
-        }
-
-        public void DefineFunctionSymbol(string name, int index, FunctionSymbol definition)
-        {
-            DefinedFunctions[name][index] = definition;
         }
 
         public TypeSymbol? GetType(string name, MugValueType[] generics, out string error)
@@ -204,7 +249,7 @@ namespace Mug.Compilation.Symbols
 
         public TypeStatement GetGenericType(string name, int genericsCount, Range position)
         {
-            var index = DefinedGenericTypes.FindIndex(id =>
+            var index = DeclaredGenericTypes.FindIndex(id =>
             {
                 return id.Name == name && id.Generics.Count == genericsCount;
             });
@@ -215,18 +260,12 @@ namespace Mug.Compilation.Symbols
                 return null;
             }
 
-            return DefinedGenericTypes[index];
+            return DeclaredGenericTypes[index];
         }
 
         public bool CompilerSymbolIsDeclared(string name)
         {
             return CompilerSymbols.Contains(name);
-        }
-
-        public TypeSymbol GetType(string enumname, Range position)
-        {
-            // tofix
-            throw new();
         }
     }
 }

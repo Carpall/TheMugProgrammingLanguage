@@ -31,3 +31,5 @@ done: +
 - fix modifier with generic items
 - remove 'declare' directive
 - fix type recursion with pointers in structure
+- write test for the parser using a decomposing the ast into a string expression and comparing it to the original -> test = "expr()" Assert(test == ExpectExpression(test).Rebuild())
+- fix loadenumerror in emitter

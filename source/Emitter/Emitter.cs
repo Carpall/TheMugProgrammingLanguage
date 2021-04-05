@@ -478,7 +478,9 @@ namespace Mug.Models.Generator.Emitter
 
         public void LoadEnumMember(string enumname, string membername, Range position, LocalGenerator localgenerator)
         {
-            var enumerated = _generator.Table.GetType(enumname, position).Value;
+            // tofix
+            throw new();
+            /*var enumerated = new MugValue();// _generator.Table.GetType(enumname, position).Value;
 
             if (!enumerated.Type.IsEnum())
             {
@@ -505,7 +507,7 @@ namespace Mug.Models.Generator.Emitter
 
             var type = enumerated.Type.GetEnum();
 
-            Load(type.GetMemberValueFromName(enumerated.Type, type.BaseType.ToMugValueType(_generator), membername, position, localgenerator));
+            Load(type.GetMemberValueFromName(enumerated.Type, type.BaseType.ToMugValueType(_generator), membername, position, localgenerator));*/
         }
 
         public void LoadField(MugValue instance, MugValueType fieldType, int index, bool load)

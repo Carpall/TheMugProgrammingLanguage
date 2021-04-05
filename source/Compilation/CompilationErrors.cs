@@ -141,11 +141,12 @@ namespace Mug.Compilation
             Console.Write($" {lineAt} {"|".Pastel(Color.Red)}  ");
             Console.Write(source[..start].Replace("\t", " "));
             Console.Write(source[start..end].Replace("\t", " ").Pastel(Color.Red));
-            Console.Write(
+            Console.Write($"{source[end..].Replace("\t", " ")}\n{space}  {"|".Pastel(Color.DeepPink)}\n");
+            /*Console.Write(
                 @$"{source[end..].Replace("\t", " ")}
-{space}  {"|".Pastel(Color.DeepPink)}{' ', -4}{new string('-', source[start..end].Length).Pastel(Color.Cyan)}
+{space}  {"|".Pastel(Color.DeepPink)}{new string('-', space.Length - source[start..end].Length).Pastel(Color.Cyan)}
 
-");
+");*/
         }
 
         /// <summary>

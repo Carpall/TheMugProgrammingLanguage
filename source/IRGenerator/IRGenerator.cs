@@ -24,7 +24,7 @@ namespace Mug.Models.Generator
         public readonly SymbolTable Table;
 
         internal readonly List<string> IllegalTypes = new();
-        internal List<(string, MugValueType)> GenericParameters = new();
+        internal List<(string name, MugValueType type)> GenericParameters = new();
         internal List<string> Paths = new(); /// to put in map
 
         private readonly Dictionary<string, List<FunctionNode>> _genericFunctions = new();
@@ -73,6 +73,11 @@ namespace Mug.Models.Generator
         internal static string GetPlural(int ammout)
         {
             return ammout > 1 ? "s" : "";
+        }
+
+        internal static string ExpectTypeMessage(MugValueType expectedType, MugValueType type)
+        {
+            return $"Expected type '{expectedType}', got '{type}'";
         }
 
         /// <summary>
@@ -234,12 +239,17 @@ namespace Mug.Models.Generator
             return structsymbol;
         }
 
-        private void GenericParametersAdd((string, MugValueType) genericParameter, Range position)
+        internal void GenericParametersAdd((string, MugValueType) genericParameter, Range position)
         {
             if (GenericParameters.FindIndex(elem => elem.Item1 == genericParameter.Item1) != -1)
                 Error(position, "Already declared generic parameter");
 
             GenericParameters.Add(genericParameter);
+        }
+
+        internal void ClearGenericParameters()
+        {
+            GenericParameters.Clear();
         }
 
         public void DeclareCompilerSymbol(string symbol, bool hasGoodPosition = false, Range position = new())
@@ -833,9 +843,13 @@ namespace Mug.Models.Generator
             }
         }
         
-        private MugValue EvaluateFunction(FunctionNode function)
+        internal MugValue EvaluateFunction(FunctionNode function, MugValueType[] generics)
         {
-            // GenericParameters = new();
+            var oldgenerics = GenericParameters;
+
+            GenericParameters = new();
+            for (int i = 0; i < function.Generics.Count; i++)
+                GenericParametersAdd((function.Generics[i].Value, generics[i]), function.Generics[i].Position);
 
             var baseoffset = Convert.ToInt32(function.Base.HasValue);
 
@@ -871,14 +885,9 @@ namespace Mug.Models.Generator
                 function.ReturnType.Kind == TypeKind.Void)
                 generator.AddImplicitRetVoid();
 
-            // GenericParameters = oldGenericParameters;
+            GenericParameters = oldgenerics;
 
             return func;
-        }
-
-        internal static string ExpectTypeMessage(MugValueType expectedType, MugValueType type)
-        {
-            return $"Expected type '{expectedType}', got '{type}'";
         }
 
         private void GenerateFunctions()
@@ -895,7 +904,7 @@ namespace Mug.Models.Generator
                     function.Base?.Type.ToMugValueType(this),
                     Array.Empty<MugValueType>(),
                     ParameterTypesToMugTypes(function.ParameterList.Parameters),
-                    function.ReturnType.ToMugValueType(this), EvaluateFunction(function));
+                    function.ReturnType.ToMugValueType(this), EvaluateFunction(function, Array.Empty<MugValueType>()));
 
                 Table.DeclareFunctionSymbol(function.Name, functionIdentifier, function.Position);
             }

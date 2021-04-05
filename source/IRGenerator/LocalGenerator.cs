@@ -471,9 +471,52 @@ namespace Mug.Models.Generator
             return GetFunctionSymbol(ref basetype, name, genericsInput, ref parameters, position);
         }
 
+        private void AddGenericParameters(List<Token> generics, MugValueType[] genericsInput)
+        {
+            for (int i = 0; i < generics.Count; i++)
+                _generator.GenericParametersAdd((generics[i].Value, genericsInput[i]), generics[i].Position);
+        }
+
+        private List<FunctionSymbol> EvaluateGenericFunctionOverloads(List<FunctionNode> overloads, MugValueType[] generics)
+        {
+            var result = new List<FunctionSymbol>();
+            var oldgenerics = _generator.GenericParameters;
+            _generator.GenericParameters = new();
+
+            foreach (var function in overloads)
+            {
+                FunctionSymbol functionIdentifier = new();
+                if (function.Generics.Count == generics.Length)
+                {
+                    AddGenericParameters(function.Generics, generics);
+
+                    // the function will be evaluated later to avoid the evaluation of all the functions also if unused
+                    functionIdentifier = new FunctionSymbol(
+                        function.Base?.Type.ToMugValueType(_generator),
+                        Array.Empty<MugValueType>(),
+                        _generator.ParameterTypesToMugTypes(function.ParameterList.Parameters),
+                        function.ReturnType.ToMugValueType(_generator), new());
+
+                    _generator.ClearGenericParameters();
+
+                }
+                result.Add(functionIdentifier);
+            }
+
+            _generator.GenericParameters = oldgenerics;
+
+            return result;
+        }
+
         private FunctionSymbol? GetFunctionSymbol(ref MugValue? basevalue, string name, MugValueType[] generics, ref MugValue[] parameters, Range position)
         {
-            if (!_generator.Table.DefinedFunctions.TryGetValue(name, out var overloads))
+            // todo: cache generated generic function
+            List<FunctionSymbol> overloads;
+            List<FunctionNode> genericOverloads = null;
+
+            if (generics.Length > 0)
+                overloads = EvaluateGenericFunctionOverloads(genericOverloads = _generator.Table.GetOverloadsOFGenericFunction(name), generics);
+            else if (!_generator.Table.DefinedFunctions.TryGetValue(name, out overloads))
             {
                 Report(position, $"Undeclared function '{name}'");
                 return null;
@@ -483,9 +526,13 @@ namespace Mug.Models.Generator
             var oldparameters = parameters;
             var oldbasevalue = basevalue;
 
-            foreach (var function in overloads)
+            for (int j = 0; j < overloads.Count; j++)
             {
-                if (parameters.Length != function.Parameters.Length || basevalue.HasValue != function.BaseType.HasValue)
+                var function = overloads[j];
+
+                // parameters are null when then function has diffent generics number from 'generics' (this is a side effect caused by EvaluateGenericFunctionOverloads)
+                if (function.Parameters is null ||
+                    parameters.Length != function.Parameters.Length || basevalue.HasValue != function.BaseType.HasValue)
                     continue;
 
                 if (basevalue.HasValue)
@@ -516,6 +563,17 @@ namespace Mug.Models.Generator
                         parameters[i] = _emitter.Pop();
 
                     i++;
+                }
+
+                if (generics.Length > 0)
+                {
+                    if (_generator.Table.GetGenericFunctionSymbol(genericOverloads[j].Name, function.BaseType, function.Parameters, function.ReturnType, out var symbol))
+                        function.Value = symbol.Value;
+                    else
+                    {
+                        function.Value = _generator.EvaluateFunction(genericOverloads[j], generics);
+                        _generator.Table.DeclareGenericFunctionSymbol(genericOverloads[j].Name, function);
+                    }
                 }
 
                 return function;
