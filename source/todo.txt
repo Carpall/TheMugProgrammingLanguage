@@ -21,3 +21,13 @@ done: +
 - add a raw pointer 'i32*', manged pointer '*i32'
 - to fix references (at the moment they works as left values in assignment but not in expression because there's not coercion system, it is disabled since the coercion bugs calls)
 - reuse the pragmas when new system table is finished
+- add i16
+- add unsigned integers
+- fix import
+- add operator implementation for unary
+- fix as operator
+- (!not final decision) remove operator new -> 'Type { }', '[x, y, z]'
+- add tuples
+- fix modifier with generic items
+- remove 'declare' directive
+- fix type recursion with pointers in structure

@@ -1,5 +1,6 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Compilation;
+using Mug.Compilation.Symbols;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
@@ -131,7 +132,7 @@ namespace Mug.TypeSystem
         private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, Range position, IRGenerator generator)
         {
             if (generator.IsIllegalType(name))
-                generator.Error(position, "Illegal recursion");
+                generator.Error(position, "Type recursion");
 
             if (generator.IsGenericParameter(name, out var genericParameterType))
             {
@@ -141,13 +142,39 @@ namespace Mug.TypeSystem
                 return genericParameterType;
             }
 
-            var generics = new List<MugValueType>();
+            var generics = new MugValueType[genericsInput.Count];
             for (int i = 0; i < genericsInput.Count; i++)
-                generics.Add(genericsInput[i].ToMugValueType(generator));
+                generics[i] = genericsInput[i].ToMugValueType(generator);
 
-            var result = generator.EvaluateStruct(name, generics, position).Type;
+            var symbol = generator.Table.GetType(name, generics, out var error);
+            if (!symbol.HasValue) // could be a generic type
+            {
+                if (generics.Length > 0)
+                {
+                    var generic = generator.Table.GetGenericType(name, generics.Length, position);
+                    if (generic is null)
+                        goto end;
 
-            return result;
+                    var type = generator.EvaluateStruct(generic, generics, position);
+                    if (!type.HasValue)
+                        goto end;
+
+                    symbol = new TypeSymbol(generics, type.Value);
+
+                    generator.Table.DeclareType(
+                        name,
+                        symbol.Value,
+                        position);
+                }
+                else
+                    generator.Report(position, error);
+
+                end:;
+                if (!symbol.HasValue)
+                    generator.Parser.Lexer.CheckDiagnostic();
+            }
+
+            return symbol.Value.Value.Type;
         }
 
         public MugValueType EvaluateEnumError(MugType error, MugType type, IRGenerator generator)

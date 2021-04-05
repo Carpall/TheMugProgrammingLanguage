@@ -11,14 +11,10 @@ try
 
     var test = @"
 
-// func add<T>(a: T, b: T) { return a + b }
-// func add(a: i32, b: i32) { return a + b }
-
-func (a: u1) add(b: u8): u8 { return b }
+func add<T>(a: T, b: T): T { return a + b }
 
 func main() {
-  var i: u8 = 10
-  true.add(i)
+  add<i32>(10, 1)
 }
 ";
 
@@ -56,7 +52,7 @@ catch (CompilationException e)
         }
         catch
         {
-            CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", e.Message);
+            CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", "Internal error: unable to print error message");
         }
     }
     else

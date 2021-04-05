@@ -135,13 +135,15 @@ namespace Mug.Compilation
 
             WriteModuleStyle(modulename, lineAt, start, error);
 
-            Console.WriteLine($"     {"|".Pastel(Color.DeepPink)}");
-            Console.Write($" {lineAt, -2}  {"|".Pastel(Color.Red)}  ");
+            var space = new string(' ', lineAt.ToString().Length);
+
+            Console.WriteLine($"{space}  {"|".Pastel(Color.DeepPink)}");
+            Console.Write($" {lineAt} {"|".Pastel(Color.Red)}  ");
             Console.Write(source[..start].Replace("\t", " "));
             Console.Write(source[start..end].Replace("\t", " ").Pastel(Color.Red));
             Console.Write(
                 @$"{source[end..].Replace("\t", " ")}
-     {"|".Pastel(Color.DeepPink)} {(new string(' ', lineAt.ToString().Length + source[..start].Length) + new string('-', source[start..end].Length)).Pastel(Color.Cyan)}
+{space}  {"|".Pastel(Color.DeepPink)}{' ', -4}{new string('-', source[start..end].Length).Pastel(Color.Cyan)}
 
 ");
         }

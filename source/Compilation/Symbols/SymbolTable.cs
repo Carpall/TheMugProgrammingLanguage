@@ -53,25 +53,20 @@ namespace Mug.Compilation.Symbols
         }
     }
 
-    public struct TypeIdentifier
+    public struct TypeSymbol
     {
         public MugValueType[] GenericParameters { get; }
-        public MugValue? Value { get; }
+        public MugValue Value { get; }
 
-        public TypeIdentifier(MugValueType[] genericParameters, MugValue? value)
+        public TypeSymbol(MugValueType[] genericParameters, MugValue value)
         {
             GenericParameters = genericParameters;
             Value = value;
         }
 
-        public static TypeIdentifier CreatePrototype(MugValueType[] genericParameters)
-        {
-            return new TypeIdentifier(genericParameters, null);
-        }
-
         public override bool Equals(object obj)
         {
-            if (obj is not TypeIdentifier id ||
+            if (obj is not TypeSymbol id ||
                 id.GenericParameters.Length != GenericParameters.Length)
                 return false;
 
@@ -87,9 +82,19 @@ namespace Mug.Compilation.Symbols
     {
         private readonly IRGenerator _generator;
 
-        public readonly Dictionary<string, List<FunctionSymbol>> DefinedFunctions = new();
+        // prototypes
         public readonly List<FunctionNode> DeclaredFunctions = new();
-        public readonly Dictionary<string, List<TypeIdentifier>> Types = new();
+        public readonly List<TypeStatement> DeclaredTypes = new();
+
+        // implementations
+        public readonly Dictionary<string, List<FunctionSymbol>> DefinedFunctions = new();
+        public readonly Dictionary<string, List<TypeSymbol>> DefinedTypes = new();
+
+        // generic prototypes
+        public readonly List<TypeStatement> DefinedGenericTypes = new();
+        public readonly List<FunctionNode> DefinedGenericFunctions = new();
+
+        // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
 
         public SymbolTable(IRGenerator generator)
@@ -111,18 +116,46 @@ namespace Mug.Compilation.Symbols
             }
         }
 
-        public void DeclareType(string name, TypeIdentifier identifier, Range position)
+        public void DeclareType(string name, TypeSymbol identifier, Range position)
         {
-            if (!Types.TryAdd(name, new() { identifier }))
+            if (!DefinedTypes.TryAdd(name, new() { identifier }))
             {
-                if (Types[name].FindIndex(id => id.Equals(identifier)) != -1)
+                if (DefinedTypes[name].FindIndex(id => id.Equals(identifier)) != -1)
                 {
                     _generator.Report(position, $"Type '{name}' already declared");
                     return;
                 }
 
-                Types[name].Add(identifier);
+                DefinedTypes[name].Add(identifier);
             }
+        }
+
+        public void DeclareGenericFunction(FunctionNode function)
+        {
+            var symbol = DefinedGenericFunctions.Find(t =>
+            {
+                return t.Name == function.Name && t.Generics.Count == function.Generics.Count;
+            });
+
+            if (symbol is not null)
+            {
+                _generator.Report(function.Position, $"A generic function named '{function.Name}', which accepts {function.Generics.Count} generic parameters, is already declared");
+                return;
+            }
+
+            DefinedGenericFunctions.Add(function);
+        }
+
+        public void DeclareGenericType(TypeStatement type)
+        {
+            var symbol = DefinedGenericTypes.Find(t => t.Name == type.Name && t.Generics.Count == type.Generics.Count);
+            if (symbol is not null)
+            {
+                _generator.Report(type.Position, $"A generic type named '{type.Name}', which accepts {type.Generics.Count} generic parameters, is already declared");
+                return;
+            }
+
+            DefinedGenericTypes.Add(type);
         }
 
         public bool DeclareCompilerSymbol(string name, Range position)
@@ -137,43 +170,52 @@ namespace Mug.Compilation.Symbols
             return true;
         }
 
-        /*public FunctionNode GetEntryPoint()
-        {
-            var index = DeclaredFunctions.FindIndex(
-                function =>
-                function.Name == IRGenerator.EntryPointName &&
-                function.ParameterList.Length == 0 &&
-                function.Generics.Count == 0 &&
-                function.Base == null);
-            
-            if (index == -1)
-                CompilationErrors.Throw("No entry point declared");
-
-            return DeclaredFunctions[index];
-        }*/
-
         public void DefineFunctionSymbol(string name, int index, FunctionSymbol definition)
         {
             DefinedFunctions[name][index] = definition;
         }
 
-        public TypeIdentifier? GetType(string name, TypeIdentifier identifier, Range position)
+        public TypeSymbol? GetType(string name, MugValueType[] generics, out string error)
         {
-            if (!Types.TryGetValue(name, out var overloads))
+            if (!DefinedTypes.TryGetValue(name, out var overloads))
             {
-                _generator.Report(position, $"Undeclared type '{name}'");
+                error = $"Undeclared type '{name}'";
                 return null;
             }
 
-            var index = overloads.FindIndex(id => id.Equals(identifier));
+            var index = overloads.FindIndex(id =>
+            {
+                for (int i = 0; i < id.GenericParameters.Length; i++)
+                    if (!id.GenericParameters[i].Equals(generics[i]))
+                        return false;
+
+                return true;
+            });
 
             if (index == -1)
             {
-                _generator.Report(position, $"Cannot find a good overload for type '{name}'");
+                error = $"No type '{name}' accepts {generics.Length} generic parameters";
                 return null;
             }
 
+            error = null;
             return overloads[index];
+        }
+
+        public TypeStatement GetGenericType(string name, int genericsCount, Range position)
+        {
+            var index = DefinedGenericTypes.FindIndex(id =>
+            {
+                return id.Name == name && id.Generics.Count == genericsCount;
+            });
+
+            if (index == -1)
+            {
+                _generator.Report(position, $"No generic type '{name}' accepts {genericsCount} generic parameter{IRGenerator.GetPlural(genericsCount)}");
+                return null;
+            }
+
+            return DefinedGenericTypes[index];
         }
 
         public bool CompilerSymbolIsDeclared(string name)
@@ -181,7 +223,7 @@ namespace Mug.Compilation.Symbols
             return CompilerSymbols.Contains(name);
         }
 
-        public TypeIdentifier GetType(string enumname, Range position)
+        public TypeSymbol GetType(string enumname, Range position)
         {
             // tofix
             throw new();

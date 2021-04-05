@@ -12,6 +12,7 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Mug.Models.Generator
 {
@@ -67,6 +68,11 @@ namespace Mug.Models.Generator
         public void Report(Range position, string error)
         {
             Parser.Lexer.DiagnosticBag.Report(position, error);
+        }
+
+        internal static string GetPlural(int ammout)
+        {
+            return ammout > 1 ? "s" : "";
         }
 
         /// <summary>
@@ -183,64 +189,49 @@ namespace Mug.Models.Generator
             throw new();
         }
 
-        internal MugValue EvaluateStruct(string name, List<MugValueType> genericsInput, Range position)
+        internal MugValue? EvaluateStruct(TypeStatement type, MugValueType[] generics, Range position)
         {
-            /*var symbolname = $"{name}{(genericsInput.Count != 0 ? $"<{string.Join(", ", genericsInput)}>" : "")}";
-
-            if (IsDeclared(symbolname, out var declared) && declared.IsDefined)
-                return declared.GetValue<MugValue>();
-
-            PushIllegalType(name);
-
-            var symbol = GetSymbol(name, position);
-
-            name = symbolname;
-
-            symbol.IsDefined = true;
-
-            if (symbol.Value is not TypeStatement type)
+            if (type.Generics.Count != generics.Length)
             {
-                Error(position, "This member is not declared as type");
-                throw new();
+                Report(position, "Passed wrong number of generics");
+                return null;
             }
 
-            var structure = type;
+            PushIllegalType(type.Name);
 
-            if (structure.Generics.Count != genericsInput.Count)
-                Error(position, "Incorrect number of generic parameters");
+            var oldGenericParameters = GenericParameters;
 
-            var oldGenericParameters = _genericParameters;
+            GenericParameters = new();
+            for (int i = 0; i < type.Generics.Count; i++)
+                GenericParametersAdd((type.Generics[i].Value, generics[i]), type.Generics[i].Position);
 
-            _genericParameters = new();
-            for (int i = 0; i < structure.Generics.Count; i++)
-                GenericParametersAdd((structure.Generics[i].Value, genericsInput[i]), structure.Generics[i].Position);
+            var fields = new string[type.Body.Count];
+            var structModel = new MugValueType[type.Body.Count];
+            var fieldPositions = new Range[type.Body.Count];
 
-            var fields = new string[structure.Body.Count];
-            var structModel = new MugValueType[structure.Body.Count];
-            var fieldPositions = new Range[structure.Body.Count];
-
-            for (int i = 0; i < structure.Body.Count; i++)
+            for (int i = 0; i < type.Body.Count; i++)
             {
-                var field = structure.Body[i];
+                var field = type.Body[i];
 
                 if (fields.Contains(field.Name))
-                    Error(field.Position, "Already declared field");
+                {
+                    Report(field.Position, "Already declared field");
+                    return null;
+                }
 
                 fields[i] = field.Name;
                 structModel[i] = field.Type.ToMugValueType(this);
                 fieldPositions[i] = field.Position;
             }
 
-            var structuretype = MugValueType.Struct(structure.Name, structModel, fields, fieldPositions);
-            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.LLVMType, structure.Name), structuretype);
+            var structuretype = MugValueType.Struct($"{type.Name}{(type.Generics.Count > 0 ? $"<{string.Join(", ", generics)}>" : "")}", structModel, fields, fieldPositions);
+            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.LLVMType, type.Name), structuretype);
 
-            DefineSymbol(name, structsymbol, position, true);
+            GenericParameters = oldGenericParameters;
+
             PopIllegalType();
 
-            _genericParameters = oldGenericParameters;
-
-            return structsymbol;*/
-            throw new();
+            return structsymbol;
         }
 
         private void GenericParametersAdd((string, MugValueType) genericParameter, Range position)
@@ -249,11 +240,6 @@ namespace Mug.Models.Generator
                 Error(position, "Already declared generic parameter");
 
             GenericParameters.Add(genericParameter);
-        }
-
-        public bool IsCompilerSymbolDeclared(string symbol)
-        {
-            return Table.CompilerSymbolIsDeclared(symbol.ToLower());
         }
 
         public void DeclareCompilerSymbol(string symbol, bool hasGoodPosition = false, Range position = new())
@@ -306,12 +292,6 @@ namespace Mug.Models.Generator
             ExpectSameTypes(type, position, $"Expected 'u1' type, got '{type}'", MugValueType.Bool);
         }
 
-        internal void ExpectIntType(MugValueType type, Range position)
-        {
-            if (!type.MatchIntType())
-                Error(position, $"Expected 'u8', 'i32', 'i64', 'f32' type, got '{type}'");
-        }
-
         /// <summary>
         /// same of <see cref="ExpectNonVoidType(LLVMTypeRef, Range)"/> but tests a <see cref="MugType"/> instead of
         /// a <see cref="LLVMTypeRef"/>
@@ -333,7 +313,7 @@ namespace Mug.Models.Generator
                 Error(position, "Expected a non-void type");
         }
 
-        private FunctionNode GetGenericFunctionSymbol(string name, MugValueType? basetype, MugValueType[] parameters, MugValueType[] genericsInput, Range position)
+        /*private FunctionNode GetGenericFunctionSymbol(string name, MugValueType? basetype, MugValueType[] parameters, MugValueType[] genericsInput, Range position)
         {
             if (!_genericFunctions.TryGetValue(name, out var overloads))
             {
@@ -379,7 +359,7 @@ namespace Mug.Models.Generator
 
             Error(position, "Undeclared generic function");
             throw new();
-        }
+        }*/
 
         /*internal FunctionSymbol EvaluateFunction(
             string name,
@@ -401,7 +381,7 @@ namespace Mug.Models.Generator
             return EvaluateFunction(name, ((FunctionPrototypeIdentifier)symbol).Prototype, index, genericsInput, true, position);
         }*/
 
-        /// <summary>
+        /*/// <summary>
         /// defines the body of a function by taking from the declared symbols its own previously defined symbol,
         /// to allow the call of a method declared under the caller.
         /// see the first part of the Generate function
@@ -460,7 +440,7 @@ namespace Mug.Models.Generator
             GenericParameters = oldGenericParameters;
 
             return func;
-        }
+        }*/
 
         /// <summary>
         /// check if an id is equal to the id of the entry point and if the parameters are 0,
@@ -574,9 +554,6 @@ namespace Mug.Models.Generator
             // compiling c code to llvm bit code
             CompilationUnit.CallClang($"-emit-llvm -c {path} -o {bc} {clangArgs}", 3);
 
-            // targetting bitcode file
-            // path = Path.ChangeExtension(path, "bc");
-
             // loading bitcode file
             ReadModule(bc);
         }
@@ -620,6 +597,7 @@ namespace Mug.Models.Generator
                     }
                 }
             }*/
+            throw new();
         }
 
         private void EmitImport(ImportDirective import)
@@ -665,7 +643,6 @@ namespace Mug.Models.Generator
 
                         if (unit.FailedOpeningPath)
                             Error(import.Member.Position, "Unable to open source file");
-
                         break;
                     case ".cpp":
                     case ".c":
@@ -700,7 +677,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private void CheckCorrectEnum(ref EnumStatement enumstatement,  MugValueType basetype)
+        /*private void CheckCorrectEnum(ref EnumStatement enumstatement,  MugValueType basetype)
         {
             var expectedValue = GetValueTokenKindFromType(basetype.TypeKind, enumstatement.Position);
             var members = new List<string>();
@@ -717,7 +694,7 @@ namespace Mug.Models.Generator
 
                 members.Add(member.Name);
             }
-        }
+        }*/
 
         private void EmitEnum(EnumStatement enumstatement)
         {
@@ -732,6 +709,7 @@ namespace Mug.Models.Generator
                 enumstatement.Name,
                 new TypeIdentifier(MugValue.Enum(type)),
                 enumstatement.Position);*/
+            throw new();
         }
 
         private void MergeTree(NodeBuilder body)
@@ -769,7 +747,7 @@ namespace Mug.Models.Generator
                 MergeTree((NodeBuilder)when.Body);
         }
 
-        private void DeclareGenericFunctionSymbol(FunctionNode function)
+        /*private void DeclareGenericFunctionSymbol(FunctionNode function)
         {
             var symbol = $"{new string('.', Convert.ToInt32(function.Base.HasValue))}{function.Name}<{new string('.', function.Generics.Count)}>";
 
@@ -802,7 +780,7 @@ namespace Mug.Models.Generator
 
             f.Add(function);
         }
-
+*/
         private EnumErrorStatement CheckEnumError(EnumErrorStatement enumerror)
         {
             var members = new List<string>();
@@ -833,9 +811,8 @@ namespace Mug.Models.Generator
                     EmitFunctionPrototype(prototype);
                     break;
                 case TypeStatement structure:
-                    throw new();
-                    // DeclareSymbol(structure.Name, false, structure, structure.Position, structure.Modifier == TokenKind.KeyPub);
-                    // break;
+                    Table.DeclaredTypes.Add(structure);
+                    break;
                 case EnumStatement enumstatement:
                     EmitEnum(enumstatement);
                     break;
@@ -849,9 +826,7 @@ namespace Mug.Models.Generator
                     DeclareCompilerSymbol(declare.Symbol.Value, true, declare.Position);
                     break;
                 case EnumErrorStatement enumerror:
-                    // DeclareSymbol(
-                    // enumerror.Name, true, MugValue.EnumError(CheckEnumError(enumerror)), enumerror.Position, enumerror.Modifier == TokenKind.KeyPub);
-                    break;
+                    throw new();
                 default:
                     Error(member.Position, "Declaration not supported yet");
                     break;
@@ -901,10 +876,21 @@ namespace Mug.Models.Generator
             return func;
         }
 
+        internal static string ExpectTypeMessage(MugValueType expectedType, MugValueType type)
+        {
+            return $"Expected type '{expectedType}', got '{type}'";
+        }
+
         private void GenerateFunctions()
         {
             foreach (var function in Table.DeclaredFunctions)
             {
+                if (function.Generics.Count > 0)
+                {
+                    Table.DeclareGenericFunction(function);
+                    continue;
+                }
+
                 var functionIdentifier = new FunctionSymbol(
                     function.Base?.Type.ToMugValueType(this),
                     Array.Empty<MugValueType>(),
@@ -912,6 +898,27 @@ namespace Mug.Models.Generator
                     function.ReturnType.ToMugValueType(this), EvaluateFunction(function));
 
                 Table.DeclareFunctionSymbol(function.Name, functionIdentifier, function.Position);
+            }
+        }
+
+        private void GenerateTypes()
+        {
+            foreach (var type in Table.DeclaredTypes)
+            {
+                if (type.Generics.Count > 0)
+                {
+                    Table.DeclareGenericType(type);
+                    continue;
+                }
+
+                var generics = Array.Empty<MugValueType>();
+                var evaluated = EvaluateStruct(type, generics, type.Position);
+                if (!evaluated.HasValue)
+                    continue;
+
+                var typeIdentifier = new TypeSymbol(generics, evaluated.Value);
+
+                Table.DeclareType(type.Name, typeIdentifier, type.Position);
             }
         }
 
@@ -924,7 +931,10 @@ namespace Mug.Models.Generator
             // prototypes' declaration
             foreach (var member in Parser.Module.Members.Nodes)
                 RecognizeMember(member);
-            
+
+            // generate all types here, generic types are saved for next use
+            GenerateTypes();
+
             // generate all functions here
             GenerateFunctions();
 

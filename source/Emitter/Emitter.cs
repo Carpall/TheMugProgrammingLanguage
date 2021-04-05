@@ -64,36 +64,28 @@ namespace Mug.Models.Generator.Emitter
             return Peek().Type;
         }
 
-        public void AddInt()
+        public void AddInt(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
             Load(
-                MugValue.From(Builder.BuildAdd(first.LLVMValue, second.LLVMValue), second.Type, isconstant: first.IsConstant && second.IsConstant));
+                MugValue.From(Builder.BuildAdd(left.LLVMValue, right.LLVMValue), right.Type, isconstant: left.IsConstant && right.IsConstant));
         }
 
-        public void SubInt()
+        public void SubInt(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
             Load(
-                MugValue.From(Builder.BuildSub(first.LLVMValue, second.LLVMValue), second.Type, isconstant: first.IsConstant && second.IsConstant));
+                MugValue.From(Builder.BuildSub(left.LLVMValue, right.LLVMValue), right.Type, isconstant: left.IsConstant && right.IsConstant));
         }
 
-        public void MulInt()
+        public void MulInt(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
             Load(
-                MugValue.From(Builder.BuildMul(first.LLVMValue, second.LLVMValue), second.Type, isconstant: first.IsConstant && second.IsConstant));
+                MugValue.From(Builder.BuildMul(left.LLVMValue, right.LLVMValue), right.Type, isconstant: left.IsConstant && right.IsConstant));
         }
 
-        public void DivInt()
+        public void DivInt(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
             Load(
-                MugValue.From(Builder.BuildSDiv(first.LLVMValue, second.LLVMValue), second.Type, isconstant: first.IsConstant && second.IsConstant));
+                MugValue.From(Builder.BuildSDiv(left.LLVMValue, right.LLVMValue), right.Type, isconstant: left.IsConstant && right.IsConstant));
         }
 
         public void CastInt(MugValueType type)
@@ -134,15 +126,10 @@ namespace Mug.Models.Generator.Emitter
                 variable.Position);
         }
 
-        public (MugValueType, MugValueType) GetCoupleTypes()
+        public void GetCoupleValues(out MugValue first, out MugValue second)
         {
-            var second = Pop();
-            var secondType = second.Type;
-            var firstType = PeekType();
-
-            Load(second);
-
-            return (firstType, secondType);
+            second = Pop();
+            first = Pop();
         }
 
         private void CoerceCoupleConstantIntSize()
@@ -355,7 +342,9 @@ namespace Mug.Models.Generator.Emitter
                 /*if (variable.Type.IsPointer())
                     EmitGCIncrementReferenceCounter(variable.LLVMValue);*/
 
-                Load(MugValue.From(Builder.BuildLoad(variable.Value.LLVMValue), variable.Value.Type));
+                variable = MugValue.From(Builder.BuildLoad(variable.Value.LLVMValue), variable.Value.Type);
+
+                Load(variable.Value);
             }
             else // constant
                 Load(variable.Value);
@@ -363,11 +352,9 @@ namespace Mug.Models.Generator.Emitter
             return true;
         }
 
-        public bool CallOperator(string name/*FunctionSymbol? function*/, Range position, bool expectedNonVoid, params MugValueType[] types)
+        public bool CallOperator(FunctionSymbol? function, Range position, bool expectedNonVoid, params MugValue[] types)
         {
-            throw new();
-            // tofix
-            /*if (function is null)
+            if (function is null)
                 return false;
 
             var functionRetType = function.Value.ReturnType;
@@ -376,9 +363,9 @@ namespace Mug.Models.Generator.Emitter
                 // check the operator overloading is not void
                 _generator.ExpectNonVoidType(functionRetType.LLVMType, position);
 
-            Call(function.Value.Value.LLVMValue, types.Length, functionRetType, false);
+            Call(function.Value.Value.LLVMValue, types, functionRetType, null);
 
-            return true;*/
+            return true;
         }
 
         public void CallAsOperator(Range position, MugValueType type, MugValueType returntype)
@@ -400,11 +387,9 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildRetVoid();
         }
 
-        public void CompareInt(LLVMIntPredicate kind)
+        public void CompareInt(LLVMIntPredicate kind, MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
-            Load(MugValue.From(Builder.BuildICmp(kind, first.LLVMValue, second.LLVMValue), MugValueType.Bool, isconstant: second.IsConstant && first.IsConstant));
+            Load(MugValue.From(Builder.BuildICmp(kind, left.LLVMValue, right.LLVMValue), MugValueType.Bool, isconstant: right.IsConstant && left.IsConstant));
         }
 
         public void NegInt()
@@ -493,7 +478,7 @@ namespace Mug.Models.Generator.Emitter
 
         public void LoadEnumMember(string enumname, string membername, Range position, LocalGenerator localgenerator)
         {
-            var enumerated = _generator.Table.GetType(enumname, position).Value.Value;
+            var enumerated = _generator.Table.GetType(enumname, position).Value;
 
             if (!enumerated.Type.IsEnum())
             {
@@ -636,11 +621,8 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(Pop().LLVMValue, target.LLVMValue);
         }
 
-        public void SelectArrayElement(bool buildload)
+        public void SelectArrayElement(bool buildload, MugValue array, MugValue index)
         {
-            var index = Pop();
-            var array = Pop();
-
             // selecting the element
             var ptr = Builder.BuildGEP( array.LLVMValue, new[] { index.LLVMValue });
 
@@ -658,33 +640,25 @@ namespace Mug.Models.Generator.Emitter
             Load(first);
         }
 
-        public void AddFloat()
+        public void AddFloat(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
             Load(
-                MugValue.From(Builder.BuildFAdd(first.LLVMValue, second.LLVMValue), second.Type, isconstant: second.IsConstant && first.IsConstant));
+                MugValue.From(Builder.BuildFAdd(left.LLVMValue, right.LLVMValue), right.Type, isconstant: right.IsConstant && left.IsConstant));
         }
 
-        public void SubFloat()
+        public void SubFloat(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
-            Load(MugValue.From(Builder.BuildFSub(first.LLVMValue, second.LLVMValue), second.Type, isconstant: second.IsConstant && first.IsConstant));
+            Load(MugValue.From(Builder.BuildFSub(left.LLVMValue, right.LLVMValue), right.Type, isconstant: right.IsConstant && left.IsConstant));
         }
 
-        public void MulFloat()
+        public void MulFloat(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
-            Load(MugValue.From(Builder.BuildFMul(first.LLVMValue, second.LLVMValue), second.Type, isconstant: second.IsConstant && first.IsConstant));
+            Load(MugValue.From(Builder.BuildFMul(left.LLVMValue, right.LLVMValue), right.Type, isconstant: right.IsConstant && left.IsConstant));
         }
 
-        public void DivFloat()
+        public void DivFloat(MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
-            Load(MugValue.From(Builder.BuildFDiv(first.LLVMValue, second.LLVMValue), second.Type, isconstant: second.IsConstant && first.IsConstant));
+            Load(MugValue.From(Builder.BuildFDiv(left.LLVMValue, right.LLVMValue), right.Type, isconstant: right.IsConstant && left.IsConstant));
         }
 
         public void NegFloat()
@@ -693,11 +667,9 @@ namespace Mug.Models.Generator.Emitter
             Load(MugValue.From(Builder.BuildFNeg(value.LLVMValue), value.Type, isconstant: value.IsConstant));
         }
 
-        public void CompareFloat(LLVMRealPredicate kind)
+        public void CompareFloat(LLVMRealPredicate kind, MugValue left, MugValue right)
         {
-            var second = Pop();
-            var first = Pop();
-            Load(MugValue.From(Builder.BuildFCmp(kind, first.LLVMValue, second.LLVMValue), MugValueType.Bool, isconstant: second.IsConstant && first.IsConstant));
+            Load(MugValue.From(Builder.BuildFCmp(kind, left.LLVMValue, right.LLVMValue), MugValueType.Bool, isconstant: right.IsConstant && left.IsConstant));
         }
 
         public void CastFloat(MugValueType type)
