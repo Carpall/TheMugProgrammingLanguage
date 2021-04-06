@@ -145,7 +145,7 @@ namespace Mug.Compilation
         {
             var head = new NamespaceNode()
             {
-                Name = Token.NewInfo(TokenKind.ConstantString, Path.GetDirectoryName(Environment.CurrentDirectory)),
+                Name = Token.NewInfo(TokenKind.ConstantString, Path.GetFileName(Environment.CurrentDirectory)),
                 Members = new()
             };
 

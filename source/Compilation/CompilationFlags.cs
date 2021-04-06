@@ -353,7 +353,7 @@ HELP: uses the next argument as output file name. The extension is not required
         {
             SetDefault("target", CompilationTarget.Executable);
             SetDefault("mode", CompilationMode.Debug);
-            SetDefault("output", Path.ChangeExtension(GetFile() is string s ? s : Path.GetDirectoryName(Environment.CurrentDirectory), GetOutputExtension()));
+            SetDefault("output", Path.ChangeExtension(GetFile() is string s ? s : Path.GetFileName(Environment.CurrentDirectory), GetOutputExtension()));
         }
 
         private void InterpretArgument(string argument)
