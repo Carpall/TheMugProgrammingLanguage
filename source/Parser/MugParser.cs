@@ -29,7 +29,7 @@ namespace Mug.Models.Parser
             Lexer.Throw(Current, error);
         }
 
-        private void ParseError(Range position, string error)
+        private void ParseError(ModulePosition position, string error)
         {
             if (Match(TokenKind.EOF))
                 ParseErrorEOF(error);
@@ -157,12 +157,12 @@ namespace Mug.Models.Parser
             {
                 var type = ExpectType();
                 Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
-                return new MugType(token.Position.Start..Back.Position.End, TypeKind.Array, type);
+                return new MugType(new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End), TypeKind.Array, type);
             }
             else if (MatchAdvance(TokenKind.Star, out token))
             {
                 var type = ExpectType();
-                return new MugType(token.Position.Start..type.Position.End, TypeKind.Pointer, type);
+                return new MugType(new(token.Position.Lexer, token.Position.Position.Start..type.Position.Position.End), TypeKind.Pointer, type);
             }
 
             var find = ExpectBaseType();
@@ -184,7 +184,7 @@ namespace Mug.Models.Parser
 
                 Expect("", TokenKind.BooleanGreater);
 
-                find = new MugType(find.Position.Start..Back.Position.End, TypeKind.GenericDefinedType, (find, genericTypes));
+                find = new MugType(new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End), TypeKind.GenericDefinedType, (find, genericTypes));
             }
 
             if (allowEnumError && MatchAdvance(TokenKind.Negation))
@@ -350,7 +350,7 @@ namespace Mug.Models.Parser
                 {
                     IndexExpression = ExpectExpression(end: TokenKind.CloseBracket),
                     Left = e,
-                    Position = token.Position.Start..Back.Position.End
+                    Position = new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End)
                 };
             }
         }
@@ -368,7 +368,7 @@ namespace Mug.Models.Parser
             {
                 var id = Expect("Expected member after '.'", TokenKind.Identifier);
 
-                name = new MemberNode() { Base = name, Member = id, Position = name.Position.Start.Value..id.Position.End.Value };
+                name = new MemberNode() { Base = name, Member = id, Position = new(name.Position.Lexer, name.Position.Position.Start.Value..id.Position.Position.End.Value) };
 
                 CollectPossibleArrayAccessNode(ref name);
             }
@@ -462,14 +462,14 @@ namespace Mug.Models.Parser
 
                     // parameters.Insert(0, e);
 
-                    e = new CallStatement() { Generics = generics, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = e.Position.Start..name.Position.End }, Parameters = parameters };
+                    e = new CallStatement() { Generics = generics, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
                 }
                 else
                 {
                     if (generics.Count != 0)
                         ParseError("Expected call after generic parameter specification");
 
-                    e = new MemberNode() { Base = e, Member = (Token)name, Position = e.Position.Start..name.Position.End };
+                    e = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
                 }
             }
 
@@ -617,7 +617,7 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.KeyIn, out op);
         }
 
-        private INode CollectNodeNew(Range newposition)
+        private INode CollectNodeNew(ModulePosition newposition)
         {
             if (MatchAdvance(TokenKind.OpenBracket))
             {
@@ -1240,7 +1240,7 @@ namespace Mug.Models.Parser
             Lexer.DiagnosticBag.Report(Current.Position, error);
         }
 
-        private void Report(Range position, string error)
+        private void Report(ModulePosition position, string error)
         {
             Lexer.DiagnosticBag.Report(position, error);
         }
@@ -1369,7 +1369,7 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 return Module;
 
-            Module.Name = new Token(TokenKind.Identifier, Lexer.ModuleName, 0..(Lexer.Source.Length - 1));
+            Module.Name = new Token(TokenKind.Identifier, Lexer.ModuleName, new(Lexer, 0..(Lexer.Source.Length - 1)));
 
             // search for members
             Module.Members = ExpectNamespaceMembers();

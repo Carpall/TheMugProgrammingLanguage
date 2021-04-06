@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mug.Compilation;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser
@@ -14,7 +15,7 @@ namespace Mug.Models.Parser
                 return nodes.ToArray();
             }
         }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
         public int Length
         {
             get

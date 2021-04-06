@@ -53,12 +53,17 @@ namespace Mug.Models.Lexer
             Source = source;
         }
 
+        private ModulePosition ModPos(Range position)
+        {
+            return new(this, position);
+        }
+
         /// <summary>
         /// adds a keyword to the tokens stream and returns true
         /// </summary>
         private bool AddKeyword(TokenKind kind, string keyword)
         {
-            TokenCollection.Add(new(kind, keyword, (CurrentIndex - keyword.Length)..CurrentIndex));
+            TokenCollection.Add(new(kind, keyword, ModPos((CurrentIndex - keyword.Length)..CurrentIndex)));
             return true;
         }
 
@@ -110,7 +115,7 @@ namespace Mug.Models.Lexer
 
         private T InExpressionError<T>(string error)
         {
-            DiagnosticBag.Report(CurrentIndex, error);
+            DiagnosticBag.Report(this, CurrentIndex, error);
             return default;
         }
 
@@ -157,9 +162,9 @@ namespace Mug.Models.Lexer
         private void AddToken(TokenKind kind, string value)
         {
             if (value is not null)
-                TokenCollection.Add(new(kind, value, (CurrentIndex - value.ToString().Length)..CurrentIndex));
+                TokenCollection.Add(new(kind, value, ModPos((CurrentIndex - value.ToString().Length)..CurrentIndex)));
             else // chatching null reference exception
-                TokenCollection.Add(new(kind, value, CurrentIndex..(CurrentIndex + 1)));
+                TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1))));
         }
 
         /// <summary>
@@ -167,7 +172,7 @@ namespace Mug.Models.Lexer
         /// </summary>
         private void AddSingle(TokenKind kind, string value)
         {
-            TokenCollection.Add(new(kind, value, CurrentIndex..(CurrentIndex + 1)));
+            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1))));
         }
 
         /// <summary>
@@ -180,7 +185,7 @@ namespace Mug.Models.Lexer
              * moves the index by one: a double token occupies 2 chars
              */
 
-            TokenCollection.Add(new(kind, value, CurrentIndex..(++CurrentIndex + 1)));
+            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(++CurrentIndex + 1))));
         }
 
         /// <summary>
@@ -275,12 +280,12 @@ namespace Mug.Models.Lexer
 
             //longer than one char
             if (CurrentSymbol.Length > 1)
-                DiagnosticBag.Report(start..end, "Too many characters in const char");
+                DiagnosticBag.Report(ModPos(start..end), "Too many characters in const char");
             else if (CurrentSymbol.Length < 1)
-                DiagnosticBag.Report(start..end, "Not enough characters in const char");
+                DiagnosticBag.Report(ModPos(start..end), "Not enough characters in const char");
 
             //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), new(start, end)));
+            TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), ModPos(start..end)));
             CurrentSymbol.Clear();
         }
 
@@ -322,7 +327,7 @@ namespace Mug.Models.Lexer
                 this.Throw(CurrentIndex - 1, $"String has not been correctly enclosed");
 
             //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), new(start, end + 1)));
+            TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), ModPos(start..(end + 1))));
             CurrentSymbol.Clear();
         }
 
@@ -363,9 +368,9 @@ namespace Mug.Models.Lexer
 
             //if you found an EOF, throw
             if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '`')
-                DiagnosticBag.Report(CurrentIndex - 1, $"Backtick sequence has not been correctly enclosed");
+                DiagnosticBag.Report(this, CurrentIndex - 1, $"Backtick sequence has not been correctly enclosed");
 
-            var pos = start..(end+1);
+            var pos = ModPos(start..(end + 1));
 
             if (CurrentSymbol.Length < 1)
                 DiagnosticBag.Report(pos, "Not enough characters in backtick sequence");
@@ -466,7 +471,7 @@ namespace Mug.Models.Lexer
                         goto end;
 
                     if (isfloat)
-                        DiagnosticBag.Report(CurrentIndex, "Invalid dot here");
+                        DiagnosticBag.Report(this, CurrentIndex, "Invalid dot here");
 
                     isfloat = true;
                     CurrentSymbol.Append(',');
@@ -486,7 +491,7 @@ namespace Mug.Models.Lexer
 
         end:
 
-            var position = pos..CurrentIndex;
+            var position = ModPos(pos..CurrentIndex);
             var s = CurrentSymbol.ToString();
 
             // could overflow
@@ -514,7 +519,7 @@ namespace Mug.Models.Lexer
             if (Current == '\n')
             {
                 if (TokenCollection.LastOrDefault().Kind != TokenKind.EOL)
-                    TokenCollection.Add(new(TokenKind.EOL, "\\n", (CurrentIndex - 1)..CurrentIndex));
+                    TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos((CurrentIndex - 1)..CurrentIndex)));
 
                 // consumes all contiguous \n in one token
                 while (CurrentIndex < Source.Length && Current == '\n')

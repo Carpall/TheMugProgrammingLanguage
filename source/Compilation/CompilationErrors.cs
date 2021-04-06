@@ -18,7 +18,7 @@ namespace Mug.Compilation
 
         public static void Throw(this MugLexer Lexer, int pos, string error)
         {
-            Lexer.Throw(pos..(pos + 1), error);
+            Lexer.Throw(new ModulePosition(Lexer, pos..(pos + 1)), error);
         }
 
         public static void Throw(this MugLexer Lexer, Token token, string error)
@@ -26,7 +26,7 @@ namespace Mug.Compilation
             Lexer.Throw(token.Position, error);
         }
 
-        public static void Throw(this MugLexer Lexer, Range position, string error)
+        public static void Throw(this MugLexer Lexer, ModulePosition position, string error)
         {
             Lexer.DiagnosticBag.Report(new(position, error));
             throw new CompilationException(Lexer);

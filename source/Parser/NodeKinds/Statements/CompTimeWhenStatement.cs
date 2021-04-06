@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using Mug.Models.Parser;
 using Mug.Models.Parser.NodeKinds;
 using System;
@@ -12,6 +13,6 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public string NodeKind => "CompTimeWhen";
         public CompTimeExpression Expression { get; set; }
         public object Body { get; set; } // 
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
     }
 }

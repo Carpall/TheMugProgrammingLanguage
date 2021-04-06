@@ -36,7 +36,7 @@ namespace Mug.Compilation.Symbols
             _generator = generator;
         }
 
-        public void DeclareFunctionSymbol(string name, FunctionSymbol identifier, Range position)
+        public void DeclareFunctionSymbol(string name, FunctionSymbol identifier, ModulePosition position)
         {
             if (DefinedFunctions.TryAdd(name, new() { identifier }))
                 return;
@@ -62,7 +62,7 @@ namespace Mug.Compilation.Symbols
             DefinedGenericFunctions[name].Add(identifier);
         }
 
-        public void DeclareType(string name, TypeSymbol identifier, Range position)
+        public void DeclareType(string name, TypeSymbol identifier, ModulePosition position)
         {
             if (!DefinedTypes.TryAdd(name, new() { identifier }))
             {
@@ -76,7 +76,7 @@ namespace Mug.Compilation.Symbols
             }
         }
 
-        public void DeclareEnumType(string name, MugValue enumtype, Range position)
+        public void DeclareEnumType(string name, MugValue enumtype, ModulePosition position)
         {
             if (!DefinedEnumTypes.TryAdd(name, enumtype))
             {
@@ -138,7 +138,7 @@ namespace Mug.Compilation.Symbols
             return false;
         }
 
-        public MugValue? GetEnumType(string name, Range position, bool report)
+        public MugValue? GetEnumType(string name, ModulePosition position, bool report)
         {
             if (!DefinedEnumTypes.TryGetValue(name, out var enumtype))
             {
@@ -163,7 +163,7 @@ namespace Mug.Compilation.Symbols
             DeclaredGenericTypes.Add(type);
         }
 
-        public bool DeclareCompilerSymbol(string name, Range position)
+        public bool DeclareCompilerSymbol(string name, ModulePosition position)
         {
             if (CompilerSymbols.Contains(name))
             {
@@ -202,7 +202,7 @@ namespace Mug.Compilation.Symbols
             return overloads[index];
         }
 
-        public TypeStatement GetGenericType(string name, int genericsCount, Range position)
+        public TypeStatement GetGenericType(string name, int genericsCount, ModulePosition position)
         {
             var index = DeclaredGenericTypes.FindIndex(id =>
             {
@@ -223,7 +223,7 @@ namespace Mug.Compilation.Symbols
             return CompilerSymbols.Contains(name);
         }
 
-        public void DeclareAsOperators(FunctionSymbol function, Range position)
+        public void DeclareAsOperators(FunctionSymbol function, ModulePosition position)
         {
             if (DefinedAsOperators.FindIndex(symbol =>
             {
@@ -237,7 +237,7 @@ namespace Mug.Compilation.Symbols
             DefinedAsOperators.Add(function);
         }
 
-        public FunctionSymbol? GetAsOperator(MugValueType type, MugValueType returntype, Range position)
+        public FunctionSymbol? GetAsOperator(MugValueType type, MugValueType returntype, ModulePosition position)
         {
             var index = DefinedAsOperators.FindIndex(function => function.Parameters[0].Equals(type) && function.ReturnType.Equals(returntype));
             if (index == -1)

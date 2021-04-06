@@ -1,4 +1,5 @@
-﻿using Mug.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.TypeSystem;
 using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
@@ -9,6 +10,6 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public String Name { get; set; }
         public MugType Type { get; set; }
         public INode Body { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
     }
 }

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Mug.Compilation.Symbols
+namespace Mug.Compilation
 {
     public struct ModulePosition
     {
@@ -14,6 +14,11 @@ namespace Mug.Compilation.Symbols
         {
             Lexer = lexer;
             Position = position;
+        }
+
+        public override string ToString()
+        {
+            return $"{Lexer.ModuleName}({Position})";
         }
     }
 }

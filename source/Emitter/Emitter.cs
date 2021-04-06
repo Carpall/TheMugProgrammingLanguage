@@ -39,7 +39,7 @@ namespace Mug.Models.Generator.Emitter
             IsInsideSubBlock = isInsideSubBlock;
         }
 
-        public void Report(Range position, string error)
+        public void Report(ModulePosition position, string error)
         {
             _generator.Report(position, error);
         }
@@ -102,7 +102,7 @@ namespace Mug.Models.Generator.Emitter
                 MugValue.From(Builder.BuildSIToFP(value.LLVMValue, type.LLVMType), type, isconstant: value.IsConstant));
         }
 
-        public MugValue? GetMemoryAllocation(string name, Range position)
+        public MugValue? GetMemoryAllocation(string name, ModulePosition position)
         {
             if (!Memory.TryGetValue(name, out var variable))
             {
@@ -251,7 +251,7 @@ namespace Mug.Models.Generator.Emitter
             Load(value);
         }
 
-        private bool AlreadyDeclared(string name, Range position)
+        private bool AlreadyDeclared(string name, ModulePosition position)
         {
             if (IsDeclared(name))
             {
@@ -262,7 +262,7 @@ namespace Mug.Models.Generator.Emitter
             return false;
         }
 
-        public void DeclareVariable(string name, MugValueType type, Range position)
+        public void DeclareVariable(string name, MugValueType type, ModulePosition position)
         {
             if (AlreadyDeclared(name, position))
                 return;
@@ -272,7 +272,7 @@ namespace Mug.Models.Generator.Emitter
                 MugValue.From(Builder.BuildAlloca(type.LLVMType, name), type));
         }
 
-        public void DeclareConstant(string name, Range position)
+        public void DeclareConstant(string name, ModulePosition position)
         {
             if (AlreadyDeclared(name, position))
                 return;
@@ -282,7 +282,7 @@ namespace Mug.Models.Generator.Emitter
             SetMemory(name, Pop());
         }
 
-        public void StoreVariable(string name, Range position, Range bodyPosition)
+        public void StoreVariable(string name, ModulePosition position, ModulePosition bodyPosition)
         {
             var allocation = GetMemoryAllocation(name, position);
             if (!allocation.HasValue)
@@ -296,7 +296,7 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(llvmparameter, Memory[name].LLVMValue);
         }
 
-        public void StoreVariable(MugValue allocation, Range position, Range bodyPosition)
+        public void StoreVariable(MugValue allocation, ModulePosition position, ModulePosition bodyPosition)
         {
             // check it is a variable and not a constant
             if (allocation.IsConst)
@@ -326,7 +326,7 @@ namespace Mug.Models.Generator.Emitter
             return Memory.ContainsKey(name);
         }
 
-        public bool LoadFromMemory(string name, Range position)
+        public bool LoadFromMemory(string name, ModulePosition position)
         {
             var variable = GetMemoryAllocation(name, position);
             if (!variable.HasValue)
@@ -348,7 +348,7 @@ namespace Mug.Models.Generator.Emitter
             return true;
         }
 
-        public bool CallOperator(FunctionSymbol? function, Range position, bool expectedNonVoid, params MugValue[] types)
+        public bool CallOperator(FunctionSymbol? function, ModulePosition position, bool expectedNonVoid, params MugValue[] types)
         {
             if (function is null)
                 return false;
@@ -364,7 +364,7 @@ namespace Mug.Models.Generator.Emitter
             return true;
         }
 
-        public bool CallAsOperator(Range position, MugValueType type, MugValueType returntype)
+        public bool CallAsOperator(ModulePosition position, MugValueType type, MugValueType returntype)
         {
             var function = _generator.Table.GetAsOperator(type, returntype, position);
             if (!function.HasValue)
@@ -441,7 +441,7 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildBr(targetblock);
         }
 
-        public bool LoadMemoryAllocation(string name, Range position)
+        public bool LoadMemoryAllocation(string name, ModulePosition position)
         {
             var allocation = GetMemoryAllocation(name, position);
             if (allocation.HasValue)
@@ -473,7 +473,7 @@ namespace Mug.Models.Generator.Emitter
                 );
         }
 
-        public bool LoadEnumMember(string enumname, string membername, Range baseposition, Range memberposition, LocalGenerator localgenerator)
+        public bool LoadEnumMember(string enumname, string membername, ModulePosition baseposition, ModulePosition memberposition, LocalGenerator localgenerator)
         {
             var enumerated = _generator.Table.GetEnumType(enumname, baseposition, true);
             if (!enumerated.HasValue)
@@ -508,7 +508,7 @@ namespace Mug.Models.Generator.Emitter
                 );
         }
 
-        public bool LoadFieldName(string name, Range position)
+        public bool LoadFieldName(string name, ModulePosition position)
         {
             var allocation = GetMemoryAllocation(name, position);
             if (!allocation.HasValue)
@@ -550,13 +550,13 @@ namespace Mug.Models.Generator.Emitter
                 Builder.BuildBr(ExitBlock);
         }
 
-        public void ExpectIndexerType(Range position)
+        public void ExpectIndexerType(ModulePosition position)
         {
             if (!PeekType().MatchIntType())
                 _generator.Report(position, $"'{PeekType()}' is not an indexer type");
         }
 
-        public bool LoadReference(MugValue allocation, Range position)
+        public bool LoadReference(MugValue allocation, ModulePosition position)
         {
             if (allocation.IsConst)
             {
@@ -568,7 +568,7 @@ namespace Mug.Models.Generator.Emitter
             return true;
         }
 
-        public MugValue LoadFromPointer(MugValue value, Range position)
+        public MugValue LoadFromPointer(MugValue value, ModulePosition position)
         {
             if (!value.Type.IsPointer())
                 _generator.Report(position, "Expected a pointer");

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mug.Compilation;
+using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
@@ -6,7 +7,7 @@ namespace Mug.Models.Parser.NodeKinds.Statements
     {
         public string NodeKind => "Return";
         public INode Body { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
         public bool IsVoid()
         {
             return Body is null;

@@ -26,8 +26,8 @@ func `as`(value: A): chr {
   return value.a
 }
 
-func `as`(value: A): chr {
-  return value.a
+func `as`(value: A): i32 {
+  return value.a as i32
 }
 
 func main(): i32 {

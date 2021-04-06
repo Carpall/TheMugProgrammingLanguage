@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ namespace Mug.Models.Parser.NodeKinds
         public string NodeKind => "StructAllocation";
         public MugType Name { get; set; }
         public List<FieldAssignmentNode> Body { get; set; } = new();
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
         public bool HasGenerics()
         {

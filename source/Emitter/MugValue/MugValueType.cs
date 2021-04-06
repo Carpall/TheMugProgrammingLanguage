@@ -86,7 +86,7 @@ namespace Mug.MugValueSystem
             return new MugValueType() { TypeKind = MugValueTypeKind.Pointer, BaseType = type };
         }
 
-        public static MugValueType Struct(string name, MugValueType[] body, string[] structure, Range[] positions)
+        public static MugValueType Struct(string name, MugValueType[] body, string[] structure, ModulePosition[] positions)
         {
             return new MugValueType()
             {

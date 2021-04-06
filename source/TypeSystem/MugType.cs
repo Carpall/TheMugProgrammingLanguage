@@ -19,12 +19,12 @@ namespace Mug.TypeSystem
         [JsonConverter(typeof(StringEnumConverter))]
         public TypeKind Kind { get; set; }
         public object BaseType { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
         /// <summary>
         /// basetype is used when kind is a non primitive type, a pointer or an array
         /// </summary>
-        public MugType(Range position, TypeKind type, object baseType = null)
+        public MugType(ModulePosition position, TypeKind type, object baseType = null)
         {
             Kind = type;
             BaseType = baseType;
@@ -66,7 +66,7 @@ namespace Mug.TypeSystem
         /// <summary>
         /// a short way of allocating with new operator
         /// </summary>
-        public static MugType Automatic(Range position)
+        public static MugType Automatic(ModulePosition position)
         {
             return new MugType(position, TypeKind.Auto);
         }
@@ -129,7 +129,7 @@ namespace Mug.TypeSystem
                 Kind == TypeKind.UInt64;
         }
 
-        private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, Range position, IRGenerator generator)
+        private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, ModulePosition position, IRGenerator generator)
         {
             if (generator.IsIllegalType(name))
                 generator.Error(position, "Type recursion");
@@ -163,7 +163,7 @@ namespace Mug.TypeSystem
                     if (!type.HasValue)
                         goto end;
 
-                    symbol = new TypeSymbol(generics, type.Value);
+                    symbol = new TypeSymbol(generics, type.Value, position);
 
                     generator.Table.DeclareType(
                         name,

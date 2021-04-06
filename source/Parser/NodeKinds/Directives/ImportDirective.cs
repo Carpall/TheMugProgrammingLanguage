@@ -1,17 +1,18 @@
-﻿using System;
+﻿using Mug.Compilation;
+using System;
 
 namespace Mug.Models.Parser.NodeKinds.Directives
 {
     public enum ImportMode
     {
         FromPackages,
-        FromLocal,
+        FromLocal
     }
     public class ImportDirective : INode
     {
         public string NodeKind => "ImportDirective";
         public INode Member { get; set; }
         public ImportMode Mode { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
     }
 }

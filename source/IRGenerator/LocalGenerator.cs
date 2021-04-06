@@ -40,12 +40,12 @@ namespace Mug.Models.Generator
             _llvmfunction = llvmfunction;
         }
 
-        internal void Error(Range position, string error)
+        internal void Error(ModulePosition position, string error)
         {
             _generator.Parser.Lexer.Throw(position, error);
         }
 
-        internal bool Report(Range position, string error)
+        internal bool Report(ModulePosition position, string error)
         {
             _generator.Parser.Lexer.DiagnosticBag.Report(position, error);
             return false;
@@ -71,7 +71,7 @@ namespace Mug.Models.Generator
         /// <summary>
         /// converts a constant in token format to one in LLVMValueRef format
         /// </summary>
-        internal MugValue ConstToMugConst(Token constant, Range position, bool isenum = false, MugValueType forcedIntSize = new())
+        internal MugValue ConstToMugConst(Token constant, ModulePosition position, bool isenum = false, MugValueType forcedIntSize = new())
         {
             LLVMValueRef llvmvalue = new();
             MugValueType type = new();
@@ -114,7 +114,7 @@ namespace Mug.Models.Generator
             return MugValue.From(llvmvalue, type, isconstant: true);
         }
 
-        private FunctionSymbol? OperatorFunctionSymbol(string name, Range position, ref MugValue[] parameters)
+        private FunctionSymbol? OperatorFunctionSymbol(string name, ModulePosition position, ref MugValue[] parameters)
         {
             MugValue? basevalue = null;
             return GetFunctionSymbol(ref basevalue, name, Array.Empty<MugValueType>(), ref parameters, position);
@@ -128,7 +128,7 @@ namespace Mug.Models.Generator
         /// <param name="opfloat">built in operation to call if matched two int</param>
         /// <param name="position">position for error</param>
         /// <returns></returns>
-        private bool EmitMathOperator(string name, Action<MugValue, MugValue> opint, Action<MugValue, MugValue> opfloat, Range position)
+        private bool EmitMathOperator(string name, Action<MugValue, MugValue> opint, Action<MugValue, MugValue> opfloat, ModulePosition position)
         {
             _emitter.CoerceCoupleConstantSize();
 
@@ -148,22 +148,22 @@ namespace Mug.Models.Generator
         }
 
 
-        private bool EmitSum(Range position)
+        private bool EmitSum(ModulePosition position)
         {
             return EmitMathOperator("+", _emitter.AddInt, _emitter.AddFloat, position);
         }
 
-        private bool EmitSub(Range position)
+        private bool EmitSub(ModulePosition position)
         {
             return EmitMathOperator("-", _emitter.SubInt, _emitter.SubFloat, position);
         }
 
-        private bool EmitMul(Range position)
+        private bool EmitMul(ModulePosition position)
         {
             return EmitMathOperator("*", _emitter.MulInt, _emitter.MulFloat, position);
         }
 
-        private bool EmitDiv(Range position)
+        private bool EmitDiv(ModulePosition position)
         {
             return EmitMathOperator("/", _emitter.DivInt, _emitter.DivFloat, position);
         }
@@ -181,7 +181,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private bool EmitBooleanOperator(string literal, LLVMIntPredicate llvmpredicate, OperatorKind kind, Range position)
+        private bool EmitBooleanOperator(string literal, LLVMIntPredicate llvmpredicate, OperatorKind kind, ModulePosition position)
         {
             _emitter.CoerceCoupleConstantSize();
 
@@ -221,7 +221,7 @@ namespace Mug.Models.Generator
         /// <summary>
         /// the function manages the operator implementations for all the types
         /// </summary>
-        private bool EmitOperator(OperatorKind kind, Range position)
+        private bool EmitOperator(OperatorKind kind, ModulePosition position)
         {
             return kind switch
             {
@@ -328,7 +328,7 @@ namespace Mug.Models.Generator
         /// <summary>
         /// the function manages the 'as' operator
         /// </summary>
-        private bool EmitCastInstruction(MugType type, Range position)
+        private bool EmitCastInstruction(MugType type, ModulePosition position)
         {
             // the expression type to cast
             var expressionType = _emitter.PeekType();
@@ -439,7 +439,7 @@ namespace Mug.Models.Generator
         private FunctionSymbol? EvaluateFunctionCallName(INode leftexpression, ref MugValue[] parameters, MugValueType[] genericsInput, out MugValue? basetype)
         {
             string name;
-            Range position;
+            ModulePosition position;
             basetype = null;
 
             if (leftexpression is Token token)
@@ -495,7 +495,7 @@ namespace Mug.Models.Generator
                         function.Base?.Type.ToMugValueType(_generator),
                         Array.Empty<MugValueType>(),
                         _generator.ParameterTypesToMugTypes(function.ParameterList.Parameters),
-                        function.ReturnType.ToMugValueType(_generator), new());
+                        function.ReturnType.ToMugValueType(_generator), new(), function.Position);
 
                     _generator.ClearGenericParameters();
 
@@ -508,7 +508,7 @@ namespace Mug.Models.Generator
             return result;
         }
 
-        private FunctionSymbol? GetFunctionSymbol(ref MugValue? basevalue, string name, MugValueType[] generics, ref MugValue[] parameters, Range position)
+        private FunctionSymbol? GetFunctionSymbol(ref MugValue? basevalue, string name, MugValueType[] generics, ref MugValue[] parameters, ModulePosition position)
         {
             // todo: cache generated generic function
             List<FunctionSymbol> overloads;
@@ -1070,7 +1070,7 @@ namespace Mug.Models.Generator
             _emitter.JumpOutOfScope(then.Terminator, endifelse);
         }
 
-        private void EvaluateConditionExpression(INode expression, Range position, bool allowNull = false)
+        private void EvaluateConditionExpression(INode expression, ModulePosition position, bool allowNull = false)
         {
             if (allowNull && expression is null)
             {
@@ -1195,7 +1195,7 @@ namespace Mug.Models.Generator
                 EmitWhileStatement(i);
         }
 
-        private MugValue GetDefaultValueOfDefinedType(MugValueType type, Range position)
+        private MugValue GetDefaultValueOfDefinedType(MugValueType type, ModulePosition position)
         {
             if (type.IsEnum())
             {
@@ -1218,13 +1218,13 @@ namespace Mug.Models.Generator
             return MugValue.From(_emitter.Builder.BuildLoad(tmp), type);
         }
 
-        private MugValue ReferencesPointersMandatoryInitialization(Range position, MugValueType type)
+        private MugValue ReferencesPointersMandatoryInitialization(ModulePosition position, MugValueType type)
         {
             _generator.Report(position, "References and pointers must be initialized");
             return MugValue.From(LLVMValueRef.CreateConstAllOnes(type.LLVMType), type);
         }
 
-        private MugValue GetDefaultValueOf(MugValueType type, Range position)
+        private MugValue GetDefaultValueOf(MugValueType type, ModulePosition position)
         {
             return type.TypeKind switch
             {
@@ -1384,7 +1384,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private void EmitPostfixOperator(MugValue variabile, TokenKind kind, Range position, bool isStatement)
+        private void EmitPostfixOperator(MugValue variabile, TokenKind kind, ModulePosition position, bool isStatement)
         {
             _emitter.Load(variabile);
 
@@ -1690,7 +1690,7 @@ namespace Mug.Models.Generator
             _oldcondition = saveOldCondition;
         }
 
-        private void StoreInHiddenBuffer(Range position, bool isLastOFBlock)
+        private void StoreInHiddenBuffer(ModulePosition position, bool isLastOFBlock)
         {
             if (!_buffer.HasValue || !isLastOFBlock)
                 return;

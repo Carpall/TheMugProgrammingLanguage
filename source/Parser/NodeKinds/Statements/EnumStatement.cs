@@ -1,4 +1,5 @@
-﻿using Mug.Models.Generator;
+﻿using Mug.Compilation;
+using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.MugValueSystem;
 using Mug.TypeSystem;
@@ -15,19 +16,10 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public string Name { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
         public TokenKind Modifier { get; set; }
 
-        public Range GetMemberPositionFromName(string name)
-        {
-            for (int i = 0; i < Body.Count; i++)
-                if (Body[i].Name == name)
-                    return Body[i].Position;
-
-            throw new();
-        }
-
-        public MugValue GetMemberValueFromName(MugValueType enumerated, MugValueType enumeratedBaseType, string name, Range position, LocalGenerator localgenerator)
+        public MugValue GetMemberValueFromName(MugValueType enumerated, MugValueType enumeratedBaseType, string name, ModulePosition position, LocalGenerator localgenerator)
         {
             for (int i = 0; i < Body.Count; i++)
                 if (Body[i].Name == name)

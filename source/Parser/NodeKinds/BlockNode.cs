@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mug.Compilation;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds
@@ -14,7 +15,7 @@ namespace Mug.Models.Parser.NodeKinds
             }
         }
 
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
         private readonly List<INode> statements = new();
         public void Add(INode node)

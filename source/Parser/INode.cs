@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Mug.Compilation;
+using Newtonsoft.Json;
 using System;
 
 namespace Mug.Models.Parser
@@ -7,7 +8,7 @@ namespace Mug.Models.Parser
     {
         public string NodeKind { get; }
         [JsonIgnore]
-        public abstract Range Position { get; set; }
+        public abstract ModulePosition Position { get; set; }
 
         public string Dump()
         {

@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,12 +12,12 @@ namespace Mug.Compilation
 
         public int Count => _diagnostic.Count;
 
-        public void Report(int pos, string error)
+        public void Report(MugLexer lexer, int pos, string error)
         {
-            Report(pos..(pos + 1), error);
+            Report(new(new(lexer, pos..(pos + 1)), error));
         }
 
-        public void Report(Range position, string message)
+        public void Report(ModulePosition position, string message)
         {
             Report(new MugError(position, message));
         }

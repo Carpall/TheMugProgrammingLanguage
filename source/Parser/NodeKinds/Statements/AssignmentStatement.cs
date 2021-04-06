@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
@@ -9,6 +10,6 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public TokenKind Operator { get; set; }
         public INode Name { get; set; }
         public INode Body { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
     }
 }
