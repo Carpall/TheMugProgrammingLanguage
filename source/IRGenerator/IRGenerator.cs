@@ -443,6 +443,11 @@ namespace Mug.Models.Generator
         {
             Table.MergeCompilerSymbols(unit.IRGenerator.Table.CompilerSymbols);
             Table.MergeDefinedSymbols(unit.IRGenerator.Table.DefinedFunctions);
+            Table.MergeDeclaredGenericFunctionSymbols(unit.IRGenerator.Table.DeclaredGenericFunctions);
+            Table.MergeDeclaredGenericTypesSymbols(unit.IRGenerator.Table.DeclaredGenericTypes);
+            Table.MergeDeclaredAsOperatorSymbols(unit.IRGenerator.Table.DefinedAsOperators);
+            Table.MergeDefinedEnumTypeSymbols(unit.IRGenerator.Table.DefinedEnumTypes);
+            Table.MergeDefinedGenericFunctionSymbols(unit.IRGenerator.Table.DefinedGenericFunctions);
         }
 
         private void EmitImport(ImportDirective import)

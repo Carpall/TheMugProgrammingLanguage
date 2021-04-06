@@ -26,7 +26,7 @@ namespace Mug.Compilation.Symbols
         public readonly List<FunctionSymbol> DefinedAsOperators = new();
         public readonly Dictionary<string, List<FunctionSymbol>> DefinedGenericFunctions = new();
         public readonly Dictionary<string, List<TypeSymbol>> DefinedTypes = new();
-        public readonly Dictionary<string, MugValue> DefinedEnumTypes = new();
+        public readonly Dictionary<string, (MugValue model, ModulePosition position)> DefinedEnumTypes = new();
 
         // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
@@ -260,6 +260,37 @@ namespace Mug.Compilation.Symbols
             foreach (var overloads in functions)
                 foreach (var function in overloads.Value)
                     DeclareFunctionSymbol(overloads.Key, function, function.Position);
+        }
+
+        public void MergeDeclaredGenericFunctionSymbols(List<FunctionNode> genericFunctions)
+        {
+            foreach (var function in genericFunctions)
+                DeclareGenericFunction(function);
+        }
+
+        public void MergeDeclaredGenericTypesSymbols(List<TypeStatement> genericTypes)
+        {
+            foreach (var type in genericTypes)
+                DeclareGenericType(type);
+        }
+
+        public void MergeDeclaredAsOperatorSymbols(List<FunctionSymbol> asOperators)
+        {
+            foreach (var asoperator in asOperators)
+                DeclareAsOperators(asoperator, asoperator.Position);
+        }
+
+        public void MergeDefinedEnumTypeSymbols(Dictionary<string, (MugValue model, ModulePosition position)> enumTypes)
+        {
+            foreach (var enumtype in enumTypes)
+                DeclareEnumType(enumtype.Key, enumtype.Value.model, enumtype.Value.position);
+        }
+
+        public void MergeDefinedGenericFunctionSymbols(Dictionary<string, List<FunctionSymbol>> genericFunctions)
+        {
+            foreach (var overloads in genericFunctions)
+                foreach (var function in overloads.Value)
+                    DeclareGenericFunctionSymbol(overloads.Key, function);
         }
     }
 }

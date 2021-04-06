@@ -20,16 +20,6 @@ try
     [ ] look at the '// tofix' comments and 'throw new()'
 */
 
-type A { a: chr }
-
-func `as`(value: A): chr {
-  return value.a
-}
-
-func `as`(value: A): i32 {
-  return value.a as i32
-}
-
 func main(): i32 {
   return (new A {} as chr) as i32
 }
