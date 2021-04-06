@@ -464,6 +464,7 @@ namespace Mug.Models.Generator
             }
             else // (expr)()
             {
+                // fix when implemented function pointers
                 EvaluateExpression(leftexpression);
                 throw new(); // tofix
             }

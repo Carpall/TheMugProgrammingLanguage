@@ -78,7 +78,7 @@ namespace Mug.Compilation.Symbols
 
         public void DeclareEnumType(string name, MugValue enumtype, ModulePosition position)
         {
-            if (!DefinedEnumTypes.TryAdd(name, enumtype))
+            if (!DefinedEnumTypes.TryAdd(name, (enumtype, position)))
             {
                 _generator.Report(position, $"Enum type '{name}' already declared");
                 return;
@@ -148,7 +148,7 @@ namespace Mug.Compilation.Symbols
                 return null;
             }
 
-            return enumtype;
+            return enumtype.model;
         }
 
         public void DeclareGenericType(TypeStatement type)

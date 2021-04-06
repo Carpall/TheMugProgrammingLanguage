@@ -38,3 +38,4 @@ done: +
 - let use negative numbers in enum declarations (enum errors should have a custom based type 'err' to avoid use of negative enum errors' member, -1 is used as success)
 - add variants -> 'type Var = (A | B | C)'
 - add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'
+- add function pointer
