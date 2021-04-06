@@ -60,7 +60,6 @@ namespace Mug.Compilation
 
     static class Extensions
     {
-
         public static string GetDescription(this Enum instance)
         {
             var genericEnumType = instance.GetType();

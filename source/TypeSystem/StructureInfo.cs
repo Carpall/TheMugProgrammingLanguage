@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using Mug.Compilation;
 using Mug.Models.Generator;
 using Mug.MugValueSystem;
 using System;
@@ -12,19 +13,10 @@ namespace Mug.TypeSystem
         public string Name { get; set; }
         public string[] FieldNames { get; set; }
         public MugValueType[] FieldTypes { get; set; }
-        public Range[] FieldPositions { get; set; }
+        public ModulePosition[] FieldPositions { get; set; }
         public LLVMTypeRef LLVMValue { get; set; }
 
-        public Range GetFieldPositionFromName(string name)
-        {
-            for (int i = 0; i < FieldNames.Length; i++)
-                if (FieldNames[i] == name)
-                    return FieldPositions[i];
-
-            throw new();
-        }
-
-        public MugValueType GetFieldTypeFromName(string name, IRGenerator generator, Range position)
+        public MugValueType GetFieldTypeFromName(string name, IRGenerator generator, ModulePosition position)
         {
             return FieldTypes[GetFieldIndexFromName(name, generator, position)];
         }
@@ -38,13 +30,13 @@ namespace Mug.TypeSystem
             return false;
         }
 
-        public int GetFieldIndexFromName(string name, IRGenerator generator, Range position)
+        public int GetFieldIndexFromName(string name, IRGenerator generator, ModulePosition position)
         {
             for (int i = 0; i < FieldNames.Length; i++)
                 if (FieldNames[i] == name)
                     return i;
 
-            generator.Error(position, "Undeclared field `", name, "`");
+            generator.Error(position, $"Undeclared field '{name}'");
             throw new();
         }
 

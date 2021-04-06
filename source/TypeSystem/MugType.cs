@@ -1,5 +1,6 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Compilation;
+using Mug.Compilation.Symbols;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
@@ -18,12 +19,12 @@ namespace Mug.TypeSystem
         [JsonConverter(typeof(StringEnumConverter))]
         public TypeKind Kind { get; set; }
         public object BaseType { get; set; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
         /// <summary>
         /// basetype is used when kind is a non primitive type, a pointer or an array
         /// </summary>
-        public MugType(Range position, TypeKind type, object baseType = null)
+        public MugType(ModulePosition position, TypeKind type, object baseType = null)
         {
             Kind = type;
             BaseType = baseType;
@@ -57,14 +58,15 @@ namespace Mug.TypeSystem
 
         private static MugType Error(string kind)
         {
-            CompilationErrors.Throw("´", kind, "´ is not a type");
+            // internal error
+            CompilationErrors.Throw($"´{kind}´ is not a type");
             throw new();
         }
 
         /// <summary>
         /// a short way of allocating with new operator
         /// </summary>
-        public static MugType Automatic(Range position)
+        public static MugType Automatic(ModulePosition position)
         {
             return new MugType(position, TypeKind.Auto);
         }
@@ -127,10 +129,10 @@ namespace Mug.TypeSystem
                 Kind == TypeKind.UInt64;
         }
 
-        private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, Range position, IRGenerator generator)
+        private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, ModulePosition position, IRGenerator generator)
         {
             if (generator.IsIllegalType(name))
-                generator.Error(position, "Illegal recursion");
+                generator.Error(position, "Type recursion");
 
             if (generator.IsGenericParameter(name, out var genericParameterType))
             {
@@ -140,13 +142,43 @@ namespace Mug.TypeSystem
                 return genericParameterType;
             }
 
-            var generics = new List<MugValueType>();
+            var generics = new MugValueType[genericsInput.Count];
             for (int i = 0; i < genericsInput.Count; i++)
-                generics.Add(genericsInput[i].ToMugValueType(generator));
+                generics[i] = genericsInput[i].ToMugValueType(generator);
 
-            var result = generator.EvaluateStruct(name, generics, position).Type;
+            var symbol = generator.Table.GetType(name, generics, out var error);
+            if (!symbol.HasValue) // could be a generic type, a enum type
+            {
+                var enumtype = generator.Table.GetEnumType(name, position, false);
+                if (enumtype.HasValue)
+                    return enumtype.Value.Type;
 
-            return result;
+                if (generics.Length > 0)
+                {
+                    var generic = generator.Table.GetGenericType(name, generics.Length, position);
+                    if (generic is null)
+                        goto end;
+
+                    var type = generator.EvaluateStruct(generic, generics, position);
+                    if (!type.HasValue)
+                        goto end;
+
+                    symbol = new TypeSymbol(generics, type.Value, position);
+
+                    generator.Table.DeclareType(
+                        name,
+                        symbol.Value,
+                        position);
+                }
+                else
+                    generator.Report(position, error);
+
+                end:;
+                if (!symbol.HasValue)
+                    generator.Parser.Lexer.CheckDiagnostic();
+            }
+
+            return symbol.Value.Value.Type;
         }
 
         public MugValueType EvaluateEnumError(MugType error, MugType type, IRGenerator generator)

@@ -11,18 +11,23 @@ try
 
     var test = @"
 
-func main() {
-  var x = 10
-  var i: u1 = x == 10 & x == 11 & x == 12
-}
+/*
+  todo:
+    [x] enum
+    [x] make enum automatic index generated (remove all enum error)
+    [x] auto generated enumeration in enumerated 
+    [x] split in files 'SymbolTable'
+    [x] look at the '// tofix' comments and 'throw new()'
+*/
 
+func main() {
+}
 ";
 
-    var unit = new CompilationUnit("test", test, true);
+    var unit = new CompilationUnit("test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    // Console.WriteLine(
-    // unit.GenerateAST().Dump());
+    // Console.WriteLine(unit.GenerateAST().Dump());
     unit.Generate(true, true);
 
 #else
@@ -40,20 +45,22 @@ func main() {
 }
 catch (CompilationException e)
 {
-    // Console.WriteLine($"{(e.Lexer is not null ? $"(`{e.Lexer.Source[e.Bad]}`: {e.Bad} in {e.Lexer.ModuleName}): " : "")}{e.Message}");
-    if (e.Lexer is not null)
+    if (!e.IsGlobalError)
     {
-        CompilationErrors.WriteModule(e.Lexer.ModuleName, e.LineAt);
-
         try
         {
-            CompilationErrors.WriteSourceLine(e.Bad, e.LineAt, e.Lexer.Source, e.Message);
+            var errors = e.Lexer.DiagnosticBag.GetErrors();
+            for (int i = 0; i < errors.Count; i++)
+            {
+                var error = errors[i];
+                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.LineAt(e.Lexer.Source), e.Lexer.Source, error.Message);
+            }
         }
         catch
         {
-            CompilationErrors.WriteFail(e.Message);
+            CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", "Internal error: unable to print error message");
         }
     }
     else
-        CompilationErrors.WriteFail(e.Message);
+        CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", e.Message);
 }

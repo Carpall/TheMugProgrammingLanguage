@@ -1,4 +1,5 @@
-﻿using Mug.Models.Parser;
+﻿using Mug.Compilation;
+using Mug.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -11,9 +12,9 @@ namespace Mug.Models.Lexer
         [JsonConverter(typeof(StringEnumConverter))]
         public TokenKind Kind { get; }
         public string Value { get; }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
-        public Token(TokenKind kind, string value, Range position)
+        public Token(TokenKind kind, string value, ModulePosition position)
         {
             Kind = kind;
             Value = value;

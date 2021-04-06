@@ -157,6 +157,7 @@ namespace Mug.Models.Lexer
         [Description("f64")]
         KeyTf64,
         [Description("f128")]
-        KeyTf128
+        KeyTf128,
+        EOL
     }
 }

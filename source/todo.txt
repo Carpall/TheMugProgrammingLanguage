@@ -1,0 +1,41 @@
+todo: -
+done: +
+
+- match
+- 'func some() !sometype', this will mean that the function must be catched also if there is no real error to catch -> 'some() catch { return }'
+- calls that return an enum error can be also not catched if in return expression, where the return's scope owner is a function that returns the same enum error
+- reference printing (ex. the function where there is the error)
+- default initialization of array members
+- try operator, at the begin of a call it stops the function's execution and return an error: make it with lowering 'try some()' -> 'some() catch e { return e }' (with !type 'return' without e)
+- enum can be negatives
+- fix lexer tests
+- add support for multiline errors
++ add constant bitness coercion in function's calls
+- make built in functions under 'funcname!<>()' pattern
+- remove the 'isbuildinfunction' in 'callfunction' and add a pragma 'builtin' only for macros
+- write a path checker to make sure all paths of a scope returns a value, also with hidden subscope buffers
+- add 'static code evaluator' -> 'static if some comp-time evaluable expression {}', 'static if size<T>!() > 10 { error!("too big") }'
+- replace the 'when' statement with 'static' block 'static if os == Os.Win32 {}', evaluated at compile time
+- in 'recognizestatement' make a check for _buffer.HasValue to known if the statement must be converted to an expression and assigned to hidden allocation _buffer
+- implement 'dyn' type
+- add a raw pointer 'i32*', manged pointer '*i32'
+- to fix references (at the moment they works as left values in assignment but not in expression because there's not coercion system, it is disabled since the coercion bugs calls)
+- reuse the pragmas when new system table is finished
+- add i16
+- add unsigned integers
+- fix import
+- add operator implementation for unary
+- fix as operator
+- (!not final decision) remove operator new -> 'Type { }', '[x, y, z]'
+- add tuples
+- fix modifier with generic items
+- remove 'declare' directive
+- fix type recursion with pointers in structure
+- write test for the parser using a decomposing the ast into a string expression and comparing it to the original -> test = "expr()" Assert(test == ExpectExpression(test).Rebuild())
+- fix loadenumerror in emitter
+- consider changing 'new [i32] { }' in '[]' and 'new Person { }' in 'Person { }', so consider using 'new' operator for heap allocations
+- add warnings
+- let use negative numbers in enum declarations (enum errors should have a custom based type 'err' to avoid use of negative enum errors' member, -1 is used as success)
+- add variants -> 'type Var = (A | B | C)'
+- add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'
+- add function pointer

@@ -39,13 +39,13 @@ namespace Mug.Models.Parser
             SetWithCheck("extern", symbol);
         }
 
-        public void SetPragma(string pragma, Token value, Action<string[]> error, ref int currentIndex)
+        public void SetPragma(string pragma, Token value, Action<string> error, ref int currentIndex)
         {
             if (!_table.ContainsKey(pragma))
             {
                 // going back to identifier token id(.)]
                 currentIndex -= 3;
-                error(new[] { "Unknown pragma" });
+                error("Unknown pragma");
             }
 
             _table[pragma] = value;

@@ -1,4 +1,5 @@
-﻿using Mug.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 
@@ -18,7 +19,7 @@ namespace Mug.Models.Parser.NodeKinds
                 return _body.ToArray();
             }
         }
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
 
         public void AddArrayElement(INode element)
         {

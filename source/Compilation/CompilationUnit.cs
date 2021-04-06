@@ -23,7 +23,7 @@ namespace Mug.Compilation
             if (!File.Exists(path))
             {
                 if (throwerror)
-                    CompilationErrors.Throw($"Unable to open path: `{path}`");
+                    CompilationErrors.Throw($"Unable to open path: '{path}'");
 
                 FailedOpeningPath = true;
             }
@@ -85,7 +85,7 @@ namespace Mug.Compilation
         {
             // checks the clang execuatble exists
             if (!File.Exists(ClangFilename))
-                CompilationErrors.Throw($"Cannot find the clang executable at: `{ClangFilename}`");
+                CompilationErrors.Throw($"Cannot find the clang executable at: '{ClangFilename}'");
 
             // call clang
             var clang = Process.Start(
@@ -111,7 +111,7 @@ namespace Mug.Compilation
                 if (output == "")
                     output = clang.StandardError.ReadToEnd();
 
-                CompilationErrors.Throw("External compiler: ", output);
+                CompilationErrors.Throw($"External compiler: {output}");
             }
         }
 

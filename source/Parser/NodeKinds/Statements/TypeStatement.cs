@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using Mug.MugValueSystem;
 using Mug.TypeSystem;
 using System;
@@ -13,7 +14,7 @@ namespace Mug.Models.Parser.NodeKinds.Statements
         public string Name { get; set; }
         public List<Token> Generics { get; set; } = new();
         public List<FieldNode> Body { get; set; } = new();
-        public Range Position { get; set; }
+        public ModulePosition Position { get; set; }
         public TokenKind Modifier { get; set; }
     }
 }
