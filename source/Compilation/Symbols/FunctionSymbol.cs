@@ -12,19 +12,22 @@ namespace Mug.Compilation.Symbols
         public MugValueType? BaseType { get; }
         public MugValueType[] GenericParameters { get; }
         public MugValueType[] Parameters { get; }
+        public ModulePosition Position { get; }
 
         public FunctionSymbol(
             MugValueType? baseType,
             MugValueType[] genericParameters,
             MugValueType[] parameters,
             MugValueType returntype,
-            MugValue value)
+            MugValue value,
+            ModulePosition position)
         {
             BaseType = baseType;
             GenericParameters = genericParameters;
             Parameters = parameters;
             Value = value;
             ReturnType = returntype;
+            Position = position;
         }
 
         public override bool Equals(object obj)

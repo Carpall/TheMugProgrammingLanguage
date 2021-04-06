@@ -9,11 +9,13 @@ namespace Mug.Compilation.Symbols
     {
         public MugValueType[] GenericParameters { get; }
         public MugValue Value { get; }
+        public ModulePosition Position { get; }
 
-        public TypeSymbol(MugValueType[] genericParameters, MugValue value)
+        public TypeSymbol(MugValueType[] genericParameters, MugValue value, ModulePosition position)
         {
             GenericParameters = genericParameters;
             Value = value;
+            Position = position;
         }
 
         public override bool Equals(object obj)

@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation.Symbols;
+using Mug.Models.Lexer;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,14 +8,14 @@ namespace Mug.Compilation
 {
     public struct MugError
     {
-        public Range Bad { get; }
+        public ModulePosition Bad { get; }
         public string Message { get; }
         public int LineAt(string source)
         {
             return CompilationErrors.CountLines(source, Bad.Start.Value) - 1;
         }
 
-        public MugError(Range position, string message)
+        public MugError(ModulePosition position, string message)
         {
             Bad = position;
             Message = message;

@@ -568,35 +568,10 @@ namespace Mug.Models.Generator
             Paths.Add(path);
         }
 
-        //////////////// tofix
-
         private void MergeSymbols(ref CompilationUnit unit)
         {
-            /*for (int i = 0; i < unit.IRGenerator.Map.Count; i++)
-            {
-                var symbol = unit.IRGenerator.Map[i];
-
-                if (symbol.IsPublic)
-                {
-                    symbol.IsPublic = false;
-                    Map(symbol);
-                }
-            }
-
-            for (int i = 0; i < unit.IRGenerator._genericFunctions.Count; i++)
-            {
-                var symbol = unit.IRGenerator._genericFunctions.Values.ElementAt(i);
-
-                for (int j = 0; j < symbol.Count; j++)
-                {
-                    if (symbol[j].Modifier == TokenKind.KeyPub)
-                    {
-                        symbol[j].Modifier = TokenKind.KeyPriv;
-                        DeclareGenericFunctionSymbol(symbol[j]);
-                    }
-                }
-            }*/
-            throw new();
+            Table.MergeCompilerSymbols(unit.IRGenerator.Table.CompilerSymbols);
+            Table.MergeDefinedSymbols(unit.IRGenerator.Table.DefinedFunctions);
         }
 
         private void EmitImport(ImportDirective import)
@@ -744,55 +719,6 @@ namespace Mug.Models.Generator
                 MergeTree((NodeBuilder)when.Body);
         }
 
-        /*private void DeclareGenericFunctionSymbol(FunctionNode function)
-        {
-            var symbol = $"{new string('.', Convert.ToInt32(function.Base.HasValue))}{function.Name}<{new string('.', function.Generics.Count)}>";
-
-            _genericFunctions.TryAdd(symbol, new());
-
-            var types = new MugType[function.ParameterList.Length];
-
-            for (int i = 0; i < function.ParameterList.Length; i++)
-                types[i] = function.ParameterList.Parameters[i].Type;
-
-            var f = _genericFunctions[symbol];
-
-            for (int i = 0; i < f.Count; i++)
-            {
-                if (f[i].Name == function.Name && f[i].ParameterList.Length == function.ParameterList.Length)
-                {
-                    var ftypes = new MugType[f[i].ParameterList.Length];
-
-                    for (int j = 0; j < f[i].ParameterList.Length; j++)
-                        ftypes[j] = f[i].ParameterList.Parameters[j].Type;
-
-                    for (int j = 0; j < types.Length; j++)
-                        if (!types[j].Equals(ftypes[j]))
-                            goto end;
-
-                    Error(function.Position, "Function overload already declared");
-                end:;
-                }
-            }
-
-            f.Add(function);
-        }
-*/
-        private EnumErrorStatement CheckEnumError(EnumErrorStatement enumerror)
-        {
-            var members = new List<string>();
-
-            for (int i = 0; i < enumerror.Body.Count; i++)
-            {
-                if (members.Contains(enumerror.Body[i].Value))
-                    Error(enumerror.Body[i].Position, "Already declared member");
-
-                members.Add(enumerror.Body[i].Value);
-            }
-
-            return enumerror;
-        }
-
         /// <summary>
         /// recognize the type of the AST node and depending on the type call methods
         /// to convert it to the corresponding low-level code
@@ -821,9 +747,6 @@ namespace Mug.Models.Generator
                     break;
                 case DeclareDirective declare:
                     DeclareCompilerSymbol(declare.Symbol.Value, true, declare.Position);
-                    break;
-                case EnumErrorStatement enumerror:
-                    Table.DeclareEnumErrorType(enumerror, enumerror.Position);
                     break;
                 default:
                     Error(member.Position, "Declaration not supported yet");

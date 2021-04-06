@@ -26,6 +26,10 @@ func `as`(value: A): chr {
   return value.a
 }
 
+func `as`(value: A): chr {
+  return value.a
+}
+
 func main(): i32 {
   return (new A {} as chr) as i32
 }
@@ -60,7 +64,7 @@ catch (CompilationException e)
             for (int i = 0; i < errors.Count; i++)
             {
                 var error = errors[i];
-                CompilationErrors.WriteSourceLineStyle(e.Lexer.ModuleName, error.Bad, error.LineAt(e.Lexer.Source), e.Lexer.Source, error.Message);
+                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.LineAt(e.Lexer.Source), e.Lexer.Source, error.Message);
             }
         }
         catch

@@ -16,7 +16,6 @@ namespace Mug.Compilation.Symbols
         // prototypes
         public readonly List<FunctionNode> DeclaredFunctions = new();
         public readonly List<TypeStatement> DeclaredTypes = new();
-        public readonly List<EnumErrorStatement> DeclaredEnumErrors = new();
 
         // generic prototypes
         public readonly List<TypeStatement> DeclaredGenericTypes = new();
@@ -84,15 +83,6 @@ namespace Mug.Compilation.Symbols
                 _generator.Report(position, $"Enum type '{name}' already declared");
                 return;
             }
-        }
-
-        public void DeclareEnumErrorType(EnumErrorStatement enumerror, Range position)
-        {
-            // if already declared
-            if (DeclaredEnumErrors.FindIndex(ee => ee.Name == enumerror.Name) != -1)
-                _generator.Report(position, $"Enum error type '{enumerror.Name}' already declared");
-            else
-                DeclaredEnumErrors.Add(enumerror);
         }
 
         public void DeclareGenericFunction(FunctionNode function)
@@ -257,6 +247,19 @@ namespace Mug.Compilation.Symbols
             }
 
             return DefinedAsOperators[index];
+        }
+
+        public void MergeCompilerSymbols(List<string> compilersymbols)
+        {
+            foreach (var symbol in compilersymbols)
+                CompilerSymbols.Add(symbol);
+        }
+
+        public void MergeDefinedSymbols(Dictionary<string, List<FunctionSymbol>> functions)
+        {
+            foreach (var overloads in functions)
+                foreach (var function in overloads.Value)
+                    DeclareFunctionSymbol(overloads.Key, function, function.Position);
         }
     }
 }
