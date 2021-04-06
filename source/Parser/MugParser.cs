@@ -15,8 +15,8 @@ namespace Mug.Models.Parser
 {
     public class MugParser
     {
-        public readonly NamespaceNode Module = new();
-        public readonly MugLexer Lexer;
+        public NamespaceNode Module = new();
+        public MugLexer Lexer;
         private int _currentIndex = 0;
         private Pragmas _pragmas;
         private TokenKind _modifier = TokenKind.Bad;

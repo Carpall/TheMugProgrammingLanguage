@@ -31,7 +31,7 @@ namespace Mug.Compilation
         public void CheckDiagnostic(MugLexer lexer)
         {
             if (_diagnostic.Count > 0)
-                throw new CompilationException(lexer);
+                throw new CompilationException(lexer.DiagnosticBag);
         }
 
         public List<MugError> GetErrors()

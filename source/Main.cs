@@ -30,7 +30,7 @@ func main() {
     unit.Generate(true, true);
 
 #else
-    // args = new[] { "build", "C:/Users/carpal/Desktop/mug/tests/workspace/dot/main.mug" };
+
     if (args.Length == 0)
         CompilationErrors.Throw("No arguments passed");
 
@@ -46,20 +46,21 @@ catch (CompilationException e)
 {
     if (!e.IsGlobalError)
     {
+        var i = 0;
+        var errors = e.Diagnostic.GetErrors();
         try
         {
-            var errors = e.Lexer.DiagnosticBag.GetErrors();
-            for (int i = 0; i < errors.Count; i++)
+            for (; i < errors.Count; i++)
             {
                 var error = errors[i];
-                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.LineAt(e.Lexer.Source), e.Lexer.Source, error.Message);
+                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.LineAt(error.Bad.Lexer.Source), error.Bad.Lexer.Source, error.Message);
             }
         }
         catch
         {
-            CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", "Internal error: unable to print error message");
+            CompilationErrors.WriteFail(errors[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
         }
     }
     else
-        CompilationErrors.WriteFail(e.Lexer is not null ? e.Lexer.ModuleName : "", e.Message);
+        CompilationErrors.WriteFail("", e.Message);
 }

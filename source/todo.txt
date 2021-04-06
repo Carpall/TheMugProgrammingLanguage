@@ -39,3 +39,5 @@ done: +
 - add variants -> 'type Var = (A | B | C)'
 - add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'
 - add function pointer
++ globalize paths merging ast
+- check characters in source when reading from a file created by micro

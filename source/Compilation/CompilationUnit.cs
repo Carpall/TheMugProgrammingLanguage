@@ -1,6 +1,8 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Models.Generator;
+using Mug.Models.Lexer;
 using Mug.Models.Parser;
+using Mug.Models.Parser.NodeKinds;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,6 +14,7 @@ namespace Mug.Compilation
     {
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
+        private string[] _paths;
         private const string ClangFilename = "C:/Program Files/LLVM/bin/clang.exe";
         internal const string MainFileName = "main.mug";
 
@@ -25,7 +28,10 @@ namespace Mug.Compilation
             if (filenames is string s)
                 IRGenerator = new(Path.GetFileName(s), File.ReadAllText(s), true);
             else if (filenames is string[] a)
-                IRGenerator = new(MainFileName, MergeSources(a), true);
+            {
+                _paths = a;
+                IRGenerator = new("null", "null", false);
+            }
             else
                 CompilationErrors.Throw($"Internal error: unable to construct CompilationUnit with {filenames.GetType()}");
         }
@@ -43,22 +49,8 @@ namespace Mug.Compilation
                 IRGenerator = new(path, File.ReadAllText(path), isMainModule);
         }
 
-        private string MergeSources(string[] filenames)
-        {
-            var result = new StringBuilder();
-
-            foreach (var filename in filenames)
-                if (Path.GetExtension(filename) == ".mug")
-                    result.AppendLine(File.ReadAllText(filename));
-
-            Console.WriteLine(result.ToString());
-
-            return result.ToString();
-        }
-
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
-            // IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
             // generates the bytecode
             Generate();
 
@@ -88,7 +80,7 @@ namespace Mug.Compilation
             {
                 // deletes a possible file named in the same way as the result, to avoid bugs in the while under
                 if (File.Exists(bitcode)) File.Delete(bitcode);
-
+                
                 // writes the module to a file
                 if (module.WriteBitcodeToFile(bitcode) != 0)
                     CompilationErrors.Throw("Error writing to file");
@@ -149,16 +141,43 @@ namespace Mug.Compilation
             return IRGenerator.Parser.Module;
         }
 
+        private void GeneratePaths()
+        {
+            var head = new NamespaceNode()
+            {
+                Name = Token.NewInfo(TokenKind.ConstantString, Path.GetDirectoryName(Environment.CurrentDirectory)),
+                Members = new()
+            };
+
+            foreach (var path in _paths)
+            {
+                // only mug files
+                if (Path.GetExtension(path) != ".mug")
+                    continue;
+
+                var unit = new CompilationUnit(path, Path.GetFileName(path) == MainFileName, true);
+                head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
+            }
+
+            IRGenerator.Parser.Module = head;
+            IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");
+        }
+
         /// <param name="verifyLLVMModule">
         /// false only when debugs to see the module when llvm finds an error
         /// </param>
-        public void Generate(bool verifyLLVMModule = true, bool dumpModule = false)
+        public void Generate(bool verifyLLVMModule = true)
         {
+            if (_paths is not null)
+            {
+                GeneratePaths();
+                _paths = null;
+                Generate(verifyLLVMModule);
+                return;
+            }
+
             GenerateAST();
             IRGenerator.Generate();
-
-            if (dumpModule)
-                IRGenerator.Module.Dump();
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))

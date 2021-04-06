@@ -29,7 +29,7 @@ namespace Mug.Compilation
         public static void Throw(this MugLexer Lexer, ModulePosition position, string error)
         {
             Lexer.DiagnosticBag.Report(new(position, error));
-            throw new CompilationException(Lexer);
+            throw new CompilationException(Lexer.DiagnosticBag);
         }
 
         /// <summary>

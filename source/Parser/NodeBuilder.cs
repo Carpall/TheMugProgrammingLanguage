@@ -33,5 +33,10 @@ namespace Mug.Models.Parser
         {
             nodes.Insert(index, e);
         }
+
+        public void AddRange(NodeBuilder block)
+        {
+            nodes.AddRange(block.nodes);
+        }
     }
 }

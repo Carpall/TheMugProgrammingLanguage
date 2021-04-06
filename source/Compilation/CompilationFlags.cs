@@ -93,6 +93,17 @@ HELP: uses the next argument as output file name. The extension is not required
             ["src"]         = null, // file to compile
         };
 
+        private string[] GetAllFilesInFolder(string directory)
+        {
+            var folder = new List<string>();
+            folder.AddRange(Directory.GetFiles(directory));
+
+            foreach (var subdirectory in Directory.GetDirectories(directory))
+                folder.AddRange(GetAllFilesInFolder(subdirectory));
+
+            return folder.ToArray();
+        }
+
         private object GetFile()
         {
             var file = GetFlag<string>("src");
@@ -100,7 +111,7 @@ HELP: uses the next argument as output file name. The extension is not required
             if (file is null)
                 CompilationErrors.Throw("Undefined src to compile");
 
-            return file != "." ? file : Directory.GetFiles(Environment.CurrentDirectory);
+            return file != "." ? file : GetAllFilesInFolder(Environment.CurrentDirectory);
         }
 
         private string GetMainFile(object filenames)

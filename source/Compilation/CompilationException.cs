@@ -6,22 +6,22 @@ namespace Mug.Compilation
 {
     public class CompilationException : Exception
     {
-        public MugLexer Lexer { get; }
+        public MugDiagnostic Diagnostic;
         public bool IsGlobalError
         {
             get
             {
-                return Lexer is null;
+                return Diagnostic is null;
             }
         }
 
-        public CompilationException(MugLexer lexer) : this("Cannot build due to previous errors", lexer)
+        public CompilationException(MugDiagnostic lexer) : this("Cannot build due to previous errors", lexer)
         {
         }
 
-        public CompilationException(string error, MugLexer lexer = null) : base(error)
+        public CompilationException(string error, MugDiagnostic diagnostic = null) : base(error)
         {
-            Lexer = lexer;
+            Diagnostic = diagnostic;
         }
     }
 }
