@@ -316,14 +316,10 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(Pop().LLVMValue, allocation.LLVMValue);
         }
 
-        public bool OneOfTwoIsOnlyTheEnumType()
+        /*public bool OneOfTwoIsOnlyTheEnumType(MugValue first, MugValue second)
         {
-            var second = Pop();
-            var first = Peek();
-            Load(second);
-
             return second.LLVMValue.Handle == IntPtr.Zero || first.LLVMValue.Handle == IntPtr.Zero;
-        }
+        }*/
 
         public bool IsDeclared(string name)
         {
@@ -476,38 +472,39 @@ namespace Mug.Models.Generator.Emitter
                 );
         }
 
-        public void LoadEnumMember(string enumname, string membername, Range position, LocalGenerator localgenerator)
+        public bool LoadEnumMember(string enumname, string membername, Range baseposition, Range memberposition, LocalGenerator localgenerator)
         {
-            // tofix
-            throw new();
-            /*var enumerated = new MugValue();// _generator.Table.GetType(enumname, position).Value;
+            var enumerated = _generator.Table.GetEnumType(enumname, baseposition, true);
+            if (!enumerated.HasValue)
+                return false;
 
-            if (!enumerated.Type.IsEnum())
+            if (!enumerated.Value.Type.IsEnum())
             {
-                if (enumerated.Type.IsEnumError())
+                if (enumerated.Value.Type.IsEnumError())
                 {
-                    var enumerror = enumerated.Type.GetEnumError();
+                    var enumerror = enumerated.Value.Type.GetEnumError();
                     var index = enumerror.Body.FindIndex(member => member.Value == membername);
 
                     if (index == -1)
                     {
-                        _generator.Report(position, $"'{enumname}' does not contain a definition for '{membername}'");
-                        return;
+                        _generator.Report(baseposition, $"'{enumname}' does not contain a definition for '{membername}'");
+                        return false;
                     }
 
-                    Load(MugValue.EnumMember(enumerated.Type, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index)));
-                    return;
+                    Load(MugValue.EnumMember(enumerated.Value.Type, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index)));
+                    return true;
                 }
                 else
                 {
-                    _generator.Report(position, "Not an enum");
-                    return;
+                    _generator.Report(baseposition, "Not an enum");
+                    return false;
                 }
             }
 
-            var type = enumerated.Type.GetEnum();
+            var type = enumerated.Value.Type.GetEnum();
 
-            Load(type.GetMemberValueFromName(enumerated.Type, type.BaseType.ToMugValueType(_generator), membername, position, localgenerator));*/
+            Load(type.GetMemberValueFromName(enumerated.Value.Type, type.BaseType.ToMugValueType(_generator), membername, memberposition, localgenerator));
+            return true;
         }
 
         public void LoadField(MugValue instance, MugValueType fieldType, int index, bool load)

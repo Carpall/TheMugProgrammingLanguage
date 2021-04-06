@@ -191,8 +191,8 @@ namespace Mug.Models.Generator
 
             if ((kind == OperatorKind.CompareEQ || kind == OperatorKind.CompareNEQ) && ft.IsSameEnumOf(st))
             {
-                if (_emitter.OneOfTwoIsOnlyTheEnumType())
-                    return Report(position, "Cannot apply boolean operator on this expression");
+                /*if (_emitter.OneOfTwoIsOnlyTheEnumType(left, right))
+                    return Report(position, "Cannot apply boolean operator on this expression");*/
 
                 var enumBaseType = st.GetEnum().BaseType.ToMugValueType(_generator);
 
@@ -514,18 +514,17 @@ namespace Mug.Models.Generator
             List<FunctionSymbol> overloads;
             List<FunctionNode> genericOverloads = null;
 
+            // if searching for a generic structure
             if (generics.Length > 0)
                 overloads = EvaluateGenericFunctionOverloads(genericOverloads = _generator.Table.GetOverloadsOFGenericFunction(name), generics);
             else if (!_generator.Table.DefinedFunctions.TryGetValue(name, out overloads))
             {
+                // if the table does not contain a definition for the function's name we report it
                 Report(position, $"Undeclared function '{name}'");
                 return null;
             }
 
-            // this should be useless
-            var oldparameters = parameters;
-            var oldbasevalue = basevalue;
-
+            // we iterate over the overloads' list to find a valid one
             for (int j = 0; j < overloads.Count; j++)
             {
                 var function = overloads[j];
@@ -539,6 +538,7 @@ namespace Mug.Models.Generator
                 {
                     _emitter.Load(basevalue.Value);
                     _emitter.CoerceConstantSizeTo(function.BaseType.Value);
+
                     basevalue = _emitter.Pop();
                     if (!basevalue.Value.Type.Equals(function.BaseType.Value))
                         continue;
@@ -557,7 +557,7 @@ namespace Mug.Models.Generator
                     {
                         // removing the value from the top
                         _emitter.Pop();
-                        goto mismatch;
+                        continue;
                     }
                     else
                         parameters[i] = _emitter.Pop();
@@ -567,9 +567,10 @@ namespace Mug.Models.Generator
 
                 if (generics.Length > 0)
                 {
+                    // if the generic function is already cached we use it to save time
                     if (_generator.Table.GetGenericFunctionSymbol(genericOverloads[j].Name, function.BaseType, function.Parameters, function.ReturnType, out var symbol))
                         function.Value = symbol.Value;
-                    else
+                    else // otherwise we evaluate it and we cache it to save time for the next use
                     {
                         function.Value = _generator.EvaluateFunction(genericOverloads[j], generics);
                         _generator.Table.DeclareGenericFunctionSymbol(genericOverloads[j].Name, function);
@@ -577,12 +578,9 @@ namespace Mug.Models.Generator
                 }
 
                 return function;
-
-            mismatch:;
-                parameters = oldparameters;
-                basevalue = oldbasevalue;
             }
 
+            // could not find function
             var types = new MugValueType[parameters.Length];
             for (int i = 0; i < parameters.Length; i++)
                 types[i] = parameters[i].Type;
@@ -871,10 +869,7 @@ namespace Mug.Models.Generator
                         return false;
                 }
                 else
-                {
-                    _emitter.LoadEnumMember(token.Value, m.Member.Value, m.Member.Position, this);
-                    return true;
-                }
+                    return _emitter.LoadEnumMember(token.Value, m.Member.Value, m.Base.Position, m.Member.Position, this);
             }
             else
             {

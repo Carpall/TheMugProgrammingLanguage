@@ -32,11 +32,6 @@ namespace Mug.MugValueSystem
             return From(value, enumerated);
         }
 
-        public static MugValue EnumError(EnumErrorStatement enumerror)
-        {
-            return From(new LLVMValueRef(), MugValueType.EnumError(enumerror));
-        }
-
         public bool IsAllocaInstruction()
         {
             return LLVMValue.IsAAllocaInst.Handle != IntPtr.Zero;

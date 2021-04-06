@@ -85,6 +85,7 @@ namespace Mug.Compilation.Symbols
         // prototypes
         public readonly List<FunctionNode> DeclaredFunctions = new();
         public readonly List<TypeStatement> DeclaredTypes = new();
+        public readonly List<EnumErrorStatement> DeclaredEnumErrors = new();
 
         // generic prototypes
         public readonly List<TypeStatement> DeclaredGenericTypes = new();
@@ -94,6 +95,7 @@ namespace Mug.Compilation.Symbols
         public readonly Dictionary<string, List<FunctionSymbol>> DefinedFunctions = new();
         public readonly Dictionary<string, List<FunctionSymbol>> DefinedGenericFunctions = new();
         public readonly Dictionary<string, List<TypeSymbol>> DefinedTypes = new();
+        public readonly Dictionary<string, MugValue> DefinedEnumTypes = new();
 
         // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
@@ -141,6 +143,24 @@ namespace Mug.Compilation.Symbols
 
                 DefinedTypes[name].Add(identifier);
             }
+        }
+
+        public void DeclareEnumType(string name, MugValue enumtype, Range position)
+        {
+            if (!DefinedEnumTypes.TryAdd(name, enumtype))
+            {
+                _generator.Report(position, $"Enum type '{name}' already declared");
+                return;
+            }
+        }
+
+        public void DeclareEnumErrorType(EnumErrorStatement enumerror, Range position)
+        {
+            // if already declared
+            if (DeclaredEnumErrors.FindIndex(ee => ee.Name == enumerror.Name) != -1)
+                _generator.Report(position, $"Enum error type '{enumerror.Name}' already declared");
+            else
+                DeclaredEnumErrors.Add(enumerror);
         }
 
         public void DeclareGenericFunction(FunctionNode function)
@@ -194,6 +214,19 @@ namespace Mug.Compilation.Symbols
             }
 
             return false;
+        }
+
+        public MugValue? GetEnumType(string name, Range position, bool report)
+        {
+            if (!DefinedEnumTypes.TryGetValue(name, out var enumtype))
+            {
+                if (report)
+                    _generator.Report(position, $"Undeclared enum type '{name}'");
+
+                return null;
+            }
+
+            return enumtype;
         }
 
         public void DeclareGenericType(TypeStatement type)

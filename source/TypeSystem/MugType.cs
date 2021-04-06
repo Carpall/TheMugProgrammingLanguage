@@ -147,8 +147,12 @@ namespace Mug.TypeSystem
                 generics[i] = genericsInput[i].ToMugValueType(generator);
 
             var symbol = generator.Table.GetType(name, generics, out var error);
-            if (!symbol.HasValue) // could be a generic type
+            if (!symbol.HasValue) // could be a generic type, a enum type
             {
+                var enumtype = generator.Table.GetEnumType(name, position, false);
+                if (enumtype.HasValue)
+                    return enumtype.Value.Type;
+
                 if (generics.Length > 0)
                 {
                     var generic = generator.Table.GetGenericType(name, generics.Length, position);

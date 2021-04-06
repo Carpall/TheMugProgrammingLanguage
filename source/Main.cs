@@ -11,17 +11,22 @@ try
 
     var test = @"
 
-func add<T>(a: T, b: T): T { return a + b }
-func add<T, T1>(a: T) { /*return a + b*/ }
-func add<T, T1>(a: T, b: T1) { /*return a + b*/ }
-func add<T, T1>(a: T, b: T) { /*return a + b*/ }
-func (self: T) add<T>(a: T) { /*return a + b*/ }
+/*
+  todo:
+    [x] enum
+    [ ] enum error / make enum automatic index generated (remove all enum error)
+    [ ] split in files 'SymbolTable'
+    [ ] look at the '// tofix' comments and 'throw new()'
+    [ ] references [?]
+*/
 
-func main() {
-  'a'.add<chr>('a')
-  'a'.add<chr>('a')
-  add<i32, u8>(1, 2)
-  add<i32, u8>(1, 2)
+enum Some: u8 {
+  ok: 0
+  ok1: 1
+}
+
+func main(): Some!i32 {
+  return 'a'
 }
 ";
 

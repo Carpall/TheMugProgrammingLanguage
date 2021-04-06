@@ -167,31 +167,16 @@ namespace Mug.Models.Generator
 
         internal MugValueType EvaluateEnumError(MugType error, MugType type)
         {
-            /*var name = $"{error}!{type}";
+            // todo: cache generated enum error
+            var successtype = type.ToMugValueType(this);
 
-            if (IsDeclared(name, out var symbol))
-                return symbol.GetValue<MugValueType>();
-
-            var typeEval = type.ToMugValueType(this);
-
-            var errorType = error.ToMugValueType(this);
-
-            if (errorType.TypeKind != MugValueTypeKind.EnumError)
-                Error(error.Position, "Left type of enum error result must be an enum error");
-
-            var defined = MugValueType.EnumErrorDefined(
-                new EnumErrorInfo()
-                {
-                    LLVMValue = type.Kind == TypeKind.Void ? LLVMTypeRef.Int8 : LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, typeEval.LLVMType }, false),
-                    Name = name,
-                    ErrorType = errorType,
-                    SuccessType = typeEval
-                });
-
-            Map.DeclareType(name,  defined, error.Position, false);
-
-            return defined;*/
-            throw new();
+            return MugValueType.EnumErrorDefined(new EnumErrorInfo()
+            {
+                Name = $"{error}!{type}",
+                ErrorType = error.ToMugValueType(this),
+                SuccessType = successtype,
+                LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.LLVMType }, true)
+            });
         }
 
         internal MugValue? EvaluateStruct(TypeStatement type, MugValueType[] generics, Range position)
@@ -239,9 +224,9 @@ namespace Mug.Models.Generator
             return structsymbol;
         }
 
-        internal void GenericParametersAdd((string, MugValueType) genericParameter, Range position)
+        internal void GenericParametersAdd((string name, MugValueType type) genericParameter, Range position)
         {
-            if (GenericParameters.FindIndex(elem => elem.Item1 == genericParameter.Item1) != -1)
+            if (GenericParameters.FindIndex(elem => elem.name == genericParameter.name) != -1)
                 Error(position, "Already declared generic parameter");
 
             GenericParameters.Add(genericParameter);
@@ -687,7 +672,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        /*private void CheckCorrectEnum(ref EnumStatement enumstatement,  MugValueType basetype)
+        private void CheckCorrectEnum(ref EnumStatement enumstatement,  MugValueType basetype)
         {
             var expectedValue = GetValueTokenKindFromType(basetype.TypeKind, enumstatement.Position);
             var members = new List<string>();
@@ -697,29 +682,27 @@ namespace Mug.Models.Generator
                 var member = enumstatement.Body[i];
 
                 if (member.Value.Kind != expectedValue)
-                    Error(member.Position, $"Expected type '{basetype}'");
+                    Report(member.Position, $"Expected type '{basetype}'");
 
                 if (members.Contains(member.Name))
-                    Error(member.Position, "Member already declared");
+                    Report(member.Position, "Member already declared");
 
                 members.Add(member.Name);
             }
-        }*/
+        }
 
         private void EmitEnum(EnumStatement enumstatement)
         {
-            // to fix
-            /*var basetype = enumstatement.BaseType.ToMugValueType(this);
+            var basetype = enumstatement.BaseType.ToMugValueType(this);
 
             CheckCorrectEnum(ref enumstatement, basetype);
             
             var type = MugValueType.Enum(basetype, enumstatement);
 
-            Map.DeclareType(
+            Table.DeclareEnumType(
                 enumstatement.Name,
-                new TypeIdentifier(MugValue.Enum(type)),
-                enumstatement.Position);*/
-            throw new();
+                MugValue.Enum(type),
+                enumstatement.Position);
         }
 
         private void MergeTree(NodeBuilder body)
@@ -836,7 +819,8 @@ namespace Mug.Models.Generator
                     DeclareCompilerSymbol(declare.Symbol.Value, true, declare.Position);
                     break;
                 case EnumErrorStatement enumerror:
-                    throw new();
+                    Table.DeclareEnumErrorType(enumerror, enumerror.Position);
+                    break;
                 default:
                     Error(member.Position, "Declaration not supported yet");
                     break;
