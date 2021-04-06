@@ -34,3 +34,4 @@ done: +
 - write test for the parser using a decomposing the ast into a string expression and comparing it to the original -> test = "expr()" Assert(test == ExpectExpression(test).Rebuild())
 - fix loadenumerror in emitter
 - consider changing 'new [i32] { }' in '[]' and 'new Person { }' in 'Person { }'
+- add warnings

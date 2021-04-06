@@ -15,7 +15,6 @@
         Array,
         Unknown,
         EnumError,
-        EnumErrorDefined,
         Reference,
         Float32,
         Float64,

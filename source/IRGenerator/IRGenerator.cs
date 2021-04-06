@@ -168,12 +168,16 @@ namespace Mug.Models.Generator
         internal MugValueType EvaluateEnumError(MugType error, MugType type)
         {
             // todo: cache generated enum error
+            var errortype = error.ToMugValueType(this);
             var successtype = type.ToMugValueType(this);
 
-            return MugValueType.EnumErrorDefined(new EnumErrorInfo()
+            if (!errortype.IsEnum())
+                Error(error.Position, "Expected enum type");
+
+            return MugValueType.EnumError(new EnumErrorInfo()
             {
                 Name = $"{error}!{type}",
-                ErrorType = error.ToMugValueType(this),
+                ErrorType = errortype,
                 SuccessType = successtype,
                 LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.LLVMType }, true)
             });

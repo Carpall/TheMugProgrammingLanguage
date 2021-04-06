@@ -25,8 +25,7 @@ namespace Mug.MugValueSystem
                     MugValueTypeKind.Struct => GetStructure().LLVMValue,
                     MugValueTypeKind.Enum => GetEnumInfo().Item1.LLVMType,
                     MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).LLVMType, 0),
-                    MugValueTypeKind.EnumErrorDefined => GetEnumErrorDefined().LLVMValue,
-                    MugValueTypeKind.EnumError => LLVMTypeRef.Int8,
+                    MugValueTypeKind.EnumError => GetEnumError().LLVMValue,
                     _ => (LLVMTypeRef)BaseType,
                 };
             }
@@ -136,9 +135,9 @@ namespace Mug.MugValueSystem
         public static MugValueType Float128 => From(LLVMTypeRef.FP128, MugValueTypeKind.Float128);
         public static MugValueType Undefinied => From(LLVMTypeRef.Void, MugValueTypeKind.Undefined);
 
-        public static MugValueType EnumErrorDefined(EnumErrorInfo enumerrorInfo)
+        public static MugValueType EnumError(EnumErrorInfo enumerrorInfo)
         {
-            return new MugValueType() { BaseType = enumerrorInfo, TypeKind = MugValueTypeKind.EnumErrorDefined };
+            return new MugValueType() { BaseType = enumerrorInfo, TypeKind = MugValueTypeKind.EnumError };
         }
 
         public static MugValueType Reference(MugValueType type)
@@ -166,8 +165,7 @@ namespace Mug.MugValueSystem
                 MugValueTypeKind.Reference => $"&{BaseType}",
                 MugValueTypeKind.Enum => GetEnum().Name,
                 MugValueTypeKind.Array => $"[{BaseType}]",
-                MugValueTypeKind.EnumError => $"{GetEnumError().Name}",
-                MugValueTypeKind.EnumErrorDefined => $"{GetEnumErrorDefined().Name}"
+                MugValueTypeKind.EnumError => $"{GetEnumError().Name}"
             };
         }
 
@@ -189,10 +187,11 @@ namespace Mug.MugValueSystem
         public bool MatchAnyIntType()
         {
             return
-                LLVMType == LLVMTypeRef.Int1 ||
-                LLVMType == LLVMTypeRef.Int8 ||
-                LLVMType == LLVMTypeRef.Int32 ||
-                LLVMType == LLVMTypeRef.Int64;
+                TypeKind == MugValueTypeKind.Bool ||
+                TypeKind == MugValueTypeKind.Char ||
+                TypeKind == MugValueTypeKind.Int32 ||
+                TypeKind == MugValueTypeKind.Int64 ||
+                TypeKind == MugValueTypeKind.Int8;
         }
 
         public bool MatchIntType()
@@ -218,12 +217,7 @@ namespace Mug.MugValueSystem
             return (StructureInfo)BaseType;
         }
 
-        public EnumErrorStatement GetEnumError()
-        {
-            return (EnumErrorStatement)BaseType;
-        }
-
-        public EnumErrorInfo GetEnumErrorDefined()
+        public EnumErrorInfo GetEnumError()
         {
             return (EnumErrorInfo)BaseType;
         }
@@ -240,7 +234,7 @@ namespace Mug.MugValueSystem
 
         public bool IsSameEnumOf(MugValueType st)
         {
-            return IsEnum() && st.IsEnum() && GetEnum().Equals(st.GetEnum());
+            return IsEnum() && st.IsEnum() && GetEnum().Name == st.GetEnum().Name;
         }
 
         public bool IsEnum()
@@ -248,14 +242,9 @@ namespace Mug.MugValueSystem
             return BaseType is (MugValueType, EnumStatement);
         }
 
-        public bool IsEnumErrorDefined()
-        {
-            return BaseType is EnumErrorInfo;
-        }
-
         public bool IsEnumError()
         {
-            return BaseType is EnumErrorStatement;
+            return BaseType is EnumErrorInfo;
         }
 
         public bool RawEquals(MugValueType type)

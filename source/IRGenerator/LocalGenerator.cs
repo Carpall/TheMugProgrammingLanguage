@@ -201,10 +201,10 @@ namespace Mug.Models.Generator
 
                 return EmitBooleanOperator(literal, llvmpredicate, kind, position);
             }
-            else if ((kind == OperatorKind.CompareEQ || kind == OperatorKind.CompareNEQ) &&
+            /*else if ((kind == OperatorKind.CompareEQ || kind == OperatorKind.CompareNEQ) &&
                 ft.TypeKind == MugValueTypeKind.EnumError &&
                 st.TypeKind == MugValueTypeKind.EnumError) // enum error == enum error
-                _emitter.CompareInt(llvmpredicate, left, right);
+                _emitter.CompareInt(llvmpredicate, left, right);*/
             else if (ft.MatchSameAnyIntType(st)) // int == int (works for all low-level integers like chr and u1 ..)
                 _emitter.CompareInt(llvmpredicate, left, right);
             else if (ft.MatchSameFloatType(st)) // float == float
@@ -636,9 +636,9 @@ namespace Mug.Models.Generator
 
             _emitter.Call(function.Value.Value.LLVMValue, parameters, functionType.Value, basevalue);
 
-            if (!isInCatch && functionType.Value.TypeKind == MugValueTypeKind.EnumErrorDefined)
+            if (!isInCatch && functionType.Value.TypeKind == MugValueTypeKind.EnumError)
                 return Report(c.Position, "Uncatched enum error");
-            else if (isInCatch && functionType.Value.TypeKind != MugValueTypeKind.EnumErrorDefined)
+            else if (isInCatch && functionType.Value.TypeKind != MugValueTypeKind.EnumError)
                 return Report(c.Position, "Catched a non enum error");
 
             return true;
@@ -1257,7 +1257,7 @@ namespace Mug.Models.Generator
              */
             if (@return.IsVoid())
             {
-                if (type.IsEnumErrorDefined() && type.GetEnumErrorDefined().SuccessType.TypeKind == MugValueTypeKind.Void)
+                if (type.IsEnumError() && type.GetEnumError().SuccessType.TypeKind == MugValueTypeKind.Void)
                 {
                     _emitter.Load(MugValue.From(Negative1, type));
                     _emitter.Ret();
@@ -1284,9 +1284,9 @@ namespace Mug.Models.Generator
                 var exprType = _emitter.PeekType();
                 var errorMessage = IRGenerator.ExpectTypeMessage(type, exprType);
 
-                if (type.IsEnumErrorDefined())
+                if (type.IsEnumError())
                 {
-                    var enumerrorType = type.GetEnumErrorDefined();
+                    var enumerrorType = type.GetEnumError();
                     LLVMValueRef? value = null;
                     LLVMValueRef error;
 
@@ -1550,7 +1550,7 @@ namespace Mug.Models.Generator
                 return false;
 
             var value = _emitter.Pop();
-            var enumerror = value.Type.GetEnumErrorDefined();
+            var enumerror = value.Type.GetEnumError();
             var tmp = _emitter.Builder.BuildAlloca(enumerror.LLVMValue);
             var resultIsVoid = enumerror.SuccessType.TypeKind == MugValueTypeKind.Void;
             var oldBuffer = _buffer;

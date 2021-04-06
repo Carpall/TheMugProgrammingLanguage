@@ -25,8 +25,12 @@ enum Some: u8 {
   ok1: 1
 }
 
-func main(): Some!i32 {
-  return 'a'
+func x(): Some!chr {
+  return Some.ok1
+}
+
+func main() {
+  x()
 }
 ";
 

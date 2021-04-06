@@ -1303,27 +1303,6 @@ namespace Mug.Models.Parser
                 _modifier = Back.Kind;
         }
 
-        private bool EnumErrorDefinition(out INode statement)
-        {
-            statement = null;
-
-            if (!MatchAdvance(TokenKind.KeyError))
-                return false;
-
-            var name = Expect("", TokenKind.Identifier);
-
-            statement = new EnumErrorStatement() { Modifier = GetModifier(), Name = name.Value, Position = name.Position };
-
-            Expect("", TokenKind.OpenBrace);
-
-            while (MatchAdvance(TokenKind.Identifier, out var identifier))
-                (statement as EnumErrorStatement).Body.Add(identifier);
-            
-            Expect("", TokenKind.CloseBrace);
-
-            return true;
-        }
-
         /// <summary>
         /// expects at least one member
         /// </summary>
@@ -1349,17 +1328,14 @@ namespace Mug.Models.Parser
                             if (_pragmas is not null)
                                 Report("Invalid pragmas for this member");
 
-                            if (!EnumErrorDefinition(out statement))
-                            {
-                                if (_modifier != TokenKind.Bad)
-                                    Report("Invalid modifier for this member");
+                            if (_modifier != TokenKind.Bad)
+                                Report("Invalid modifier for this member");
 
-                                // var id = constant;
-                                if (!VariableDefinition(out statement))
-                                    // import "", import path, use x as y
-                                    if (!DirectiveDefinition(out statement))
-                                        _currentIndex++; // skipping the bad token
-                            }
+                            // var id = constant;
+                            if (!VariableDefinition(out statement))
+                                // import "", import path, use x as y
+                                if (!DirectiveDefinition(out statement))
+                                    _currentIndex++; // skipping the bad token
                         }
                     }
 
