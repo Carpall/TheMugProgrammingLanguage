@@ -14,23 +14,20 @@ try
 /*
   todo:
     [x] enum
-    [ ] enum error / make enum automatic index generated (remove all enum error)
-    [ ] split in files 'SymbolTable'
+    [x] enum error / make enum automatic index generated (remove all enum error)
+    [x] auto generated enumeration in enumerated 
+    [x] split in files 'SymbolTable'
     [ ] look at the '// tofix' comments and 'throw new()'
-    [ ] references [?]
 */
 
-enum Some: u8 {
-  ok: 0
-  ok1: 1
+type A { a: chr }
+
+func `as`(value: A): chr {
+  return value.a
 }
 
-func x(): Some!chr {
-  return Some.ok1
-}
-
-func main() {
-  x()
+func main(): i32 {
+  return (new A {} as chr) as i32
 }
 ";
 

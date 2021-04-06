@@ -676,7 +676,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private void CheckCorrectEnum(ref EnumStatement enumstatement,  MugValueType basetype)
+        private void CheckEnum(ref EnumStatement enumstatement,  MugValueType basetype)
         {
             var expectedValue = GetValueTokenKindFromType(basetype.TypeKind, enumstatement.Position);
             var members = new List<string>();
@@ -699,7 +699,7 @@ namespace Mug.Models.Generator
         {
             var basetype = enumstatement.BaseType.ToMugValueType(this);
 
-            CheckCorrectEnum(ref enumstatement, basetype);
+            CheckEnum(ref enumstatement, basetype);
             
             var type = MugValueType.Enum(basetype, enumstatement);
 
@@ -878,10 +878,43 @@ namespace Mug.Models.Generator
             return func;
         }
 
+        private bool CheckAsOperator(FunctionNode function)
+        {
+            return
+                !function.Base.HasValue &&
+                function.Generics.Count == 0 &&
+                function.ParameterList.Length == 1 &&
+                function.ReturnType.Kind != TypeKind.EnumError && function.ReturnType.Kind != TypeKind.Void;
+        }
+
+        private void GenerateAsOperator(FunctionNode function)
+        {
+            if (!CheckAsOperator(function))
+            {
+                // make sure it has not base, no generic parameters, no more than one parameter and and its return type is not an enum error or void
+                Report(function.Position, "Wrong implementation of 'as' operator");
+                return;
+            }
+
+            var functionIdentifier = new FunctionSymbol(
+                    null,
+                    Array.Empty<MugValueType>(),
+                    ParameterTypesToMugTypes(function.ParameterList.Parameters),
+                    function.ReturnType.ToMugValueType(this), EvaluateFunction(function, Array.Empty<MugValueType>()));
+
+            Table.DeclareAsOperators(functionIdentifier, function.Position);
+        }
+
         private void GenerateFunctions()
         {
             foreach (var function in Table.DeclaredFunctions)
             {
+                if (function.Name == AsOperatorOverloading)
+                {
+                    GenerateAsOperator(function);
+                    continue;
+                }
+
                 if (function.Generics.Count > 0)
                 {
                     Table.DeclareGenericFunction(function);

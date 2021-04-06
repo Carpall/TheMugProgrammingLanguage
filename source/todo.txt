@@ -33,5 +33,8 @@ done: +
 - fix type recursion with pointers in structure
 - write test for the parser using a decomposing the ast into a string expression and comparing it to the original -> test = "expr()" Assert(test == ExpectExpression(test).Rebuild())
 - fix loadenumerror in emitter
-- consider changing 'new [i32] { }' in '[]' and 'new Person { }' in 'Person { }'
+- consider changing 'new [i32] { }' in '[]' and 'new Person { }' in 'Person { }', so consider using 'new' operator for heap allocations
 - add warnings
+- let use negative numbers in enum declarations (enum errors should have a custom based type 'err' to avoid use of negative enum errors' member, -1 is used as success)
+- add variants -> 'type Var = (A | B | C)'
+- add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'

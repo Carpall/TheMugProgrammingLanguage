@@ -1199,19 +1199,29 @@ namespace Mug.Models.Parser
             return true;
         }
 
-        private EnumMemberNode ExpectMemberDefinition()
+        private EnumMemberNode ExpectMemberDefinition(bool basetypeisint, int lastvalue)
         {
             var name = Expect("Expected enum's member name", TokenKind.Identifier);
+            var usedimplicitconstant = false;
 
             if (!MatchAdvance(TokenKind.Colon))
-                Report(name.Position, "Enum member must have an explicit constant value");
+            {
+                if (basetypeisint)
+                    usedimplicitconstant = true;
+                else
+                    Report(name.Position, "Enum member must have an explicit constant value when base type is not int");
+            }
             else if (!MatchConstantAdvance())
             {
                 Report("Invalid member's explicit constant value");
                 return null;
             }
             
-            return new EnumMemberNode() { Name = name.Value, Value = Back, Position = name.Position };
+            return new EnumMemberNode()
+            {
+                Name = name.Value,
+                Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position) : Back,
+                Position = name.Position };
         }
 
         private MugType ExpectPrimitiveType()
@@ -1264,7 +1274,11 @@ namespace Mug.Models.Parser
 
             while (Match(TokenKind.Identifier))
             {
-                var member = ExpectMemberDefinition();
+                var value = -1;
+                if (statement.Body.Count > 0)
+                    int.TryParse(statement.Body.Last().Value.Value, out value);
+
+                var member = ExpectMemberDefinition(statement.BaseType.IsInt(), value);
                 if (member is null)
                     return false;
 

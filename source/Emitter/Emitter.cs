@@ -364,13 +364,14 @@ namespace Mug.Models.Generator.Emitter
             return true;
         }
 
-        public void CallAsOperator(Range position, MugValueType type, MugValueType returntype)
+        public bool CallAsOperator(Range position, MugValueType type, MugValueType returntype)
         {
-            // tofix
-            throw new();
-            /*var function = _generator.EvaluateFunction($"as({type}): {returntype}", null, Array.Empty<MugValueType>(), Array.Empty<MugValueType>(), position, true);
+            var function = _generator.Table.GetAsOperator(type, returntype, position);
+            if (!function.HasValue)
+                return false;
 
-            Call(function.Value.LLVMValue, 1, returntype, false);*/
+            Call(function.Value.Value.LLVMValue, new[] { Pop() }, returntype, null);
+            return true;
         }
 
         public void Ret()
@@ -480,25 +481,8 @@ namespace Mug.Models.Generator.Emitter
 
             if (!enumerated.Value.Type.IsEnum())
             {
-                /*if (enumerated.Value.Type.IsEnumError())
-                {*/
-                /*    var enumerror = enumerated.Value.Type.GetEnumError();
-                    var index = enumerror.Body.FindIndex(member => member.Value == membername);
-*/
-                    /*if (index == -1)
-                    {*/
-                        _generator.Report(baseposition, $"'{enumname}' does not contain a definition for '{membername}'");
-                        return false;
-                    // }
-
-                    /*Load(MugValue.EnumMember(enumerated.Value.Type, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index)));
-                    return true;*/
-                /*}
-                else
-                {
-                    _generator.Report(baseposition, "Not an enum");
-                    return false;
-                }*/
+                _generator.Report(baseposition, $"'{enumname}' does not contain a definition for '{membername}'");
+                return false;
             }
 
             var type = enumerated.Value.Type.GetEnum();

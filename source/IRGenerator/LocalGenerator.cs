@@ -384,7 +384,7 @@ namespace Mug.Models.Generator
             else if (expressionType.MatchFloatType() && castType.MatchIntType())
                 _emitter.CastFloatToInt(castType);
             else
-                _emitter.CallAsOperator(position, expressionType, type.ToMugValueType(_generator));
+                return _emitter.CallAsOperator(position, expressionType, type.ToMugValueType(_generator));
 
             return true;
         }
