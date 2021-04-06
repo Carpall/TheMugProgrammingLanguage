@@ -83,7 +83,7 @@ HELP: uses the next argument as output file name. The extension is not required
         private readonly string[] _allowedExtensions = new[] { ".mug" };
         private string[] _arguments = null;
         private int _argumentSelector = 0;
-        private List<string> _preDeclaredSymbols = new();
+        private readonly List<string> _preDeclaredSymbols = new();
         private CompilationUnit unit = null;
         private readonly Dictionary<string, object> _flags = new()
         {
@@ -93,19 +93,39 @@ HELP: uses the next argument as output file name. The extension is not required
             ["src"]         = null, // file to compile
         };
 
-        private string GetFile()
+        private object GetFile()
         {
             var file = GetFlag<string>("src");
 
             if (file is null)
                 CompilationErrors.Throw("Undefined src to compile");
 
-            return file;
+            return file != "." ? file : Directory.GetFiles(Environment.CurrentDirectory);
+        }
+
+        private string GetMainFile(object filenames)
+        {
+            if (filenames is string main)
+                return main;
+
+            var files = filenames as string[];
+
+            if (files.Length == 0)
+                CompilationErrors.Throw("Folder is empty");
+
+            foreach (var file in files)
+            {
+                if (Path.GetFileName(file) == CompilationUnit.MainFileName)
+                    return file;
+            }
+
+            CompilationErrors.Throw("Unable to find 'main.mug' in the folder");
+            return default;
         }
 
         private string GetOutputPath()
         {
-            return Path.ChangeExtension(IsDefault("output") ? GetFile() : GetFlag<string>("output"), GetOutputExtension());
+            return Path.ChangeExtension(IsDefault("output") ? GetMainFile(GetFile()) : GetFlag<string>("output"), GetOutputExtension());
         }
 
         private void SetFlag(string flag, object value)
@@ -161,7 +181,10 @@ HELP: uses the next argument as output file name. The extension is not required
             if (loadArgs)
                 LoadArguments();
 
-            unit = new CompilationUnit(GetFile(), true, true);
+            var path = GetFile();
+            GetMainFile(path); // checks
+
+            unit = new CompilationUnit(path);
 
             DeclareSymbol(GetFlag<CompilationMode>("mode").ToString());
             DeclarePlatformSymbol();
@@ -238,6 +261,9 @@ HELP: uses the next argument as output file name. The extension is not required
 
         private string CheckMugFile(string src)
         {
+            if (src == ".")
+                return src;
+
             CheckPath(src);
 
             if (!_allowedExtensions.Contains(Path.GetExtension(src)))
@@ -316,7 +342,7 @@ HELP: uses the next argument as output file name. The extension is not required
         {
             SetDefault("target", CompilationTarget.Executable);
             SetDefault("mode", CompilationMode.Debug);
-            SetDefault("output", Path.ChangeExtension(GetFile(), GetOutputExtension()));
+            SetDefault("output", Path.ChangeExtension(GetFile() is string s ? s : Path.GetDirectoryName(Environment.CurrentDirectory), GetOutputExtension()));
         }
 
         private void InterpretArgument(string argument)

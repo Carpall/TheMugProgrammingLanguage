@@ -4,6 +4,7 @@ using Mug.Models.Parser;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace Mug.Compilation
 {
@@ -12,10 +13,21 @@ namespace Mug.Compilation
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
         private const string ClangFilename = "C:/Program Files/LLVM/bin/clang.exe";
+        internal const string MainFileName = "main.mug";
 
         public CompilationUnit(string moduleName, string source, bool isMainModule)
         {
             IRGenerator = new(moduleName, source, isMainModule);
+        }
+
+        public CompilationUnit(object filenames)
+        {
+            if (filenames is string s)
+                IRGenerator = new(Path.GetFileName(s), File.ReadAllText(s), true);
+            else if (filenames is string[] a)
+                IRGenerator = new(MainFileName, MergeSources(a), true);
+            else
+                CompilationErrors.Throw($"Internal error: unable to construct CompilationUnit with {filenames.GetType()}");
         }
 
         public CompilationUnit(string path, bool isMainModule, bool throwerror)
@@ -31,8 +43,22 @@ namespace Mug.Compilation
                 IRGenerator = new(path, File.ReadAllText(path), isMainModule);
         }
 
+        private string MergeSources(string[] filenames)
+        {
+            var result = new StringBuilder();
+
+            foreach (var filename in filenames)
+                if (Path.GetExtension(filename) == ".mug")
+                    result.AppendLine(File.ReadAllText(filename));
+
+            Console.WriteLine(result.ToString());
+
+            return result.ToString();
+        }
+
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
+            // IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
             // generates the bytecode
             Generate();
 

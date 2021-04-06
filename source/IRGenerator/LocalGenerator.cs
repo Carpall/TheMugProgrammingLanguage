@@ -472,12 +472,6 @@ namespace Mug.Models.Generator
             return GetFunctionSymbol(ref basetype, name, genericsInput, ref parameters, position);
         }
 
-        private void AddGenericParameters(List<Token> generics, MugValueType[] genericsInput)
-        {
-            for (int i = 0; i < generics.Count; i++)
-                _generator.GenericParametersAdd((generics[i].Value, genericsInput[i]), generics[i].Position);
-        }
-
         private List<FunctionSymbol> EvaluateGenericFunctionOverloads(List<FunctionNode> overloads, MugValueType[] generics)
         {
             var result = new List<FunctionSymbol>();
@@ -489,7 +483,7 @@ namespace Mug.Models.Generator
                 FunctionSymbol functionIdentifier = new();
                 if (function.Generics.Count == generics.Length)
                 {
-                    AddGenericParameters(function.Generics, generics);
+                    _generator.AddGenericParameters(function.Generics, generics);
 
                     // the function will be evaluated later to avoid the evaluation of all the functions also if unused
                     functionIdentifier = new FunctionSymbol(
@@ -499,8 +493,8 @@ namespace Mug.Models.Generator
                         function.ReturnType.ToMugValueType(_generator), new(), function.Position);
 
                     _generator.ClearGenericParameters();
-
                 }
+
                 result.Add(functionIdentifier);
             }
 
@@ -509,8 +503,17 @@ namespace Mug.Models.Generator
             return result;
         }
 
-        private FunctionSymbol? GetFunctionSymbol(ref MugValue? basevalue, string name, MugValueType[] generics, ref MugValue[] parameters, ModulePosition position)
+        private FunctionSymbol? GetFunctionSymbol(
+            ref MugValue? basevalue,
+            string name,
+            MugValueType[] generics,
+            ref MugValue[] parameters,
+            ModulePosition position)
         {
+            if (!_generator.Table.DefinedFunctions.ContainsKey(name) && !_generator.GenerateOverloadsOF(name, generics))
+                // if the table does not contain a definition for the function's name we report it
+                Report(position, $"Undeclared function '{name}'");
+
             // todo: cache generated generic function
             List<FunctionSymbol> overloads;
             List<FunctionNode> genericOverloads = null;
@@ -573,7 +576,14 @@ namespace Mug.Models.Generator
                         function.Value = symbol.Value;
                     else // otherwise we evaluate it and we cache it to save time for the next use
                     {
-                        function.Value = _generator.EvaluateFunction(genericOverloads[j], generics);
+                        var llvmprototype = _generator.GetLLVMPrototype(genericOverloads[j], generics);
+                        function.Value = MugValue.From(
+                            _generator.EvaluateFunction(
+                                genericOverloads[j],
+                                llvmprototype.LLVMValue,
+                                generics),
+                            llvmprototype.Type);
+
                         _generator.Table.DeclareGenericFunctionSymbol(genericOverloads[j].Name, function);
                     }
                 }
@@ -619,7 +629,7 @@ namespace Mug.Models.Generator
                 comptimeExecute(c.Generics, parameters);
                 return true;
             }*/
-
+            
             if (!paramsAreOk)
                 return false;
 
@@ -1816,9 +1826,6 @@ namespace Mug.Models.Generator
             // allocating parameters as local variable
             AllocParameters();
             Generate(_function.Body);
-
-            if (_generator.IsEntryPoint(_function.Name, _function.ParameterList.Length))
-                _generator.Parser.Lexer.CheckDiagnostic();
         }
     }
 }

@@ -146,7 +146,7 @@ namespace Mug.TypeSystem
             for (int i = 0; i < genericsInput.Count; i++)
                 generics[i] = genericsInput[i].ToMugValueType(generator);
 
-            var symbol = generator.Table.GetType(name, generics, out var error);
+            var symbol = generator.GetType(name, generics, out var error);
             if (!symbol.HasValue) // could be a generic type, a enum type
             {
                 var enumtype = generator.Table.GetEnumType(name, position, false);
@@ -211,12 +211,6 @@ namespace Mug.TypeSystem
             _ => generator.NotSupportedType<MugValueType>(Kind.ToString(), Position)
         };
 
-        /*private MugValueType EvaluateEnumError(IRGenerator generator)
-        {
-            var cast = GetEnumError();
-
-            return MugValueType.EnumError(cast.Item1.ToMugValueType(generator), cast.Item2.ToMugValueType(generator));
-        }*/
 
         private (MugType, MugType) GetEnumError()
         {

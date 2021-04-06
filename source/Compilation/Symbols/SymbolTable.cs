@@ -36,8 +36,9 @@ namespace Mug.Compilation.Symbols
             _generator = generator;
         }
 
-        public void DeclareFunctionSymbol(string name, FunctionSymbol identifier, ModulePosition position)
+        public void DeclareFunctionSymbol(string name, FunctionSymbol identifier, ModulePosition position, out int index)
         {
+            index = 0;
             if (DefinedFunctions.TryAdd(name, new() { identifier }))
                 return;
 
@@ -47,8 +48,8 @@ namespace Mug.Compilation.Symbols
                 return;
             }
 
+            index = DefinedFunctions[name].Count;
             DefinedFunctions[name].Add(identifier);
-            
         }
 
         public void DeclareGenericFunctionSymbol(string name, FunctionSymbol identifier)
@@ -175,13 +176,10 @@ namespace Mug.Compilation.Symbols
             return true;
         }
 
-        public TypeSymbol? GetType(string name, MugValueType[] generics, out string error)
+        public TypeSymbol? GetType(string name, MugValueType[] generics)
         {
             if (!DefinedTypes.TryGetValue(name, out var overloads))
-            {
-                error = $"Undeclared type '{name}'";
                 return null;
-            }
 
             var index = overloads.FindIndex(id =>
             {
@@ -193,12 +191,8 @@ namespace Mug.Compilation.Symbols
             });
 
             if (index == -1)
-            {
-                error = $"No type '{name}' accepts {generics.Length} generic parameters";
                 return null;
-            }
 
-            error = null;
             return overloads[index];
         }
 
@@ -223,8 +217,9 @@ namespace Mug.Compilation.Symbols
             return CompilerSymbols.Contains(name);
         }
 
-        public void DeclareAsOperators(FunctionSymbol function, ModulePosition position)
+        public void DeclareAsOperators(FunctionSymbol function, ModulePosition position, out int index)
         {
+            index = 0;
             if (DefinedAsOperators.FindIndex(symbol =>
             {
                 return symbol.Parameters[0].Equals(function.Parameters[0]) && symbol.ReturnType.Equals(function.ReturnType);
@@ -234,6 +229,7 @@ namespace Mug.Compilation.Symbols
                 return;
             }
 
+            index = DefinedAsOperators.Count;
             DefinedAsOperators.Add(function);
         }
 
@@ -259,7 +255,7 @@ namespace Mug.Compilation.Symbols
         {
             foreach (var overloads in functions)
                 foreach (var function in overloads.Value)
-                    DeclareFunctionSymbol(overloads.Key, function, function.Position);
+                    DeclareFunctionSymbol(overloads.Key, function, function.Position, out _);
         }
 
         public void MergeDeclaredGenericFunctionSymbols(List<FunctionNode> genericFunctions)
@@ -277,7 +273,7 @@ namespace Mug.Compilation.Symbols
         public void MergeDeclaredAsOperatorSymbols(List<FunctionSymbol> asOperators)
         {
             foreach (var asoperator in asOperators)
-                DeclareAsOperators(asoperator, asoperator.Position);
+                DeclareAsOperators(asoperator, asoperator.Position, out _);
         }
 
         public void MergeDefinedEnumTypeSymbols(Dictionary<string, (MugValue model, ModulePosition position)> enumTypes)

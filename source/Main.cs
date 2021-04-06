@@ -9,18 +9,17 @@ try
 
 #if DEBUG
 
+    // todo: remove getmainfile in compilationflags
+    //  fix as operators
+
     var test = @"
 
-/*
-  todo:
-    [x] enum
-    [x] make enum automatic index generated (remove all enum error)
-    [x] auto generated enumeration in enumerated 
-    [x] split in files 'SymbolTable'
-    [x] look at the '// tofix' comments and 'throw new()'
-*/
+func add<T>(a: T, b: T): T { return a + b }
+
+func a<T1>() { add<T1>(1, 2) }
 
 func main() {
+  a<i32>()
 }
 ";
 
@@ -31,7 +30,7 @@ func main() {
     unit.Generate(true, true);
 
 #else
-
+    // args = new[] { "build", "C:/Users/carpal/Desktop/mug/tests/workspace/dot/main.mug" };
     if (args.Length == 0)
         CompilationErrors.Throw("No arguments passed");
 

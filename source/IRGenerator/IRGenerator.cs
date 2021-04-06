@@ -183,6 +183,34 @@ namespace Mug.Models.Generator
             });
         }
 
+        private bool GenerateType(string name, int genericscount)
+        {
+            foreach (var type in Table.DeclaredTypes)
+                if (type.Name == name && type.Generics.Count == genericscount)
+                {
+                    GenerateType(type);
+                    return true;
+                }
+
+            return false;
+        }
+
+        internal TypeSymbol? GetType(string name, MugValueType[] generics, out string error)
+        {
+            error = null;
+            var symbol = Table.GetType(name, generics);
+            if (symbol is not null)
+                return symbol;
+
+            if (!GenerateType(name, generics.Length))
+            {
+                error = $"Undeclared type '{name}'";
+                return null;
+            }
+
+            return Table.GetType(name, generics);
+        }
+
         internal MugValue? EvaluateStruct(TypeStatement type, MugValueType[] generics, ModulePosition position)
         {
             if (type.Generics.Count != generics.Length)
@@ -196,8 +224,7 @@ namespace Mug.Models.Generator
             var oldGenericParameters = GenericParameters;
 
             GenericParameters = new();
-            for (int i = 0; i < type.Generics.Count; i++)
-                GenericParametersAdd((type.Generics[i].Value, generics[i]), type.Generics[i].Position);
+            AddGenericParameters(type.Generics, generics);
 
             var fields = new string[type.Body.Count];
             var structModel = new MugValueType[type.Body.Count];
@@ -316,10 +343,13 @@ namespace Mug.Models.Generator
         /// check if an id is equal to the id of the entry point and if the parameters are 0,
         /// to allow overload of the main function
         /// </summary>
-        internal bool IsEntryPoint(string name, int paramsLen)
+        internal bool IsEntryPoint(FunctionNode function)
         {
             return
-                name == EntryPointName && paramsLen == 0;
+                function.Name == EntryPointName &&
+                !function.Base.HasValue &&
+                function.Generics.Count == 0 &&
+                function.ParameterList.Length == 0;
         }
 
         private void ReadModule(string filename)
@@ -414,7 +444,7 @@ namespace Mug.Models.Generator
             Table.DeclareFunctionSymbol(
                 prototype.Name,
                 new FunctionSymbol(null, Array.Empty<MugValueType>(), parameters, type, MugValue.From(function, type), prototype.Position),
-                prototype.Position);
+                prototype.Position, out _);
         }
 
         private void IncludeCHeader(string path, string clangArgs)
@@ -589,6 +619,19 @@ namespace Mug.Models.Generator
             return result;
         }
 
+        internal bool GenerateOverloadsOF(string name, MugValueType[] generics)
+        {
+            var count = 0;
+            foreach (var function in Table.DeclaredFunctions)
+                if (function.Name == name)
+                {
+                    GenerateFunction(function, generics);
+                    count++;
+                }
+
+            return true;
+        }
+
         private void EmitCompTimeWhen(CompTimeWhenStatement when)
         {
             if (EvaluateCompTimeExprAndGetResult(when.Expression))
@@ -604,7 +647,10 @@ namespace Mug.Models.Generator
             switch (member)
             {
                 case FunctionNode function:
-                    Table.DeclaredFunctions.Add(function);
+                    if (function.Generics.Count > 0)
+                        Table.DeclareGenericFunction(function);
+                    else
+                        Table.DeclaredFunctions.Add(function);
                     break;
                 case FunctionPrototypeNode prototype:
                     EmitFunctionPrototype(prototype);
@@ -629,33 +675,19 @@ namespace Mug.Models.Generator
                     break;
             }
         }
-        
-        internal MugValue EvaluateFunction(FunctionNode function, MugValueType[] generics)
+
+        internal void AddGenericParameters(List<Token> generics, MugValueType[] genericsInput)
+        {
+            for (int i = 0; i < generics.Count; i++)
+                GenericParametersAdd((generics[i].Value, genericsInput[i]), generics[i].Position);
+        }
+
+        internal LLVMValueRef EvaluateFunction(FunctionNode function, LLVMValueRef llvmfunction, MugValueType[] generics)
         {
             var oldgenerics = GenericParameters;
 
             GenericParameters = new();
-            for (int i = 0; i < function.Generics.Count; i++)
-                GenericParametersAdd((function.Generics[i].Value, generics[i]), function.Generics[i].Position);
-
-            var baseoffset = Convert.ToInt32(function.Base.HasValue);
-
-            var paramTypes = new MugValueType[function.ParameterList.Length + baseoffset];
-            var retType = function.ReturnType.ToMugValueType(this);
-
-            var types = ParameterTypesToMugTypes(function.ParameterList.Parameters);
-
-            if (function.Base.HasValue)
-                paramTypes[0] = function.Base.Value.Type.ToMugValueType(this);
-
-            for (int i = 0; i < types.Length; i++)
-                paramTypes[i + baseoffset] = types[i];
-
-            var llvmfunction = Module.AddFunction(function.Name, LLVMTypeRef.CreateFunction(
-                retType.LLVMType,
-                MugTypesToLLVMTypes(paramTypes)));
-
-            var func = MugValue.From(llvmfunction, retType);
+            AddGenericParameters(function.Generics, generics);
 
             // basic block, won't be emitted any block because the name is empty
             var entry = llvmfunction.AppendBasicBlock("");
@@ -674,7 +706,7 @@ namespace Mug.Models.Generator
 
             GenericParameters = oldgenerics;
 
-            return func;
+            return llvmfunction;
         }
 
         private bool CheckAsOperator(FunctionNode function)
@@ -699,58 +731,101 @@ namespace Mug.Models.Generator
                     null,
                     Array.Empty<MugValueType>(),
                     ParameterTypesToMugTypes(function.ParameterList.Parameters),
-                    function.ReturnType.ToMugValueType(this), EvaluateFunction(function, Array.Empty<MugValueType>()),
+                    function.ReturnType.ToMugValueType(this), GetLLVMPrototype(function, Array.Empty<MugValueType>()),
                     function.Position);
 
-            Table.DeclareAsOperators(functionIdentifier, function.Position);
+            Table.DeclareAsOperators(functionIdentifier, function.Position, out var index);
+
+            functionIdentifier.Value.LLVMValue = EvaluateFunction(function, functionIdentifier.Value.LLVMValue, Array.Empty<MugValueType>());
+
+            Table.DefinedAsOperators[index] = functionIdentifier;
         }
 
-        private void GenerateFunctions()
+        internal MugValue GetLLVMPrototype(FunctionNode function, MugValueType[] generics, bool addgenerics = true)
+        {
+            var oldgenerics = GenericParameters;
+            GenericParameters = new();
+            if (addgenerics)
+                AddGenericParameters(function.Generics, generics);
+
+            var baseoffset = Convert.ToInt32(function.Base.HasValue);
+
+            var paramTypes = new MugValueType[function.ParameterList.Length + baseoffset];
+            var retType = function.ReturnType.ToMugValueType(this);
+
+            var types = ParameterTypesToMugTypes(function.ParameterList.Parameters);
+
+            if (function.Base.HasValue)
+                paramTypes[0] = function.Base.Value.Type.ToMugValueType(this);
+
+            for (int i = 0; i < types.Length; i++)
+                paramTypes[i + baseoffset] = types[i];
+
+            var llvmfunction = Module.AddFunction(function.Name, LLVMTypeRef.CreateFunction(
+                retType.LLVMType,
+                MugTypesToLLVMTypes(paramTypes)));
+
+            GenericParameters = oldgenerics;
+
+            return MugValue.From(llvmfunction, retType);
+        }
+
+        private void GenerateFunction(FunctionNode function, MugValueType[] generics)
+        {
+            if (function.Name == AsOperatorOverloading)
+            {
+                GenerateAsOperator(function);
+                return;
+            }
+
+            var oldgenerics = GenericParameters;
+            GenericParameters = new();
+            AddGenericParameters(function.Generics, generics);
+
+            var functionIdentifier = new FunctionSymbol(
+                function.Base?.Type.ToMugValueType(this),
+                generics,
+                ParameterTypesToMugTypes(function.ParameterList.Parameters),
+                function.ReturnType.ToMugValueType(this), GetLLVMPrototype(function, generics, false),
+                function.Position);
+
+            Table.DeclareFunctionSymbol(function.Name, functionIdentifier, function.Position, out var index);
+
+            functionIdentifier.Value.LLVMValue = EvaluateFunction(function, functionIdentifier.Value.LLVMValue, generics);
+
+            Table.DefinedFunctions[function.Name][index] = functionIdentifier;
+
+            GenericParameters = oldgenerics;
+        }
+
+        private void GenerateType(TypeStatement type)
+        {
+            if (type.Generics.Count > 0)
+            {
+                Table.DeclareGenericType(type);
+                return;
+            }
+
+            var generics = Array.Empty<MugValueType>();
+            var evaluated = EvaluateStruct(type, generics, type.Position);
+            if (!evaluated.HasValue)
+                return;
+
+            var typeIdentifier = new TypeSymbol(generics, evaluated.Value, type.Position);
+
+            Table.DeclareType(type.Name, typeIdentifier, type.Position);
+        }
+
+        private void GenerateEntrypoint()
         {
             foreach (var function in Table.DeclaredFunctions)
-            {
-                if (function.Name == AsOperatorOverloading)
+                if (IsEntryPoint(function))
                 {
-                    GenerateAsOperator(function);
-                    continue;
+                    GenerateFunction(function, Array.Empty<MugValueType>());
+                    return;
                 }
 
-                if (function.Generics.Count > 0)
-                {
-                    Table.DeclareGenericFunction(function);
-                    continue;
-                }
-
-                var functionIdentifier = new FunctionSymbol(
-                    function.Base?.Type.ToMugValueType(this),
-                    Array.Empty<MugValueType>(),
-                    ParameterTypesToMugTypes(function.ParameterList.Parameters),
-                    function.ReturnType.ToMugValueType(this), EvaluateFunction(function, Array.Empty<MugValueType>()),
-                    function.Position);
-
-                Table.DeclareFunctionSymbol(function.Name, functionIdentifier, function.Position);
-            }
-        }
-
-        private void GenerateTypes()
-        {
-            foreach (var type in Table.DeclaredTypes)
-            {
-                if (type.Generics.Count > 0)
-                {
-                    Table.DeclareGenericType(type);
-                    continue;
-                }
-
-                var generics = Array.Empty<MugValueType>();
-                var evaluated = EvaluateStruct(type, generics, type.Position);
-                if (!evaluated.HasValue)
-                    continue;
-
-                var typeIdentifier = new TypeSymbol(generics, evaluated.Value, type.Position);
-
-                Table.DeclareType(type.Name, typeIdentifier, type.Position);
-            }
+            CompilationErrors.Throw("No entrypoint declared");
         }
 
         /// <summary>
@@ -763,11 +838,8 @@ namespace Mug.Models.Generator
             foreach (var member in Parser.Module.Members.Nodes)
                 RecognizeMember(member);
 
-            // generate all types here, generic types are saved for next use
-            GenerateTypes();
-
             // generate all functions here
-            GenerateFunctions();
+            GenerateEntrypoint();
 
             // checking for errors
             Parser.Lexer.CheckDiagnostic();

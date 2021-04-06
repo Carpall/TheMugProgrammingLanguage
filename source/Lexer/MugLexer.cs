@@ -523,7 +523,7 @@ namespace Mug.Models.Lexer
 
                 // consumes all contiguous \n in one token
                 while (CurrentIndex < Source.Length && Current == '\n')
-                    CurrentIndex += 2;
+                        CurrentIndex += 2;
 
                 CurrentIndex -= 2;
                 return;

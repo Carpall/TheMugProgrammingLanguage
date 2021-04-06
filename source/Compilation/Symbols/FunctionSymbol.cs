@@ -8,7 +8,7 @@ namespace Mug.Compilation.Symbols
     public struct FunctionSymbol
     {
         public MugValueType ReturnType { get; }
-        public MugValue Value { get; set; }
+        public MugValue Value;
         public MugValueType? BaseType { get; }
         public MugValueType[] GenericParameters { get; }
         public MugValueType[] Parameters { get; }
