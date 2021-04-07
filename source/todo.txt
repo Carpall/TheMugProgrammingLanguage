@@ -41,3 +41,4 @@ done: +
 - add function pointer
 + globalize paths merging ast
 - check characters in source when reading from a file created by micro
+- add 'in function ..' in errors

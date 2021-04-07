@@ -28,7 +28,7 @@ namespace Mug.Models.Generator
         internal List<string> Paths = new(); /// to put in map
 
         private readonly Dictionary<string, List<FunctionNode>> _genericFunctions = new();
-        private readonly bool _isMainModule = false;
+        internal bool _isMainModule = false;
 
         internal int SizeOfPointer => (int)LLVMTargetDataRef.FromStringRepresentation(Module.DataLayout)
                     .StoreSizeOfType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0));
@@ -838,8 +838,9 @@ namespace Mug.Models.Generator
             foreach (var member in Parser.Module.Members.Nodes)
                 RecognizeMember(member);
 
-            // generate all functions here
-            GenerateEntrypoint();
+            if (_isMainModule)
+                // generate all functions here
+                GenerateEntrypoint();
 
             // checking for errors
             Parser.Lexer.CheckDiagnostic();

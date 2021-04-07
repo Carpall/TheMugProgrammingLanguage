@@ -15,7 +15,16 @@ namespace Mug.Compilation
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
         private string[] _paths;
-        private const string ClangFilename = "C:/Program Files/LLVM/bin/clang.exe";
+        private static string ClangFilename
+        {
+            get
+            {
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                    return "C:/Program Files/LLVM/bin/clang.exe";
+                else
+                    return "/usr/bin/clang";
+            }
+        }
         internal const string MainFileName = "main.mug";
 
         public CompilationUnit(string moduleName, string source, bool isMainModule)
@@ -133,10 +142,21 @@ namespace Mug.Compilation
             }
         }
 
+        private void Parse()
+        {
+            if (_paths is not null)
+            {
+                GeneratePaths();
+                return;
+            }
+
+            IRGenerator.Parser.Parse();
+        }
+
         public INode GenerateAST()
         {
             IRGenerator.Parser.Lexer.Tokenize();
-            IRGenerator.Parser.Parse();
+            Parse();
 
             return IRGenerator.Parser.Module;
         }
@@ -159,6 +179,7 @@ namespace Mug.Compilation
                 head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
             }
 
+            IRGenerator._isMainModule = true;
             IRGenerator.Parser.Module = head;
             IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");
         }
@@ -166,18 +187,13 @@ namespace Mug.Compilation
         /// <param name="verifyLLVMModule">
         /// false only when debugs to see the module when llvm finds an error
         /// </param>
-        public void Generate(bool verifyLLVMModule = true)
+        public void Generate(bool verifyLLVMModule = true, bool dump = false)
         {
-            if (_paths is not null)
-            {
-                GeneratePaths();
-                _paths = null;
-                Generate(verifyLLVMModule);
-                return;
-            }
-
             GenerateAST();
             IRGenerator.Generate();
+
+	        if (dump)
+	            IRGenerator.Module.Dump();
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))

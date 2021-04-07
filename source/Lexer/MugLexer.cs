@@ -516,16 +516,16 @@ namespace Mug.Models.Lexer
             if (CurrentIndex >= Source.Length)
                 return;
 
-            if (Current == '\n')
+            if (Current == '\r')
             {
                 if (TokenCollection.LastOrDefault().Kind != TokenKind.EOL)
                     TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos((CurrentIndex - 1)..CurrentIndex)));
 
                 // consumes all contiguous \n in one token
-                while (CurrentIndex < Source.Length && Current == '\n')
-                        CurrentIndex += 2;
+                while (CurrentIndex < Source.Length && Current == '\r')
+                        CurrentIndex++;
 
-                CurrentIndex -= 2;
+                CurrentIndex--;
                 return;
             }
 

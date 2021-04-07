@@ -328,24 +328,24 @@ HELP: uses the next argument as output file name. The extension is not required
                 case "release": return CompilationMode.Release;
                 default:
                     CompilationErrors.Throw($"Unable to recognize compilation mode '{mode}'");
-                    return CompilationMode.Debug;
+                    return default;
             }
         }
 
         private static string GetExecutableExtension()
         {
-            return Environment.OSVersion.Platform == PlatformID.Win32NT ? "exe" : "";
+            return Environment.OSVersion.Platform == PlatformID.Win32NT ? ".exe" : null;
         }
 
         private string GetOutputExtension()
         {
             return GetFlag<CompilationTarget>("target") switch
             {
-                CompilationTarget.Assembly => "s",
+                CompilationTarget.Assembly => ".s",
                 CompilationTarget.Executable => GetExecutableExtension(),
-                CompilationTarget.Bytecode => "ll",
-                CompilationTarget.AbstractSyntaxTree => "ast",
-                _ => ""
+                CompilationTarget.Bytecode => ".ll",
+                CompilationTarget.AbstractSyntaxTree => ".ast",
+                _ => "?"
             };
         }
 
