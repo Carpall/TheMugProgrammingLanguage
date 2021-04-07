@@ -12,17 +12,30 @@ try
     // todo: remove getmainfile in compilationflags
     //  fix as operators
 
-    var test = @"
+    const string test = @"
 
-func add<T>(a: T, b: T): T { return a + b }
+func malloc(size: i64): unknown
+func free(alloc: unknown)
 
-func a<T1>() { add<T1>(1, 2) }
+func heap<T>(value: T): *T {
+	const allocation = malloc(size<T>()) as *T
+	*allocation = value
+	return allocation
+}
+
+func (self: *T) free<T>() {
+	free(self as unknown)
+}
+
+// type Lexer { src: str }
 
 func main() {
-  a<i32>()
+	var x = heap<i32>(10)
+	x.free<i32>()
 }
-";
 
+";
+    
     var unit = new CompilationUnit("test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));

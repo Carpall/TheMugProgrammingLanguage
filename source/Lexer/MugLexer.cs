@@ -509,6 +509,9 @@ namespace Mug.Models.Lexer
         /// </summary>
         private void ProcessCurrentChar()
         {
+            if (Current == '\r')
+                return;
+
             // remove useless comments
             ConsumeComments();
 
@@ -522,7 +525,7 @@ namespace Mug.Models.Lexer
                     TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos((CurrentIndex - 1)..CurrentIndex)));
 
                 // consumes all contiguous \n in one token
-                while (CurrentIndex < Source.Length && Current == '\r')
+                while (CurrentIndex < Source.Length && Current == '\n')
                         CurrentIndex++;
 
                 CurrentIndex--;

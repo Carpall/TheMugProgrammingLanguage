@@ -42,3 +42,5 @@ done: +
 + globalize paths merging ast
 - check characters in source when reading from a file created by micro
 - add 'in function ..' in errors
+- alloc arrays on the stack instead of the heap
+- fix <null>/10

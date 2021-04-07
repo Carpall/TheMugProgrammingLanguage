@@ -548,9 +548,7 @@ namespace Mug.Models.Generator
                         continue;
                 }
 
-                var i = 0;
-                
-                while (i < function.Parameters.Length)
+                for (int i = 0; i < function.Parameters.Length; i++)
                 {
                     // using the stack utilities to make bitness coersions with constants
                     _emitter.Load(parameters[i]);
@@ -561,12 +559,10 @@ namespace Mug.Models.Generator
                     {
                         // removing the value from the top
                         _emitter.Pop();
-                        continue;
+                        goto mismatch;
                     }
                     else
                         parameters[i] = _emitter.Pop();
-
-                    i++;
                 }
 
                 if (generics.Length > 0)
@@ -589,6 +585,7 @@ namespace Mug.Models.Generator
                 }
 
                 return function;
+            mismatch:;
             }
 
             // could not find function
@@ -624,11 +621,8 @@ namespace Mug.Models.Generator
              */
 
             // to replace with built in macros
-            /*if (IsBuiltInFunction(c.Name, c.Generics, parameters, out var comptimeExecute))
-            {
-                comptimeExecute(c.Generics, parameters);
+            if (IsBuiltInFunction(c.Name, c.Generics, parameters, expectedNonVoid, c.Position))
                 return true;
-            }*/
             
             if (!paramsAreOk)
                 return false;
@@ -655,26 +649,32 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private void CompTime_sizeof(List<MugType> generics, MugValueType[] parameters)
+        private void CompTime_sizeof(List<MugType> generics, MugValue[] parameters)
         {
             var size = generics[0].ToMugValueType(_generator).Size(_generator.SizeOfPointer);
 
-            _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)size), MugValueType.Int32));
+            _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)size), MugValueType.Int32, isconstant: true));
         }
 
-        private bool IsBuiltInFunction(INode name, List<MugType> generics, MugValueType[] parameters, out Action<List<MugType>, MugValueType[]> comptimeExecute)
+        private bool IsBuiltInFunction(INode name, List<MugType> generics, MugValue[] parameters, bool expectedNonVoid, ModulePosition position)
         {
-            comptimeExecute = null;
-
             if (name is not Token id)
                 return false;
 
             switch (id.Value)
             {
-                case "size":
-                    comptimeExecute = CompTime_sizeof;
-                    return generics.Count == 1 && parameters.Length == 0;
-                default: return false;
+                case "size" when generics.Count == 1 && parameters.Length == 0:
+                    checkUseless();
+                    CompTime_sizeof(generics, parameters);
+                    return true;
+                default:
+                    return false;
+            }
+
+            void checkUseless()
+            {
+                if (!expectedNonVoid)
+                    Report(position, "Useless here");
             }
         }
 
@@ -945,7 +945,8 @@ namespace Mug.Models.Generator
                     return EmitCallStatement(c, true);
                 case CastExpressionNode ce:
                     // 'as' operator
-                    EvaluateExpression(ce.Expression);
+                    if (!EvaluateExpression(ce.Expression))
+                        return false;
 
                     return EmitCastInstruction(ce.Type, ce.Position);
                 case BooleanExpressionNode b:
@@ -1503,7 +1504,8 @@ namespace Mug.Models.Generator
         private void EmitConstantStatement(ConstantStatement constant)
         {
             // evaluating the body expression of the constant
-            EvaluateExpression(constant.Body);
+            if (!EvaluateExpression(constant.Body))
+                return;
 
             // match the constant explicit type and expression type are the same
             if (!constant.Type.IsAutomatic())
@@ -1810,7 +1812,7 @@ namespace Mug.Models.Generator
         public void Generate(BlockNode statements)
         {
             for (int i = 0; i < statements.Statements.Length; i++)
-                RecognizeStatement(statements.Statements[i], i == statements.Statements.Length-1);
+                RecognizeStatement(statements.Statements[i], i == statements.Statements.Length - 1);
 
             if (_emitter.IsInsideSubBlock)
                 _emitter.Exit();
