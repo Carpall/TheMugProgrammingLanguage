@@ -14,24 +14,7 @@ try
 
     const string test = @"
 
-func malloc(size: i64): unknown
-func free(alloc: unknown)
-
-func heap<T>(value: T): *T {
-	const allocation = malloc(size<T>()) as *T
-	*allocation = value
-	return allocation
-}
-
-func (self: *T) free<T>() {
-	free(self as unknown)
-}
-
-// type Lexer { src: str }
-
 func main() {
-	var x = heap<i32>(10)
-	x.free<i32>()
 }
 
 ";
@@ -39,8 +22,8 @@ func main() {
     var unit = new CompilationUnit("test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    // Console.WriteLine(unit.GenerateAST().Dump());
-    unit.Generate(true, true);
+    Console.WriteLine(unit.GenerateAST().Dump());
+    // unit.Generate(true, true);
 
 #else
 

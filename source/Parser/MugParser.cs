@@ -344,6 +344,9 @@ namespace Mug.Models.Parser
 
         private void CollectPossibleArrayAccessNode(ref INode e)
         {
+            if (e is null)
+                return;
+
             while (MatchAdvance(TokenKind.OpenBracket, out var token))
             {
                 e = new ArraySelectElemNode()
@@ -361,7 +364,7 @@ namespace Mug.Models.Parser
                 name = Back;
             else if (!MatchInParExpression(out name))
                 return false;
-
+            
             CollectPossibleArrayAccessNode(ref name);
 
             while (MatchAdvance(TokenKind.Dot))
@@ -498,9 +501,6 @@ namespace Mug.Models.Parser
 
         private bool MatchTerm(out INode e, bool allowCallStatement = true)
         {
-            /*if (Current.Kind == TokenKind.EOL)
-                Console.WriteLine("eol");*/
-
             if (MatchPrefixOperator(out var prefixOP))
             {
                 if (!MatchTerm(out e, allowCallStatement))
@@ -526,6 +526,12 @@ namespace Mug.Models.Parser
                     e = CollectNodeNew(token.Position);
                 else if (ConditionDefinition(out e))
                     return true;
+            }
+
+            if (e is null)
+            {
+                Report("Expected term");
+                return false;
             }
 
             CollectPossibleArrayAccessNode(ref e);
@@ -587,7 +593,7 @@ namespace Mug.Models.Parser
         {
             if (!MatchTerm(out e))
                 return false;
-            
+
             if (MatchFactorOps())
             {
                 var op = Back;

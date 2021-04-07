@@ -11,8 +11,8 @@ done: +
 - fix lexer tests
 - add support for multiline errors
 + add constant bitness coercion in function's calls
-- make built in functions under 'funcname!<>()' pattern
-- remove the 'isbuildinfunction' in 'callfunction' and add a pragma 'builtin' only for macros
+- make built in functions under 'funcname<>!()' pattern
+- remove the 'isbuiltinfunction' in 'callfunction' and add a pragma 'builtin' only for macros
 - write a path checker to make sure all paths of a scope returns a value, also with hidden subscope buffers
 - add 'static code evaluator' -> 'static if some comp-time evaluable expression {}', 'static if size<T>!() > 10 { error!("too big") }'
 - replace the 'when' statement with 'static' block 'static if os == Os.Win32 {}', evaluated at compile time
@@ -20,13 +20,12 @@ done: +
 - implement 'dyn' type
 - add a raw pointer 'i32*', manged pointer '*i32'
 - to fix references (at the moment they works as left values in assignment but not in expression because there's not coercion system, it is disabled since the coercion bugs calls)
-- reuse the pragmas when new system table is finished
++ reuse the pragmas when new system table is finished
 - add i16
 - add unsigned integers
 - fix import
 - add operator implementation for unary
-- fix as operator
-- (!not final decision) remove operator new -> 'Type { }', '[x, y, z]'
++ fix as operator
 - add tuples
 - fix modifier with generic items
 - remove 'declare' directive
@@ -40,7 +39,9 @@ done: +
 - add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'
 - add function pointer
 + globalize paths merging ast
-- check characters in source when reading from a file created by micro
++ check characters in source when reading from a file created by micro
 - add 'in function ..' in errors
 - alloc arrays on the stack instead of the heap
 - fix <null>/10
+- infer generic type in base-with methdods
+- fix code pragma
