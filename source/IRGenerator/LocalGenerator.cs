@@ -782,8 +782,8 @@ namespace Mug.Models.Generator
 
             if (aa.SizeIsImplicit)
                 _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)aa.Body.Length), MugValueType.Int32));
-            else
-                EvaluateExpression(aa.Size);
+            else if (!EvaluateExpression(aa.Size))
+                return;
 
             var array = MugValue.From(_emitter.Builder.BuildAlloca(arraytype.LLVMType), arraytype);
 
@@ -797,7 +797,8 @@ namespace Mug.Models.Generator
 
             foreach (var elem in aa.Body)
             {
-                EvaluateExpression(elem);
+                if (!EvaluateExpression(elem))
+                    continue;
 
                 _emitter.CoerceConstantSizeTo(arraytype.ArrayBaseElementType);
 
@@ -884,7 +885,9 @@ namespace Mug.Models.Generator
             }
             else
             {
-                EvaluateExpression(m.Base);
+                if (!EvaluateExpression(m.Base))
+                    return false;
+
                 _emitter.LoadFieldName();
             }
 
@@ -964,8 +967,7 @@ namespace Mug.Models.Generator
                     return EmitCatchStatement(ce, false);
                 case AssignmentStatement ae:
                     EmitAssignmentStatement(ae);
-                    EvaluateExpression(ae.Name);
-                    break;
+                    return EvaluateExpression(ae.Name);
                 case ConditionalStatement cs:
                     return MugParser.HasElseBody(cs) switch
                     {
@@ -1034,7 +1036,8 @@ namespace Mug.Models.Generator
                 _emitter.Builder.PositionAtEnd(@else);
 
                 // evaluating the else if expression
-                EvaluateConditionExpression(statement.Expression, statement.Position);
+                if (!EvaluateConditionExpression(statement.Expression, statement.Position))
+                    return;
 
                 // creating a new block, the current will be used to decide if jump to the else if body or the next condition/end
                 var elseif = _llvmfunction.AppendBasicBlock("");
@@ -1082,24 +1085,27 @@ namespace Mug.Models.Generator
             _emitter.JumpOutOfScope(then.Terminator, endifelse);
         }
 
-        private void EvaluateConditionExpression(INode expression, ModulePosition position, bool allowNull = false)
+        private bool EvaluateConditionExpression(INode expression, ModulePosition position, bool allowNull = false)
         {
             if (allowNull && expression is null)
             {
                 _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1), MugValueType.Bool));
-                return;
+                return true;
             }
 
             // evaluating conditional expression
-            EvaluateExpression(expression);
+            if (!EvaluateExpression(expression))
+                return false;
             // make sure the expression returned bool
             _generator.ExpectBoolType(_emitter.PeekType(), position);
+            return true;
         }
 
         private void EmitIfStatement(ConditionalStatement i)
         {
             // evaluate expression
-            EvaluateConditionExpression(i.Expression, i.Expression.Position);
+            if (!EvaluateConditionExpression(i.Expression, i.Expression.Position))
+                return;
 
             var saveOldCondition = _oldcondition;
 
@@ -1168,7 +1174,8 @@ namespace Mug.Models.Generator
             _emitter.Builder.PositionAtEnd(compare);
 
             // evaluate expression
-            EvaluateConditionExpression(i.Expression, i.Position);
+            if (!EvaluateConditionExpression(i.Expression, i.Position))
+                return;
 
             // compare
             _emitter.CompareJump(cycle, endcycle);
@@ -1474,7 +1481,8 @@ namespace Mug.Models.Generator
                 return;
             }
 
-            EvaluateExpression(assignment.Body);
+            if (!EvaluateExpression(assignment.Body))
+                return;
 
             _emitter.CoerceConstantSizeTo(ptr.Type);
 
@@ -1678,7 +1686,8 @@ namespace Mug.Models.Generator
             _emitter.Builder.PositionAtEnd(compare);
 
             // evaluate expression
-            EvaluateConditionExpression(forstatement.ConditionExpression, forstatement.Position, true);
+            if (!EvaluateConditionExpression(forstatement.ConditionExpression, forstatement.Position, true))
+                return;
 
             // compare
             _emitter.CompareJump(cycle, endcycle);

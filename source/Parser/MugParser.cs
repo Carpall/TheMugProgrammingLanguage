@@ -841,7 +841,10 @@ namespace Mug.Models.Parser
             var result = new VariableStatement() { Name = name.Value, Position = name.Position };
 
             if (MatchAdvance(TokenKind.Colon))
+            {
                 result.Type = ExpectType();
+                Expect("", TokenKind.Comma);
+            }
             else
             {
                 result.Type = MugType.Automatic(name.Position);
