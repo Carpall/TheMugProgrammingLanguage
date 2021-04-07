@@ -309,6 +309,9 @@ namespace Mug.Models.Lexer
         {
             var start = CurrentIndex++;
 
+            if (CurrentIndex == Source.Length)
+                reportNotCorrectlyEnclosed();
+
             //consume string until EOF or closed " is found
             while (CurrentIndex < Source.Length && Source[CurrentIndex] != '"')
             {
@@ -324,11 +327,15 @@ namespace Mug.Models.Lexer
 
             //if you found an EOF, throw
             if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '"')
-                this.Throw(CurrentIndex - 1, $"String has not been correctly enclosed");
+                reportNotCorrectlyEnclosed();
 
             //else add closing simbol
             TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), ModPos(start..(end + 1))));
             CurrentSymbol.Clear();
+
+            void reportNotCorrectlyEnclosed() {
+                this.Throw(start, $"String has not been correctly enclosed");
+            }
         }
 
         private bool IsValidBackTickSequence(string sequence)
@@ -406,36 +413,35 @@ namespace Mug.Models.Lexer
         /// </summary>
         private void ProcessSpecial(char current)
         {
-            if (!HasNext())
+            if (current == '"') CollectString();
+            else if (current == '\'') CollectChar();
+            else if (current == '`') CollectBacktick();
+            else
             {
-                AddSingle(GetSingle(current), current.ToString());
-                return;
-            }
+                if (!HasNext())
+                {
+                    AddSingle(GetSingle(current), current.ToString());
+                    return;
+                }
 
-            var doubleToken = current.ToString() + GetNext();
+                var doubleToken = current.ToString() + GetNext();
 
-            // checks if there is a double token
-            switch (doubleToken)
-            {
-                case "==": AddDouble(TokenKind.BooleanEQ, doubleToken); break;
-                case "!=": AddDouble(TokenKind.BooleanNEQ, doubleToken); break;
-                case "++": AddDouble(TokenKind.OperatorIncrement, doubleToken); break;
-                case "+=": AddDouble(TokenKind.AddAssignment, doubleToken); break;
-                case "--": AddDouble(TokenKind.OperatorDecrement, doubleToken); break;
-                case "-=": AddDouble(TokenKind.SubAssignment, doubleToken); break;
-                case "*=": AddDouble(TokenKind.MulAssignment, doubleToken); break;
-                case "/=": AddDouble(TokenKind.DivAssignment, doubleToken); break;
-                case "<=": AddDouble(TokenKind.BooleanLEQ, doubleToken); break;
-                case ">=": AddDouble(TokenKind.BooleanGEQ, doubleToken); break;
-                case "..": AddDouble(TokenKind.RangeDots, doubleToken); break;
-                default:
-                    if (current == '"') CollectString();
-                    else if (current == '\'') CollectChar();
-                    else if (current == '`') CollectBacktick();
-                    else
-                        AddSingle(GetSingle(current), current.ToString());
-
-                    break;
+                // checks if there is a double token
+                switch (doubleToken)
+                {
+                    case "==": AddDouble(TokenKind.BooleanEQ, doubleToken); break;
+                    case "!=": AddDouble(TokenKind.BooleanNEQ, doubleToken); break;
+                    case "++": AddDouble(TokenKind.OperatorIncrement, doubleToken); break;
+                    case "+=": AddDouble(TokenKind.AddAssignment, doubleToken); break;
+                    case "--": AddDouble(TokenKind.OperatorDecrement, doubleToken); break;
+                    case "-=": AddDouble(TokenKind.SubAssignment, doubleToken); break;
+                    case "*=": AddDouble(TokenKind.MulAssignment, doubleToken); break;
+                    case "/=": AddDouble(TokenKind.DivAssignment, doubleToken); break;
+                    case "<=": AddDouble(TokenKind.BooleanLEQ, doubleToken); break;
+                    case ">=": AddDouble(TokenKind.BooleanGEQ, doubleToken); break;
+                    case "..": AddDouble(TokenKind.RangeDots, doubleToken); break;
+                    default: AddSingle(GetSingle(current), current.ToString()); break;
+                }
             }
         }
 

@@ -12,12 +12,7 @@ try
     // todo: remove getmainfile in compilationflags
     //  fix as operators
 
-    const string test = @"
-
-func main() {
-}
-
-";
+    const string test = @"``";
     
     var unit = new CompilationUnit("test.mug", test, true);
 

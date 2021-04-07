@@ -1,17 +1,14 @@
+using Mug.Compilation;
 using Mug.Models.Lexer;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MugTests
 {
     public class LexerTests
     {
-        /*
-         * TODO:
-         *  - add tests for chars
-         */
-
         // Well constructed code strings
         private const string OPERATION01 = "1 + 2";
         private const string VARIABLE01 = "var x = 0 ";
@@ -108,11 +105,11 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyVar, "var", 0..3),
-                new Token(TokenKind.Identifier, "x", 4..5),
-                new Token(TokenKind.Equal, "=", 6..7),
-                new Token(TokenKind.ConstantDigit, "0", 8..9),
-                new Token(TokenKind.EOF, "<EOF>", 10..11)
+                new Token(TokenKind.KeyVar, "var", new(lexer, 0..3)),
+                new Token(TokenKind.Identifier, "x", new(lexer, 4..5)),
+                new Token(TokenKind.Equal, "=", new(lexer, 6..7)),
+                new Token(TokenKind.ConstantDigit, "0", new(lexer, 8..9)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 10..11))
             };
 
             AreListEqual(expected, tokens);
@@ -128,13 +125,13 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyVar, "var", 0..3),
-                new Token(TokenKind.Identifier, "number", 4..10),
-                new Token(TokenKind.Colon, ":", 10..11),
-                new Token(TokenKind.KeyTi32, "i32", 12..15),
-                new Token(TokenKind.Equal, "=", 16..17),
-                new Token(TokenKind.ConstantDigit, "50", 18..20),
-                new Token(TokenKind.EOF, "<EOF>", 21..22)
+                new Token(TokenKind.KeyVar, "var", new(lexer, 0..3)),
+                new Token(TokenKind.Identifier, "number", new(lexer, 4..10)),
+                new Token(TokenKind.Colon, ":", new(lexer, 10..11)),
+                new Token(TokenKind.KeyTi32, "i32", new(lexer, 12..15)),
+                new Token(TokenKind.Equal, "=", new(lexer, 16..17)),
+                new Token(TokenKind.ConstantDigit, "50", new(lexer, 18..20)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 21..22))
             };
 
             AreListEqual(expected, tokens);
@@ -150,13 +147,13 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantDigit, "50", 1..3),
-                new Token(TokenKind.Equal, "=", 4..5),
-                new Token(TokenKind.KeyTi32, "i32", 6..9),
-                new Token(TokenKind.Colon, ":", 10..11),
-                new Token(TokenKind.Identifier, "number", 11..17),
-                new Token(TokenKind.KeyVar, "var", 18..21),
-                new Token(TokenKind.EOF, "<EOF>", 21..22)
+                new Token(TokenKind.ConstantDigit, "50", new(lexer, 1..3)),
+                new Token(TokenKind.Equal, "=", new(lexer, 4..5)),
+                new Token(TokenKind.KeyTi32, "i32", new(lexer, 6..9)),
+                new Token(TokenKind.Colon, ":", new(lexer, 10..11)),
+                new Token(TokenKind.Identifier, "number", new(lexer, 11..17)),
+                new Token(TokenKind.KeyVar, "var", new(lexer, 18..21)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 21..22))
             };
 
             AreListEqual(expected, tokens);
@@ -172,8 +169,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "varnumber", 0..9),
-                new Token(TokenKind.EOF, "<EOF>", 9..10)
+                new Token(TokenKind.Identifier, "varnumber", new(lexer, 0..9)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 9..10))
             };
 
             AreListEqual(expected, tokens);
@@ -189,8 +186,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "i33", 0..3),
-                new Token(TokenKind.EOF, "<EOF>", 3..4)
+                new Token(TokenKind.Identifier, "i33", new(lexer, 0..3)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
             };
 
             AreListEqual(expected, tokens);
@@ -207,7 +204,7 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", 20..21)
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 20..21))
             };
 
             AreListEqual(expected, tokens);
@@ -224,7 +221,7 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", 36..37)
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 36..37))
             };
 
             AreListEqual(expected, tokens);
@@ -241,7 +238,7 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", 43..44)
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 43..44))
             };
 
             AreListEqual(expected, tokens);
@@ -258,13 +255,13 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "multi", 23..28),
-                new Token(TokenKind.Minus, "-", 28..29),
-                new Token(TokenKind.Identifier, "line", 29..33),
-                new Token(TokenKind.Identifier, "comment", 34..41),
-                new Token(TokenKind.Star, "*", 42..43),
-                new Token(TokenKind.Slash, "/", 43..44),
-                new Token(TokenKind.EOF, "<EOF>", 44..45)
+                new Token(TokenKind.Identifier, "multi", new(lexer, 23..28)),
+                new Token(TokenKind.Minus, "-", new(lexer, 28..29)),
+                new Token(TokenKind.Identifier, "line", new(lexer, 29..33)),
+                new Token(TokenKind.Identifier, "comment", new(lexer, 34..41)),
+                new Token(TokenKind.Star, "*", new(lexer, 42..43)),
+                new Token(TokenKind.Slash, "/", new(lexer, 43..44)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 44..45))
             };
 
             AreListEqual(expected, tokens);
@@ -281,13 +278,13 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "multi", 26..31),
-                new Token(TokenKind.Minus, "-", 31..32),
-                new Token(TokenKind.Identifier, "line", 32..36),
-                new Token(TokenKind.Identifier, "comment", 37..44),
-                new Token(TokenKind.Star, "*", 45..46),
-                new Token(TokenKind.Slash, "/", 46..47),
-                new Token(TokenKind.EOF, "<EOF>", 47..48)
+                new Token(TokenKind.Identifier, "multi", new(lexer, 26..31)),
+                new Token(TokenKind.Minus, "-", new(lexer, 31..32)),
+                new Token(TokenKind.Identifier, "line", new(lexer, 32..36)),
+                new Token(TokenKind.Identifier, "comment", new(lexer, 37..44)),
+                new Token(TokenKind.Star, "*", new(lexer, 45..46)),
+                new Token(TokenKind.Slash, "/", new(lexer, 46..47)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 47..48))
             };
 
             AreListEqual(expected, tokens);
@@ -304,7 +301,7 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", 0..1)
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 0..1))
             };
 
             AreListEqual(expected, tokens);
@@ -320,8 +317,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "This is a string", 0..18),
-                new Token(TokenKind.EOF, "<EOF>", 18..19)
+                new Token(TokenKind.ConstantString, "This is a string", new(lexer, 0..18)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 18..19))
             };
 
             AreListEqual(expected, tokens);
@@ -333,7 +330,7 @@ namespace MugTests
             MugLexer lexer = new MugLexer("test", STRINGS02);
             var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("String has not been correctly enclosed", ex.Message);
+            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
 
         [Test]
@@ -346,10 +343,10 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "This is a ", 0..12),
-                new Token(TokenKind.Identifier, "nested", 13..19),
-                new Token(TokenKind.ConstantString, "string", 20..28),
-                new Token(TokenKind.EOF, "<EOF>", 28..29)
+                new Token(TokenKind.ConstantString, "This is a ", new(lexer, 0..12)),
+                new Token(TokenKind.Identifier, "nested", new(lexer, 13..19)),
+                new Token(TokenKind.ConstantString, "string", new(lexer, 20..28)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 28..29))
             };
 
             AreListEqual(expected, tokens);
@@ -365,8 +362,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "\n\t\r\"", 0..10),
-                new Token(TokenKind.EOF, "<EOF>", 10..11)
+                new Token(TokenKind.ConstantString, "\n\t\r\"", new(lexer, 0..10)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 10..11))
             };
 
             AreListEqual(expected, tokens);
@@ -381,11 +378,11 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyTbool, "u1", 0..2),
-                new Token(TokenKind.ConstantString, "\\ ", 2..7),
-                new Token(TokenKind.Identifier, "t", 7..8),
-                new Token(TokenKind.Identifier, "token", 9..14),
-                new Token(TokenKind.EOF, "<EOF>", 14..15)
+                new Token(TokenKind.KeyTbool, "u1", new(lexer, 0..2)),
+                new Token(TokenKind.ConstantString, "\\ ", new(lexer, 2..7)),
+                new Token(TokenKind.Identifier, "t", new(lexer, 7..8)),
+                new Token(TokenKind.Identifier, "token", new(lexer, 9..14)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 14..15))
             };
 
             AreListEqual(expected, tokens);
@@ -395,9 +392,9 @@ namespace MugTests
         public void TestStrings06_ExceptionCaught()
         {
             MugLexer lexer = new MugLexer("test", STRINGS06);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            var ex = Assert.Throws<CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("Invalid char", ex.Message);
+            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
 
         [Test]
@@ -410,26 +407,26 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.OpenPar, "(", 0..1),
-                new Token(TokenKind.ClosePar, ")", 2..3),
-                new Token(TokenKind.OpenBracket, "[", 4..5),
-                new Token(TokenKind.CloseBracket, "]", 6..7),
-                new Token(TokenKind.OpenBrace, "{", 8..9),
-                new Token(TokenKind.CloseBrace, "}", 10..11),
-                new Token(TokenKind.BooleanLess, "<", 12..13),
-                new Token(TokenKind.BooleanGreater, ">", 14..15),
-                new Token(TokenKind.Equal, "=", 16..17),
-                new Token(TokenKind.Negation, "!", 18..19),
-                new Token(TokenKind.BooleanAND, "&", 20..21),
-                new Token(TokenKind.BooleanOR, "|", 22..23),
-                new Token(TokenKind.Plus, "+", 24..25),
-                new Token(TokenKind.Minus, "-", 26..27),
-                new Token(TokenKind.Star, "*", 28..29),
-                new Token(TokenKind.Slash, "/", 30..31),
-                new Token(TokenKind.Comma, ",", 32..33),
-                new Token(TokenKind.Colon, ":", 36..37),
-                new Token(TokenKind.Dot, ".", 38..39),
-                new Token(TokenKind.EOF, "<EOF>", 41..42)
+                new Token(TokenKind.OpenPar, "(", new(lexer, 0..1)),
+                new Token(TokenKind.ClosePar, ")", new(lexer, 2..3)),
+                new Token(TokenKind.OpenBracket, "[", new(lexer, 4..5)),
+                new Token(TokenKind.CloseBracket, "]", new(lexer, 6..7)),
+                new Token(TokenKind.OpenBrace, "{", new(lexer, 8..9)),
+                new Token(TokenKind.CloseBrace, "}", new(lexer, 10..11)),
+                new Token(TokenKind.BooleanLess, "<", new(lexer, 12..13)),
+                new Token(TokenKind.BooleanGreater, ">", new(lexer, 14..15)),
+                new Token(TokenKind.Equal, "=", new(lexer, 16..17)),
+                new Token(TokenKind.Negation, "!", new(lexer, 18..19)),
+                new Token(TokenKind.BooleanAND, "&", new(lexer, 20..21)),
+                new Token(TokenKind.BooleanOR, "|", new(lexer, 22..23)),
+                new Token(TokenKind.Plus, "+", new(lexer, 24..25)),
+                new Token(TokenKind.Minus, "-", new(lexer, 26..27)),
+                new Token(TokenKind.Star, "*", new(lexer, 28..29)),
+                new Token(TokenKind.Slash, "/", new(lexer, 30..31)),
+                new Token(TokenKind.Comma, ",", new(lexer, 32..33)),
+                new Token(TokenKind.Colon, ":", new(lexer, 36..37)),
+                new Token(TokenKind.Dot, ".", new(lexer, 38..39)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 41..42))
             };
 
             AreListEqual(expected, tokens);
@@ -445,18 +442,18 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.BooleanEQ, "==", 0..2),
-                new Token(TokenKind.BooleanNEQ, "!=", 3..5),
-                new Token(TokenKind.OperatorIncrement, "++", 6..8),
-                new Token(TokenKind.AddAssignment, "+=", 9..11),
-                new Token(TokenKind.OperatorDecrement, "--", 12..14),
-                new Token(TokenKind.SubAssignment, "-=", 15..17),
-                new Token(TokenKind.MulAssignment, "*=", 18..20),
-                new Token(TokenKind.DivAssignment, "/=", 21..23),
-                new Token(TokenKind.BooleanLEQ, "<=", 24..26),
-                new Token(TokenKind.BooleanGEQ, ">=", 27..29),
-                new Token(TokenKind.RangeDots, "..", 30..32),
-                new Token(TokenKind.EOF, "<EOF>", 32..33)
+                new Token(TokenKind.BooleanEQ, "==", new(lexer, 0..2)),
+                new Token(TokenKind.BooleanNEQ, "!=", new(lexer, 3..5)),
+                new Token(TokenKind.OperatorIncrement, "++", new(lexer, 6..8)),
+                new Token(TokenKind.AddAssignment, "+=", new(lexer, 9..11)),
+                new Token(TokenKind.OperatorDecrement, "--", new(lexer, 12..14)),
+                new Token(TokenKind.SubAssignment, "-=", new(lexer, 15..17)),
+                new Token(TokenKind.MulAssignment, "*=", new(lexer, 18..20)),
+                new Token(TokenKind.DivAssignment, "/=", new(lexer, 21..23)),
+                new Token(TokenKind.BooleanLEQ, "<=", new(lexer, 24..26)),
+                new Token(TokenKind.BooleanGEQ, ">=", new(lexer, 27..29)),
+                new Token(TokenKind.RangeDots, "..", new(lexer, 30..32)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 32..33))
             };
 
             AreListEqual(expected, tokens);
@@ -472,38 +469,38 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyReturn, "return", 0..6),
-                new Token(TokenKind.KeyContinue, "continue", 7..15),
-                new Token(TokenKind.KeyBreak, "break", 16..21),
-                new Token(TokenKind.KeyWhile, "while", 22..27),
-                new Token(TokenKind.KeyPub, "pub", 28..31),
-                new Token(TokenKind.KeyUse, "use", 32..35),
-                new Token(TokenKind.KeyImport, "import", 36..42),
-                new Token(TokenKind.KeyNew, "new", 43..46),
-                new Token(TokenKind.KeyFor, "for", 47..50),
-                new Token(TokenKind.KeyType, "type", 51..55),
-                new Token(TokenKind.KeyAs, "as", 56..58),
-                new Token(TokenKind.KeyIn, "in", 59..61),
-                new Token(TokenKind.KeyTo, "to", 62..64),
-                new Token(TokenKind.KeyIf, "if", 65..67),
-                new Token(TokenKind.KeyElif, "elif", 68..72),
-                new Token(TokenKind.KeyElse, "else", 73..77),
-                new Token(TokenKind.KeyFunc, "func", 78..82),
-                new Token(TokenKind.KeyVar, "var", 83..86),
-                new Token(TokenKind.KeyConst, "const", 87..92),
-                new Token(TokenKind.KeyTstr, "str", 93..96),
-                new Token(TokenKind.KeyTchr, "chr", 97..100),
-                new Token(TokenKind.KeyTbool, "u1", 101..103),
-                new Token(TokenKind.KeyTi32, "i32", 107..110),
-                new Token(TokenKind.KeyTi64, "i64", 111..114),
-                new Token(TokenKind.KeyTu8, "u8", 115..117),
-                new Token(TokenKind.KeyTu32, "u32", 118..121),
-                new Token(TokenKind.KeyTu64, "u64", 122..125),
-                new Token(TokenKind.KeyTunknown, "unknown", 126..133),
-                new Token(TokenKind.KeyWhen, "when", 134..138),
-                new Token(TokenKind.KeyDeclare, "declare", 139..146),
-                new Token(TokenKind.KeyTVoid, "void", 147..151),
-                new Token(TokenKind.EOF, "<EOF>", 151..152)
+                new Token(TokenKind.KeyReturn, "return", new(lexer, 0..6)),
+                new Token(TokenKind.KeyContinue, "continue", new(lexer, 7..15)),
+                new Token(TokenKind.KeyBreak, "break", new(lexer, 16..21)),
+                new Token(TokenKind.KeyWhile, "while", new(lexer, 22..27)),
+                new Token(TokenKind.KeyPub, "pub", new(lexer, 28..31)),
+                new Token(TokenKind.KeyUse, "use", new(lexer, 32..35)),
+                new Token(TokenKind.KeyImport, "import", new(lexer, 36..42)),
+                new Token(TokenKind.KeyNew, "new", new(lexer, 43..46)),
+                new Token(TokenKind.KeyFor, "for", new(lexer, 47..50)),
+                new Token(TokenKind.KeyType, "type", new(lexer, 51..55)),
+                new Token(TokenKind.KeyAs, "as", new(lexer, 56..58)),
+                new Token(TokenKind.KeyIn, "in", new(lexer, 59..61)),
+                new Token(TokenKind.KeyTo, "to", new(lexer, 62..64)),
+                new Token(TokenKind.KeyIf, "if", new(lexer, 65..67)),
+                new Token(TokenKind.KeyElif, "elif", new(lexer, 68..72)),
+                new Token(TokenKind.KeyElse, "else", new(lexer, 73..77)),
+                new Token(TokenKind.KeyFunc, "func", new(lexer, 78..82)),
+                new Token(TokenKind.KeyVar, "var", new(lexer, 83..86)),
+                new Token(TokenKind.KeyConst, "const", new(lexer, 87..92)),
+                new Token(TokenKind.KeyTstr, "str", new(lexer, 93..96)),
+                new Token(TokenKind.KeyTchr, "chr", new(lexer, 97..100)),
+                new Token(TokenKind.KeyTbool, "u1", new(lexer, 101..103)),
+                new Token(TokenKind.KeyTi32, "i32", new(lexer, 107..110)),
+                new Token(TokenKind.KeyTi64, "i64", new(lexer, 111..114)),
+                new Token(TokenKind.KeyTu8, "u8", new(lexer, 115..117)),
+                new Token(TokenKind.KeyTu32, "u32", new(lexer, 118..121)),
+                new Token(TokenKind.KeyTu64, "u64", new(lexer, 122..125)),
+                new Token(TokenKind.KeyTunknown, "unknown", new(lexer, 126..133)),
+                new Token(TokenKind.KeyWhen, "when", new(lexer, 134..138)),
+                new Token(TokenKind.KeyDeclare, "declare", new(lexer, 139..146)),
+                new Token(TokenKind.KeyTVoid, "void", new(lexer, 147..151)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 151..152))
             };
 
             AreListEqual(expected, tokens);
@@ -519,17 +516,17 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyReturn, "return", 0..6),
-                new Token(TokenKind.BooleanEQ, "==", 7..9),
-                new Token(TokenKind.OpenPar, "(", 10..11),
-                new Token(TokenKind.ClosePar, ")", 12..13),
-                new Token(TokenKind.AddAssignment, "+=", 14..16),
-                new Token(TokenKind.KeyContinue, "continue", 17..25),
-                new Token(TokenKind.KeyPub, "pub", 26..29),
-                new Token(TokenKind.Negation, "!", 30..31),
-                new Token(TokenKind.MulAssignment, "*=", 32..34),
-                new Token(TokenKind.RangeDots, "..", 35..37),
-                new Token(TokenKind.EOF, "<EOF>", 37..38)
+                new Token(TokenKind.KeyReturn, "return", new(lexer, 0..6)),
+                new Token(TokenKind.BooleanEQ, "==", new(lexer, 7..9)),
+                new Token(TokenKind.OpenPar, "(", new(lexer, 10..11)),
+                new Token(TokenKind.ClosePar, ")", new(lexer, 12..13)),
+                new Token(TokenKind.AddAssignment, "+=", new(lexer, 14..16)),
+                new Token(TokenKind.KeyContinue, "continue", new(lexer, 17..25)),
+                new Token(TokenKind.KeyPub, "pub", new(lexer, 26..29)),
+                new Token(TokenKind.Negation, "!", new(lexer, 30..31)),
+                new Token(TokenKind.MulAssignment, "*=", new(lexer, 32..34)),
+                new Token(TokenKind.RangeDots, "..", new(lexer, 35..37)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 37..38))
             };
 
             AreListEqual(expected, tokens);
@@ -545,8 +542,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantChar, "c", 0..3),
-                new Token(TokenKind.EOF, "<EOF>", 3..4)
+                new Token(TokenKind.ConstantChar, "c", new(lexer, 0..3)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
             };
 
             AreListEqual(expected, tokens);
@@ -558,16 +555,16 @@ namespace MugTests
             MugLexer lexer = new MugLexer("test", CHARS02);
             var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("Char has not been correctly enclosed", ex.Message);
+            Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
 
         [Test]
         public void TestChars03_TooManyChars()
         {
             MugLexer lexer = new MugLexer("test", CHARS03);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            lexer.Tokenize();
 
-            Assert.AreEqual("Too many characters in const char", ex.Message);
+            Assert.AreEqual("Too many characters in const char", lexer.DiagnosticBag.GetErrors().First().Message);
         }
 
         [Test]
@@ -580,8 +577,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.ConstantChar, "\\", 0..4),
-                new Token(TokenKind.EOF, "<EOF>", 4..5)
+                new Token(TokenKind.ConstantChar, "\\", new(lexer, 0..4)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 4..5))
             };
 
             AreListEqual(expected, tokens);
@@ -591,9 +588,10 @@ namespace MugTests
         public void TestChars05_TooManyEscapedChars()
         {
             MugLexer lexer = new MugLexer("test", CHARS05);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            lexer.Tokenize();
+            Assert.AreEqual(lexer.DiagnosticBag.Count, 1);
 
-            Assert.AreEqual("Too many characters in const char", ex.Message);
+            Assert.AreEqual("Too many characters in const char", lexer.DiagnosticBag.GetErrors().First().Message);
         }
 
         [Test]
@@ -606,8 +604,8 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "*", 0..3),
-                new Token(TokenKind.EOF, "<EOF>", 3..4)
+                new Token(TokenKind.Identifier, "*", new(lexer, 0..3)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
             };
 
             AreListEqual(expected, tokens);
@@ -617,18 +615,18 @@ namespace MugTests
         public void TestBackticks02_OneChar()
         {
             MugLexer lexer = new MugLexer("test", BACKTICKS02);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            lexer.Tokenize();
 
-            Assert.AreEqual("Backtick sequence has not been correctly enclosed", ex.Message);
+            Assert.AreEqual("Backtick sequence has not been correctly enclosed", lexer.DiagnosticBag.GetErrors().First().Message);
         }
 
         [Test]
         public void TestBackticks03_Empty()
         {
             MugLexer lexer = new MugLexer("test", BACKTICKS03);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            lexer.Tokenize();
 
-            Assert.AreEqual("Not enough characters in backtick sequence", ex.Message);
+            Assert.AreEqual("Not enough characters in backtick sequence", lexer.DiagnosticBag.GetErrors().First().Message);
         }
     }
 }

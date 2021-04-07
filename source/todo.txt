@@ -45,3 +45,4 @@ done: +
 - fix <null>/10
 - infer generic type in base-with methdods
 - fix code pragma
+- fix lexer errors using lexertests
