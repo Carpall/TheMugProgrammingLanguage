@@ -48,3 +48,6 @@ done: +
 - fix lexer errors using lexertests
 - consider using boolean operator positions for 'as' operator
 - add 'with' operator
+- consider adding an intermediate phase between the irgenerator and the llvm interface -> irgenerator shouldn't comunicate with llvm anymore
+- refactor 'or' and 'and' emit functions and 'ret'
+- add constant globally

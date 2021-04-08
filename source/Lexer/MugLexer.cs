@@ -110,7 +110,6 @@ namespace Mug.Models.Lexer
             "when" => AddKeyword(TokenKind.KeyWhen, s),
             "declare" => AddKeyword(TokenKind.KeyDeclare, s),
             "catch" => AddKeyword(TokenKind.KeyCatch, s),
-            "error" => AddKeyword(TokenKind.KeyError, s),
             _ => false
         };
 
