@@ -1,4 +1,4 @@
-﻿using LLVMSharp.Interop;
+using LLVMSharp.Interop;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
@@ -142,21 +142,10 @@ namespace Mug.Compilation
             }
         }
 
-        private void Parse()
-        {
-            if (_paths is not null)
-            {
-                GeneratePaths();
-                return;
-            }
-
-            IRGenerator.Parser.Parse();
-        }
-
         public INode GenerateAST()
         {
             IRGenerator.Parser.Lexer.Tokenize();
-            Parse();
+            IRGenerator.Parser.Parse();
 
             return IRGenerator.Parser.Module;
         }
@@ -179,7 +168,6 @@ namespace Mug.Compilation
                 head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
             }
 
-            IRGenerator._isMainModule = true;
             IRGenerator.Parser.Module = head;
             IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");
         }
@@ -189,11 +177,19 @@ namespace Mug.Compilation
         /// </param>
         public void Generate(bool verifyLLVMModule = true, bool dump = false)
         {
+            if (_paths is not null)
+            {
+                GeneratePaths();
+                _paths = null;
+                Generate(verifyLLVMModule);
+                return;
+            }
+
             GenerateAST();
             IRGenerator.Generate();
 
-	        if (dump)
-	            IRGenerator.Module.Dump();
+	    if (dump)
+	        IRGenerator.Module.Dump();
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))
