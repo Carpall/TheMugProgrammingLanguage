@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Mug.Models.Generator
 {
@@ -29,7 +30,7 @@ namespace Mug.Models.Generator
         internal List<string> Paths = new(); /// to put in map
 
         private readonly Dictionary<string, List<FunctionNode>> _genericFunctions = new();
-        internal bool _isMainModule = false;
+        internal bool IsMainModule = false;
 
         internal int SizeOfPointer => (int)LLVMTargetDataRef.FromStringRepresentation(Module.DataLayout)
                     .StoreSizeOfType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0));
@@ -49,7 +50,7 @@ namespace Mug.Models.Generator
         {
             Parser = parser;
             Module = LLVMModuleRef.CreateWithName(moduleName);
-            _isMainModule = isMainModule;
+            IsMainModule = isMainModule;
             Table = new(this);
         }
 
@@ -861,7 +862,7 @@ namespace Mug.Models.Generator
             foreach (var member in Parser.Module.Members.Nodes)
                 RecognizeMember(member);
 
-            if (_isMainModule)
+            if (IsMainModule)
                 // generate all functions here
                 GenerateEntrypoint();
 

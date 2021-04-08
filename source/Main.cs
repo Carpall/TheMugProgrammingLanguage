@@ -13,15 +13,13 @@ try
 
     const string test = @"
 
-type A { a: i32 }
-type B { b: i64 }
+type A { a: AB }
+type B { b: i32 }
 
-type AB = ( i32 | i64 )
+type AB = ( A | B )
 
-func main(): i32 {
-  var node = (10 as i64) as AB
-  // var nodeis = node is i32 i
-  return unbox<i32>(node)
+func main() {
+    const x = new A { } as AB
 }
 
 ";

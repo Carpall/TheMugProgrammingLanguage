@@ -80,7 +80,6 @@ USAGE: mug <action> <file> <options> *output <name>
 HELP: uses the next argument as output file name. The extension is not required
 ";
 
-        private readonly string[] _allowedExtensions = new[] { ".mug" };
         private string[] _arguments = null;
         private int _argumentSelector = 0;
         private readonly List<string> _preDeclaredSymbols = new();
@@ -277,7 +276,7 @@ HELP: uses the next argument as output file name. The extension is not required
 
             CheckPath(src);
 
-            if (!_allowedExtensions.Contains(Path.GetExtension(src)))
+            if (!CompilationUnit.AllowedExtensions.Contains(Path.GetExtension(src)))
                 CompilationErrors.Throw($"Unable to recognize source file kind '{src}'");
 
             return src;

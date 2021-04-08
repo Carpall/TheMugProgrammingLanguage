@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace Mug.MugValueSystem
 {
-    public struct MugValueType
+    public class MugValueType
     {
         private object BaseType { get; set; }
         public MugValueTypeKind TypeKind { get; set; }

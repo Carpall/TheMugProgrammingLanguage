@@ -71,7 +71,7 @@ namespace Mug.Models.Generator
         /// <summary>
         /// converts a constant in token format to one in LLVMValueRef format
         /// </summary>
-        internal MugValue ConstToMugConst(Token constant, ModulePosition position, bool isenum = false, MugValueType forcedIntSize = new())
+        internal MugValue ConstToMugConst(Token constant, ModulePosition position, bool isenum = false, MugValueType forcedIntSize = null)
         {
             LLVMValueRef llvmvalue = new();
             MugValueType type = new();
@@ -540,6 +540,12 @@ namespace Mug.Models.Generator
             return result;
         }
 
+        private bool AreBothNullOrBothNot(object left, object right) {
+            return
+                (left is null && right is null) ||
+                (left is not null && right is not null);
+        }
+
         private FunctionSymbol? GetFunctionSymbol(
             ref MugValue? basevalue,
             string name,
@@ -572,16 +578,17 @@ namespace Mug.Models.Generator
 
                 // parameters are null when then function has diffent generics number from 'generics' (this is a side effect caused by EvaluateGenericFunctionOverloads)
                 if (function.Parameters is null ||
-                    parameters.Length != function.Parameters.Length || basevalue.HasValue != function.BaseType.HasValue)
+                    parameters.Length != function.Parameters.Length ||
+                    !AreBothNullOrBothNot(basevalue, function.BaseType))
                     continue;
 
                 if (basevalue.HasValue)
                 {
                     _emitter.Load(basevalue.Value);
-                    _emitter.CoerceConstantSizeTo(function.BaseType.Value);
+                    _emitter.CoerceConstantSizeTo(function.BaseType);
 
                     basevalue = _emitter.Pop();
-                    if (!basevalue.Value.Type.Equals(function.BaseType.Value))
+                    if (!basevalue.Value.Type.Equals(function.BaseType))
                         continue;
                 }
 
@@ -630,7 +637,7 @@ namespace Mug.Models.Generator
             for (int i = 0; i < parameters.Length; i++)
                 types[i] = parameters[i].Type;
             
-            Report(position, $"No overload of function '{name}' accepts {(parameters.Length > 0 ? $"'{string.Join("', '", types)}' as parameter{IRGenerator.GetPlural(parameters.Length)}" : "no parameters")}{(basevalue.HasValue ? $" and with '{basevalue.Value.Type}' as base type" : "")}");
+            Report(position, $"No overload of function '{name}' accepts {(parameters.Length > 0 ? $"'{string.Join<MugValueType>("', '", types)}' as parameter{IRGenerator.GetPlural(parameters.Length)}" : "no parameters")}{(basevalue.HasValue ? $" and with '{basevalue.Value.Type}' as base type" : "")}");
             return null;
         }
 
@@ -674,13 +681,13 @@ namespace Mug.Models.Generator
             var functionType = function?.ReturnType;
 
             if (expectedNonVoid)
-                _generator.ExpectNonVoidType(functionType.Value.LLVMType(_generator), c.Position);
+                _generator.ExpectNonVoidType(functionType.LLVMType(_generator), c.Position);
 
-            _emitter.Call(function.Value.Value.LLVMValue, parameters, functionType.Value, basevalue);
+            _emitter.Call(function.Value.Value.LLVMValue, parameters, functionType, basevalue);
 
-            if (!isInCatch && functionType.Value.TypeKind == MugValueTypeKind.EnumError)
+            if (!isInCatch && functionType.TypeKind == MugValueTypeKind.EnumError)
                 return Report(c.Position, "Uncatched enum error");
-            else if (isInCatch && functionType.Value.TypeKind != MugValueTypeKind.EnumError)
+            else if (isInCatch && functionType.TypeKind != MugValueTypeKind.EnumError)
                 return Report(c.Position, "Catched a non enum error");
 
             return true;

@@ -6,12 +6,13 @@ using Mug.Models.Parser.NodeKinds;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
+using System.Linq;
 
 namespace Mug.Compilation
 {
     public class CompilationUnit
     {
+        public static readonly string[] AllowedExtensions = new[] { ".mug" };
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
         private string[] _paths;
@@ -19,10 +20,11 @@ namespace Mug.Compilation
         {
             get
             {
-                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-                    return "C:/Program Files/LLVM/bin/clang.exe";
-                else
-                    return "/usr/bin/clang";
+                return Environment.OSVersion.Platform switch
+                {
+                    PlatformID.Win32NT => "C:/Program Files/LLVM/bin/clang.exe",
+                    _ => "/usr/bin/clang"
+                };
             }
         }
         internal const string MainFileName = "main.mug";
@@ -142,10 +144,21 @@ namespace Mug.Compilation
             }
         }
 
+        private void Parse()
+        {
+            if (_paths is not null)
+            {
+                GeneratePaths();
+                return;
+            }
+
+            IRGenerator.Parser.Parse();
+        }
+
         public INode GenerateAST()
         {
             IRGenerator.Parser.Lexer.Tokenize();
-            IRGenerator.Parser.Parse();
+            Parse();
 
             return IRGenerator.Parser.Module;
         }
@@ -168,6 +181,7 @@ namespace Mug.Compilation
                 head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
             }
 
+            IRGenerator.IsMainModule = true;
             IRGenerator.Parser.Module = head;
             IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");
         }
@@ -177,14 +191,6 @@ namespace Mug.Compilation
         /// </param>
         public void Generate(bool verifyLLVMModule = true, bool dump = false)
         {
-            if (_paths is not null)
-            {
-                GeneratePaths();
-                _paths = null;
-                Generate(verifyLLVMModule);
-                return;
-            }
-
             GenerateAST();
             IRGenerator.Generate();
 

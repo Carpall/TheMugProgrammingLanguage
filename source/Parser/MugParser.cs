@@ -472,11 +472,11 @@ namespace Mug.Models.Parser
             return condition is not null && condition.Expression is null;
         }
 
-        private bool MatchTerm(out INode e, bool allowCallStatement = true)
+        private bool MatchTerm(out INode e, bool allowNullExpression)
         {
             if (MatchPrefixOperator(out var prefixOP))
             {
-                if (!MatchTerm(out e, allowCallStatement))
+                if (!MatchTerm(out e, false))
                 {
                     Report("Unexpected prefix operator");
                     return false;
@@ -501,7 +501,7 @@ namespace Mug.Models.Parser
                     return true;
             }
 
-            if (e is null)
+            if (e is null && !allowNullExpression)
             {
                 Report("Expected term");
                 return false;
@@ -509,7 +509,7 @@ namespace Mug.Models.Parser
 
             CollectPossibleArrayAccessNode(ref e);
 
-            if (allowCallStatement && MatchCallStatement(out var call, e))
+            if (MatchCallStatement(out var call, e))
                 e = call;
 
             CollectPossibleArrayAccessNode(ref e);
@@ -522,7 +522,7 @@ namespace Mug.Models.Parser
 
         private INode ExpectFactor()
         {
-            if (!MatchFactor(out INode e) &&
+            if (!MatchFactor(out INode e, false) &&
                 !MatchInParExpression(out e))
                 ParseError("Expected expression factor here");
 
@@ -554,17 +554,17 @@ namespace Mug.Models.Parser
             return new FieldAssignmentNode() { Name = name.Value.ToString(), Body = expression, Position = name.Position };
         }
 
-        private INode ExpectTerm(bool allowCallStatement = true)
+        private INode ExpectTerm()
         {
-            if (!MatchTerm(out var e, allowCallStatement))
+            if (!MatchTerm(out var e, false))
                 Report("Expected term");
 
             return e;
         }
 
-        private bool MatchFactor(out INode e)
+        private bool MatchFactor(out INode e, bool allowNullExpression)
         {
-            if (!MatchTerm(out e))
+            if (!MatchTerm(out e, allowNullExpression))
                 return false;
 
             if (MatchFactorOps())
@@ -578,7 +578,7 @@ namespace Mug.Models.Parser
                         op = Back;
                     else
                         break;
-                } while (MatchTerm(out right));
+                } while (MatchTerm(out right, allowNullExpression));
             }
 
             return true;
@@ -663,7 +663,7 @@ namespace Mug.Models.Parser
             if (Current.Kind == TokenKind.EOL)
                 _currentIndex++;
 
-            if (MatchFactor(out var e))
+            if (MatchFactor(out var e, allowNullExpression))
             {
                 if (MatchPlusMinus())
                 {
@@ -677,7 +677,7 @@ namespace Mug.Models.Parser
                             op = Back;
                         else
                             break;
-                    } while (MatchFactor(out right));
+                    } while (MatchFactor(out right, allowNullExpression));
                 }
             }
 
