@@ -18,10 +18,10 @@ type B { b: i64 }
 
 type AB = ( i32 | i64 )
 
-func main() {
+func main(): i32 {
   var node = (10 as i64) as AB
-  var nodeis = node is i32
-  var a = unbox<i32>(node)
+  // var nodeis = node is i32 i
+  return unbox<i32>(node)
 }
 
 ";

@@ -210,7 +210,7 @@ HELP: uses the next argument as output file name. The extension is not required
                     break;
                 case CompilationTarget.Bytecode:
                     DeclareSymbol("ll");
-                    unit.Generate();
+                    unit.Generate(false);
                     DumpBytecode(GetOutputPath(), unit.IRGenerator.Module);
                     break;
                 case CompilationTarget.AbstractSyntaxTree:

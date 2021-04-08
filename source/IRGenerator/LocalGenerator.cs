@@ -734,7 +734,7 @@ namespace Mug.Models.Generator
                 if (index == -1)
                     return Report(position, $"Variant type '{boxtype.Name}' does not include type '{castType}'");
 
-                _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(gepOF(UnboxValue(expr, castType).LLVMValue, 1)), castType));
+                _emitter.Load(UnboxValue(expr, boxtype, castType));
             }
 
             return true;
@@ -824,10 +824,7 @@ namespace Mug.Models.Generator
 
             if (alias.HasValue)
             {
-                if (!righttype.RawEquals(_generator.GetBiggestTypeOFVariant(boxtype)))
-                    _emitter.Load(UnboxValue(value, righttype));
-                else
-                    _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(gepOF(value.LLVMValue, 1)), righttype));
+                _emitter.Load(UnboxValue(value, boxtype, righttype));
 
                 if (!_emitter.DeclareConstant(alias.Value.Value, alias.Value.Position))
                     return false;
@@ -837,7 +834,17 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private MugValue UnboxValue(MugValue value, MugValueType righttype)
+        private MugValue UnboxValue(MugValue value, VariantStatement boxtype, MugValueType castType)
+        {
+            return
+                MugValue.From(_emitter.Builder.BuildLoad(
+                    gepOF(
+                        !castType.RawEquals(_generator.GetBiggestTypeOFVariant(boxtype)) ? EmitUnbox(value, castType).LLVMValue : value.LLVMValue,
+                        1)
+                    ), castType);
+        }
+
+        private MugValue EmitUnbox(MugValue value, MugValueType righttype)
         {
             return MugValue.From(
                 _emitter.Builder.BuildBitCast(
