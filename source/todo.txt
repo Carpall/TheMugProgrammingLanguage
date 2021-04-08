@@ -46,3 +46,5 @@ done: +
 - infer generic type in base-with methdods
 - fix code pragma
 - fix lexer errors using lexertests
+- consider using boolean operator positions for 'as' operator
+- add 'with' operator

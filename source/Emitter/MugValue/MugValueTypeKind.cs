@@ -19,6 +19,7 @@
         Float32,
         Float64,
         Float128,
-        Undefined
+        Undefined,
+        Variant
     }
 }

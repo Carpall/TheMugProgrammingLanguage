@@ -85,6 +85,7 @@ namespace Mug.Models.Lexer
             "type" => AddKeyword(TokenKind.KeyType, s),
             "enum" => AddKeyword(TokenKind.KeyEnum, s),
             "as" => AddKeyword(TokenKind.KeyAs, s),
+            "is" => AddKeyword(TokenKind.KeyIs, s),
             "in" => AddKeyword(TokenKind.KeyIn, s),
             "to" => AddKeyword(TokenKind.KeyTo, s),
             "if" => AddKeyword(TokenKind.KeyIf, s),
@@ -101,7 +102,7 @@ namespace Mug.Models.Lexer
             "f64" => AddKeyword(TokenKind.KeyTf64, s),
             "f128" => AddKeyword(TokenKind.KeyTf128, s),
             "void" => AddKeyword(TokenKind.KeyTVoid, s),
-            "u1" => AddKeyword(TokenKind.KeyTbool, s),
+            "bool" => AddKeyword(TokenKind.KeyTbool, s),
             "u8" => AddKeyword(TokenKind.KeyTu8, s),
             "u32" => AddKeyword(TokenKind.KeyTu32, s),
             "u64" => AddKeyword(TokenKind.KeyTu64, s),
@@ -515,9 +516,6 @@ namespace Mug.Models.Lexer
         /// </summary>
         private void ProcessCurrentChar()
         {
-            if (Current == '\r')
-                return;
-
             // remove useless comments
             ConsumeComments();
 
@@ -528,13 +526,12 @@ namespace Mug.Models.Lexer
             if (Current == '\r')
             {
                 if (TokenCollection.LastOrDefault().Kind != TokenKind.EOL)
-                    TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos((CurrentIndex - 1)..CurrentIndex)));
+                    TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos(CurrentIndex..(++CurrentIndex))));
 
-                // consumes all contiguous \n in one token
-                while (CurrentIndex < Source.Length && Current == '\n')
-                        CurrentIndex++;
+                // detecting CRLF
+                var CRLFOffset = HasNext() && Source[CurrentIndex + 1] == '\n';
 
-                CurrentIndex--;
+                CurrentIndex += Convert.ToInt32(CRLFOffset);
                 return;
             }
 

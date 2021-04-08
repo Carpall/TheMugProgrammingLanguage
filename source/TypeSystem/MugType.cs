@@ -98,7 +98,7 @@ namespace Mug.TypeSystem
             {
                 TypeKind.Auto => "auto",
                 TypeKind.Array => $"[{BaseType}]",
-                TypeKind.Bool => "u1",
+                TypeKind.Bool => "bool",
                 TypeKind.Char => "chr",
                 TypeKind.DefinedType => BaseType.ToString(),
                 TypeKind.GenericDefinedType => GetGenericStructure().Item1.ToString(),
@@ -149,6 +149,9 @@ namespace Mug.TypeSystem
             var symbol = generator.GetType(name, generics, out var error);
             if (!symbol.HasValue) // could be a generic type, a enum type
             {
+                if (generator.Table.IsAVariantType(name, out var variant))
+                    return variant.Value;
+
                 var enumtype = generator.Table.GetEnumType(name, position, false);
                 if (enumtype.HasValue)
                     return enumtype.Value.Type;
@@ -215,11 +218,6 @@ namespace Mug.TypeSystem
         private (MugType, MugType) GetEnumError()
         {
             return ((MugType, MugType))BaseType;
-        }
-
-        public bool IsAllocableTypeNew()
-        {
-            return Kind == TypeKind.DefinedType || Kind == TypeKind.GenericDefinedType || Kind == TypeKind.Array || Kind == TypeKind.Pointer;
         }
 
         public override bool Equals(object obj)

@@ -92,14 +92,14 @@ namespace Mug.Models.Generator.Emitter
         {
             var value = Pop();
             Load(
-                MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType), type, isconstant: value.IsConstant));
+                MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType(_generator)), type, isconstant: value.IsConstant));
         }
 
         public void CastIntToFloat(MugValueType type)
         {
             var value = Pop();
             Load(
-                MugValue.From(Builder.BuildSIToFP(value.LLVMValue, type.LLVMType), type, isconstant: value.IsConstant));
+                MugValue.From(Builder.BuildSIToFP(value.LLVMValue, type.LLVMType(_generator)), type, isconstant: value.IsConstant));
         }
 
         public MugValue? GetMemoryAllocation(string name, ModulePosition position)
@@ -140,16 +140,16 @@ namespace Mug.Models.Generator.Emitter
             if (first.IsConstant && second.IsConstant)
             {
                 if (second.Type.Size(_generator.SizeOfPointer) >= first.Type.Size(_generator.SizeOfPointer))
-                    first = MugValue.From(Builder.BuildIntCast(first.LLVMValue, second.Type.LLVMType), second.Type, first.IsConst, first.IsConstant);
+                    first = MugValue.From(Builder.BuildIntCast(first.LLVMValue, second.Type.LLVMType(_generator)), second.Type, first.IsConst, first.IsConstant);
                 else
-                    second = MugValue.From(Builder.BuildIntCast(second.LLVMValue, first.Type.LLVMType), first.Type, second.IsConst, second.IsConstant);
+                    second = MugValue.From(Builder.BuildIntCast(second.LLVMValue, first.Type.LLVMType(_generator)), first.Type, second.IsConst, second.IsConstant);
             }
             else if (second.Type.MatchIntType() && first.Type.MatchIntType())
             {
                 if (second.IsConstant)
-                    second = MugValue.From(Builder.BuildIntCast(second.LLVMValue, first.Type.LLVMType), first.Type, first.IsConst, second.IsConstant);
+                    second = MugValue.From(Builder.BuildIntCast(second.LLVMValue, first.Type.LLVMType(_generator)), first.Type, first.IsConst, second.IsConstant);
                 else if (first.IsConstant)
-                    first = MugValue.From(Builder.BuildIntCast(first.LLVMValue, second.Type.LLVMType), second.Type, second.IsConst, first.IsConstant);
+                    first = MugValue.From(Builder.BuildIntCast(first.LLVMValue, second.Type.LLVMType(_generator)), second.Type, second.IsConst, first.IsConstant);
             }
 
             Load(first);
@@ -165,16 +165,16 @@ namespace Mug.Models.Generator.Emitter
             if (first.IsConstant && second.IsConstant)
             {
                 if (second.Type.Size(_generator.SizeOfPointer) >= first.Type.Size(_generator.SizeOfPointer))
-                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType), second.Type, first.IsConst, first.IsConstant);
+                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType(_generator)), second.Type, first.IsConst, first.IsConstant);
                 else
-                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType), first.Type, second.IsConst, second.IsConstant);
+                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType(_generator)), first.Type, second.IsConst, second.IsConstant);
             }
             else if (second.Type.MatchFloatType() && first.Type.MatchFloatType())
             {
                 if (second.IsConstant)
-                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType), first.Type, first.IsConst, first.IsConstant);
+                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType(_generator)), first.Type, first.IsConst, first.IsConstant);
                 else if (first.IsConstant)
-                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType), second.Type, second.IsConst, second.IsConstant);
+                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType(_generator)), second.Type, second.IsConst, second.IsConstant);
             }
 
             Load(first);
@@ -189,9 +189,9 @@ namespace Mug.Models.Generator.Emitter
             if (first.IsConstant && second.IsConstant)
             {
                 if (first.Type.MatchIntType() && second.Type.MatchFloatType())
-                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType), second.Type, first.IsConst, first.IsConstant);
+                    first = MugValue.From(Builder.BuildFPCast(first.LLVMValue, second.Type.LLVMType(_generator)), second.Type, first.IsConst, first.IsConstant);
                 else if (second.Type.MatchIntType() && first.Type.MatchFloatType())
-                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType), first.Type, second.IsConst, second.IsConstant);
+                    second = MugValue.From(Builder.BuildFPCast(second.LLVMValue, first.Type.LLVMType(_generator)), first.Type, second.IsConst, second.IsConstant);
             }
 
             Load(first);
@@ -214,7 +214,7 @@ namespace Mug.Models.Generator.Emitter
             var value = Pop();
 
             if (value.Type.MatchIntType() && value.IsConstant)
-                value = MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType), type, value.IsConst, value.IsConstant);
+                value = MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType(_generator)), type, value.IsConst, value.IsConstant);
 
             Load(value);
         }
@@ -226,11 +226,18 @@ namespace Mug.Models.Generator.Emitter
             if (value.IsConstant)
             {
                 if (value.Type.MatchIntType())
-                    value = MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType), type, value.IsConst, value.IsConstant);
+                    value = MugValue.From(Builder.BuildIntCast(value.LLVMValue, type.LLVMType(_generator)), type, value.IsConst, value.IsConstant);
                 else if (value.Type.MatchFloatType())
-                    value = MugValue.From(Builder.BuildFPCast(value.LLVMValue, type.LLVMType), type, value.IsConst, value.IsConstant);
+                    value = MugValue.From(Builder.BuildFPCast(value.LLVMValue, type.LLVMType(_generator)), type, value.IsConst, value.IsConstant);
             }
 
+            Load(value);
+        }
+
+        public void MakeBox()
+        {
+            var value = Pop();
+            value.Type = MugValueType.Variant(value.Type.GetVariant());
             Load(value);
         }
 
@@ -251,7 +258,7 @@ namespace Mug.Models.Generator.Emitter
             Load(value);
         }
 
-        private bool AlreadyDeclared(string name, ModulePosition position)
+        public bool AlreadyDeclared(string name, ModulePosition position)
         {
             if (IsDeclared(name))
             {
@@ -269,17 +276,18 @@ namespace Mug.Models.Generator.Emitter
 
             SetMemory(
                 name,
-                MugValue.From(Builder.BuildAlloca(type.LLVMType, name), type));
+                MugValue.From(Builder.BuildAlloca(type.LLVMType(_generator), name), type));
         }
 
-        public void DeclareConstant(string name, ModulePosition position)
+        public bool DeclareConstant(string name, ModulePosition position)
         {
             if (AlreadyDeclared(name, position))
-                return;
+                return false;
 
             MakeConst();
 
             SetMemory(name, Pop());
+            return true;
         }
 
         public void StoreVariable(string name, ModulePosition position, ModulePosition bodyPosition)
@@ -307,11 +315,13 @@ namespace Mug.Models.Generator.Emitter
 
             CoerceConstantSizeTo(allocation.Type);
 
+            var type = PeekType();
+            
             _generator.ExpectSameTypes(
                 allocation.Type,
                 bodyPosition,
-                $"Expected '{allocation.Type}' type, got '{PeekType()}' type",
-                PeekType());
+                $"Expected '{allocation.Type}' type, got '{type}' type",
+                type);
 
             Builder.BuildStore(Pop().LLVMValue, allocation.LLVMValue);
         }
@@ -357,7 +367,7 @@ namespace Mug.Models.Generator.Emitter
 
             if (expectedNonVoid)
                 // check the operator overloading is not void
-                _generator.ExpectNonVoidType(functionRetType.LLVMType, position);
+                _generator.ExpectNonVoidType(functionRetType.LLVMType(_generator), position);
 
             Call(function.Value.Value.LLVMValue, types, functionRetType, null);
 
@@ -449,7 +459,7 @@ namespace Mug.Models.Generator.Emitter
 
             if (!allocation.Value.IsAllocaInstruction())
             {
-                var tmp = Builder.BuildAlloca(allocation.Value.Type.LLVMType);
+                var tmp = Builder.BuildAlloca(allocation.Value.Type.LLVMType(_generator));
                 Builder.BuildStore(allocation.Value.LLVMValue, tmp);
 
                 allocation = MugValue.From(tmp, allocation.Value.Type);
@@ -518,7 +528,7 @@ namespace Mug.Models.Generator.Emitter
 
             if (!instance.IsAllocaInstruction())
             {
-                var tmp = Builder.BuildAlloca(instance.Type.LLVMType);
+                var tmp = Builder.BuildAlloca(instance.Type.LLVMType(_generator));
                 Builder.BuildStore(instance.LLVMValue, tmp);
                 instance.LLVMValue = tmp;
             }
@@ -535,7 +545,7 @@ namespace Mug.Models.Generator.Emitter
                 Load(MugValue.From(value.LLVMValue.GetOperand(0), value.Type));
             else if (value.LLVMValue.IsACallInst.Handle != IntPtr.Zero)
             {
-                var tmp = Builder.BuildAlloca(value.Type.LLVMType);
+                var tmp = Builder.BuildAlloca(value.Type.LLVMType(_generator));
 
                 Builder.BuildStore(value.LLVMValue, tmp);
                 Load(MugValue.From(tmp, value.Type));
@@ -594,7 +604,7 @@ namespace Mug.Models.Generator.Emitter
         public void MakePostfixIntOperation(Func<LLVMValueRef, LLVMValueRef, string, LLVMValueRef> operation)
         {
             var target = Pop();
-            var result = operation(Builder.BuildLoad(target.LLVMValue), LLVMValueRef.CreateConstInt(target.Type.LLVMType, 1), "");
+            var result = operation(Builder.BuildLoad(target.LLVMValue), LLVMValueRef.CreateConstInt(target.Type.LLVMType(_generator), 1), "");
 
             Builder.BuildStore(result, target.LLVMValue);
         }
@@ -659,14 +669,14 @@ namespace Mug.Models.Generator.Emitter
         {
             var value = Pop();
             Load(
-                MugValue.From(Builder.BuildFPCast(value.LLVMValue, type.LLVMType), type, isconstant: value.IsConstant));
+                MugValue.From(Builder.BuildFPCast(value.LLVMValue, type.LLVMType(_generator)), type, isconstant: value.IsConstant));
         }
 
         public void CastFloatToInt(MugValueType type)
         {
             var value = Pop();
             Load(
-                MugValue.From(Builder.BuildFPToSI(Pop().LLVMValue, type.LLVMType), type, isconstant: value.IsConstant));
+                MugValue.From(Builder.BuildFPToSI(Pop().LLVMValue, type.LLVMType(_generator)), type, isconstant: value.IsConstant));
         }
 
         public void ReallocMemory()

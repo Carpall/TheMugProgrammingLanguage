@@ -9,16 +9,28 @@ try
 
 #if DEBUG
 
-    // todo: remove getmainfile in compilationflags
-    //  fix as operators
+    // todo: add illegal recursion check in variants, check for constant coercion in value boxing, remake llvmtype a property
 
-    const string test = @"``";
+    const string test = @"
+
+type A { a: i32 }
+type B { b: i64 }
+
+type AB = ( i32 | i64 )
+
+func main() {
+  var node = (10 as i64) as AB
+  var nodeis = node is i32
+  var a = unbox<i32>(node)
+}
+
+";
     
     var unit = new CompilationUnit("test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    Console.WriteLine(unit.GenerateAST().Dump());
-    // unit.Generate(true, true);
+    // Console.WriteLine(unit.GenerateAST().Dump());
+    unit.Generate(true, true);
 
 #else
 

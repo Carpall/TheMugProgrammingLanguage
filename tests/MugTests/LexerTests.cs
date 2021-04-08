@@ -19,7 +19,7 @@ namespace MugTests
 
         private const string SINGLE_TOKENS = "( ) [ ] { } < > = ! & | + - * / ,   : .  ";
         private const string DOUBLE_TOKENS = "== != ++ += -- -= *= /= <= >= ..";
-        private const string FULL_TOKENS = "return continue break while pub use import new for type as in to if elif else func var const str chr u1    i32 i64 u8 u32 u64 unknown when declare void";
+        private const string FULL_TOKENS = "return continue break while pub use import new for type as in to if elif else func var const str chr       i32 i64 u8 u32 u64 unknown when declare void bool";
         private const string RANDOM_TOKENS = "return == ( ) += continue pub ! *= ..";
 
 
@@ -31,7 +31,7 @@ namespace MugTests
         private const string STRINGS02 = "\"This is a non-closed string";
         private const string STRINGS03 = "\"This is a \" nested \"string\"";
         private const string STRINGS04 = "\"\\n\\t\\r\\\"\"";
-        private const string STRINGS05 = "u1\"\\\\ \"t token";
+        private const string STRINGS05 = "i32\"\\\\ \"t token";
         private const string STRINGS06 = "\"";
 
         private const string CHARS01 = "'c'";
@@ -378,11 +378,11 @@ namespace MugTests
 
             List<Token> expected = new List<Token>
             {
-                new Token(TokenKind.KeyTbool, "u1", new(lexer, 0..2)),
-                new Token(TokenKind.ConstantString, "\\ ", new(lexer, 2..7)),
-                new Token(TokenKind.Identifier, "t", new(lexer, 7..8)),
-                new Token(TokenKind.Identifier, "token", new(lexer, 9..14)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 14..15))
+                new Token(TokenKind.KeyTi32, "i32", new(lexer, 0..3)),
+                new Token(TokenKind.ConstantString, "\\ ", new(lexer, 3..8)),
+                new Token(TokenKind.Identifier, "t", new(lexer, 8..9)),
+                new Token(TokenKind.Identifier, "token", new(lexer, 10..15)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 15..16))
             };
 
             AreListEqual(expected, tokens);
@@ -490,7 +490,6 @@ namespace MugTests
                 new Token(TokenKind.KeyConst, "const", new(lexer, 87..92)),
                 new Token(TokenKind.KeyTstr, "str", new(lexer, 93..96)),
                 new Token(TokenKind.KeyTchr, "chr", new(lexer, 97..100)),
-                new Token(TokenKind.KeyTbool, "u1", new(lexer, 101..103)),
                 new Token(TokenKind.KeyTi32, "i32", new(lexer, 107..110)),
                 new Token(TokenKind.KeyTi64, "i64", new(lexer, 111..114)),
                 new Token(TokenKind.KeyTu8, "u8", new(lexer, 115..117)),
@@ -500,7 +499,8 @@ namespace MugTests
                 new Token(TokenKind.KeyWhen, "when", new(lexer, 134..138)),
                 new Token(TokenKind.KeyDeclare, "declare", new(lexer, 139..146)),
                 new Token(TokenKind.KeyTVoid, "void", new(lexer, 147..151)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 151..152))
+                new Token(TokenKind.KeyTbool, "bool", new(lexer, 152..156)),
+                new Token(TokenKind.EOF, "<EOF>", new(lexer, 156..157))
             };
 
             AreListEqual(expected, tokens);

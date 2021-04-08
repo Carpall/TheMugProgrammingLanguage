@@ -16,6 +16,7 @@ namespace Mug.Compilation.Symbols
         // prototypes
         public readonly List<FunctionNode> DeclaredFunctions = new();
         public readonly List<TypeStatement> DeclaredTypes = new();
+        public readonly List<VariantStatement> DeclaredVariants = new();
 
         // generic prototypes
         public readonly List<TypeStatement> DeclaredGenericTypes = new();
@@ -104,6 +105,16 @@ namespace Mug.Compilation.Symbols
             DeclaredGenericFunctions.Add(function);
         }
 
+        public void DeclareVariant(VariantStatement variant)
+        {
+            if (DeclaredVariants.FindIndex(v => v.Name == variant.Name) != -1)
+                _generator.Report(variant.Position, $"Variant type '{variant.Name}' is already declared");
+            else if (DeclaredTypes.FindIndex(t => t.Name == variant.Name) != -1)
+                _generator.Report(variant.Position, $"Variant type '{variant.Name}' hides another non-variant type");
+            else
+                DeclaredVariants.Add(variant);
+        }
+
         public List<FunctionNode> GetOverloadsOFGenericFunction(string name)
         {
             var result = new List<FunctionNode>();
@@ -137,6 +148,17 @@ namespace Mug.Compilation.Symbols
             }
 
             return false;
+        }
+
+        public bool IsAVariantType(string name, out MugValueType? variant)
+        {
+            // todo: cache variant time for next use
+            variant = null;
+            var index = DeclaredVariants.FindIndex(v => v.Name == name);
+            if (index != -1)
+                variant = MugValueType.Variant(DeclaredVariants[index]);
+
+            return index != -1;
         }
 
         public MugValue? GetEnumType(string name, ModulePosition position, bool report)

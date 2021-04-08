@@ -248,27 +248,6 @@ namespace Mug.Models.Parser
             return new ParameterNode(type, name.Value, defaultvalue, name.Position);
         }
 
-        private OperatorKind ToOperatorKind(TokenKind op)
-        {
-            return op switch
-            {
-                TokenKind.Plus => OperatorKind.Sum,
-                TokenKind.Minus => OperatorKind.Subtract,
-                TokenKind.Star => OperatorKind.Multiply,
-                TokenKind.Slash => OperatorKind.Divide,
-                TokenKind.RangeDots => OperatorKind.Range,
-                TokenKind.BooleanEQ => OperatorKind.CompareEQ,
-                TokenKind.BooleanNEQ => OperatorKind.CompareNEQ,
-                TokenKind.BooleanGreater => OperatorKind.CompareGreater,
-                TokenKind.BooleanGEQ => OperatorKind.CompareGEQ,
-                TokenKind.BooleanLess => OperatorKind.CompareLess,
-                TokenKind.BooleanLEQ => OperatorKind.CompareLEQ,
-                TokenKind.BooleanAND => OperatorKind.And,
-                TokenKind.BooleanOR => OperatorKind.Or,
-                _ => throw new Exception($"Unable to perform cast from TokenKind('{op}') to OperatorKind, if you see this error please open an issue on github")
-            };
-        }
-
         private MugType ExpectBaseType()
         {
             if (!MatchBaseType(out var type))
@@ -316,18 +295,12 @@ namespace Mug.Models.Parser
 
         private bool MatchConstantAdvance()
         {
-            var current = Current.Kind;
-            var constant =
-                current == TokenKind.ConstantChar ||
-                current == TokenKind.ConstantDigit ||
-                current == TokenKind.ConstantFloatDigit ||
-                current == TokenKind.ConstantString ||
-                current == TokenKind.ConstantBoolean;
-
-            if (constant)
-                _currentIndex++;
-
-            return constant;
+            return
+                MatchAdvance(TokenKind.ConstantChar) ||
+                MatchAdvance(TokenKind.ConstantDigit) ||
+                MatchAdvance(TokenKind.ConstantFloatDigit) ||
+                MatchAdvance(TokenKind.ConstantString) ||
+                MatchAdvance(TokenKind.ConstantBoolean);
         }
 
         private bool MatchInParExpression(out INode e)
@@ -600,7 +573,7 @@ namespace Mug.Models.Parser
                 var right = ExpectTerm();
                 do
                 {
-                    e = new ExpressionNode() { Left = e, Right = right, Operator = ToOperatorKind(op.Kind), Position = op.Position };
+                    e = new ExpressionNode() { Left = e, Right = right, Operator = op.Kind, Position = op.Position };
                     if (MatchFactorOps())
                         op = Back;
                     else
@@ -620,6 +593,7 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.BooleanLess, out op) ||
                 MatchAdvance(TokenKind.BooleanGEQ, out op) ||
                 MatchAdvance(TokenKind.BooleanLEQ, out op) ||
+                MatchAdvance(TokenKind.KeyIs, out op) ||
                 MatchAdvance(TokenKind.KeyIn, out op);
         }
 
@@ -698,7 +672,7 @@ namespace Mug.Models.Parser
 
                     do
                     {
-                        e = new ExpressionNode() { Operator = ToOperatorKind(op.Kind), Left = e, Right = right, Position = op.Position };
+                        e = new ExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
                         if (MatchPlusMinus())
                             op = Back;
                         else
@@ -713,8 +687,8 @@ namespace Mug.Models.Parser
                 _currentIndex++; // skipping bad token
             }
 
-            if (MatchAdvance(TokenKind.KeyAs, out var asToken))
-                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = asToken.Position };
+            if (MatchAdvance(TokenKind.KeyAs, out var token))
+                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
 
             if (MatchAdvance(TokenKind.KeyCatch))
             {
@@ -722,12 +696,36 @@ namespace Mug.Models.Parser
 
                 e = new CatchExpressionNode() { Expression = e, OutError = match ? new Token?(error) : null, Position = Back.Position, Body = ExpectBlock() };
             }
-            
+
             while (allowBoolOP && MatchBooleanOperator(out var boolOP))
-                e = new BooleanExpressionNode() { Operator = ToOperatorKind(boolOP.Kind), Position = boolOP.Position, Left = e, Right = ExpectExpression(false, false, end: end) };
+            {
+                var boolean = new BooleanExpressionNode()
+                {
+                    Operator = boolOP.Kind,
+                    Left = e,
+                    Position = boolOP.Position
+                };
+
+                if (boolOP.Kind != TokenKind.KeyIs)
+                    boolean.Right = ExpectExpression(false, false, end: end);
+                else
+                {
+                    boolean.IsInstructionType = ExpectType();
+                    if (MatchAdvance(TokenKind.Identifier, out var alias, true))
+                        boolean.IsInstructionAlias = alias;
+                }
+
+                e = boolean;
+            }
 
             while (allowLogicOP && MatchAndOrOperator())
-                e = new BooleanExpressionNode() { Operator = ToOperatorKind(Back.Kind), Position = Back.Position, Left = e, Right = ExpectExpression(allowLogicOP: false, end: end) };
+                e = new BooleanExpressionNode()
+                {
+                    Operator = Back.Kind,
+                    Left = e,
+                    Right = ExpectExpression(allowLogicOP: false, end: end),
+                    Position = Back.Position
+                };
 
             if (allowBoolOP && allowLogicOP) // if is first call
             {
@@ -1172,6 +1170,36 @@ namespace Mug.Models.Parser
             }
         }
 
+        private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
+        {
+            node = null;
+            var variant = new VariantStatement() { Pragmas = pragmas, Modifier = modifier, Name = name.Value, Position = name.Position };
+
+            Expect("", TokenKind.OpenPar);
+
+            if (MatchAdvance(TokenKind.ClosePar))
+            {
+                report();
+                return;
+            }
+
+            do
+                variant.Body.Add(ExpectType());
+            while (MatchAdvance(TokenKind.BooleanOR));
+
+            Expect("", TokenKind.ClosePar);
+
+            report();
+
+            node = variant;
+
+            void report()
+            {
+                if (variant.Body.Count < 2)
+                    Report(name.Position, "Expected at least one type in variants");
+            }
+        }
+
         /// <summary>
         /// search for a struct definition
         /// </summary>
@@ -1188,6 +1216,13 @@ namespace Mug.Models.Parser
             var pragmas = GetPramas();
             var name = Expect("Expected the type name after 'type' keyword", TokenKind.Identifier);
             var statement = new TypeStatement() { Modifier = modifier, Pragmas = pragmas, Name = name.Value.ToString(), Position = name.Position };
+
+            // variant definition
+            if (MatchAdvance(TokenKind.Equal))
+            {
+                ExpectVariantDefinition(out node, name, pragmas, modifier);
+                return true;
+            }
 
             // struct generics
             CollectGenericParameterDefinitions(statement.Generics);

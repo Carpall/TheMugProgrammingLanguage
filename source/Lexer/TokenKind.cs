@@ -62,7 +62,7 @@ namespace Mug.Models.Lexer
         KeyTchr,
         [Description("str")]
         KeyTstr,
-        [Description("u1")]
+        [Description("bool")]
         KeyTbool,
         [Description("u8")]
         KeyTu8,
@@ -158,6 +158,7 @@ namespace Mug.Models.Lexer
         KeyTf64,
         [Description("f128")]
         KeyTf128,
-        EOL
+        EOL,
+        KeyIs
     }
 }

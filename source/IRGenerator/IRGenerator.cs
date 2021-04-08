@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Mug.Models.Generator
 {
@@ -146,11 +147,11 @@ namespace Mug.Models.Generator
             return false;
         }
 
-        internal static LLVMTypeRef[] MugTypesToLLVMTypes(MugValueType[] parameterTypes)
+        internal LLVMTypeRef[] MugTypesToLLVMTypes(MugValueType[] parameterTypes)
         {
             var result = new LLVMTypeRef[parameterTypes.Length];
             for (int i = 0; i < parameterTypes.Length; i++)
-                result[i] = parameterTypes[i].LLVMType;
+                result[i] = parameterTypes[i].LLVMType(this);
 
             return result;
         }
@@ -179,8 +180,27 @@ namespace Mug.Models.Generator
                 Name = $"{error}!{type}",
                 ErrorType = errortype,
                 SuccessType = successtype,
-                LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.LLVMType }, true)
+                LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.LLVMType(this) }, true)
             });
+        }
+
+        internal MugValueType GetBiggestTypeOFVariant(VariantStatement variant)
+        {
+            var biggestsize = 0;
+            MugValueType biggesttype = new();
+
+            foreach (var type in variant.Body)
+            {
+                var casttype = type.ToMugValueType(this);
+                var typesize = casttype.Size(SizeOfPointer);
+                if (typesize >= biggestsize)
+                {
+                    biggestsize = typesize;
+                    biggesttype = casttype;
+                }
+            }
+
+            return biggesttype;
         }
 
         private bool GenerateType(string name, int genericscount)
@@ -245,8 +265,8 @@ namespace Mug.Models.Generator
                 fieldPositions[i] = field.Position;
             }
 
-            var structuretype = MugValueType.Struct($"{type.Name}{(type.Generics.Count > 0 ? $"<{string.Join(", ", generics)}>" : "")}", structModel, fields, fieldPositions);
-            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.LLVMType, type.Name), structuretype);
+            var structuretype = MugValueType.Struct($"{type.Name}{(type.Generics.Count > 0 ? $"<{string.Join(", ", generics)}>" : "")}", structModel, fields, fieldPositions, this);
+            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.LLVMType(this), type.Name), structuretype);
 
             GenericParameters = oldGenericParameters;
 
@@ -315,7 +335,7 @@ namespace Mug.Models.Generator
 
         internal void ExpectBoolType(MugValueType type, ModulePosition position)
         {
-            ExpectSameTypes(type, position, $"Expected 'u1' type, got '{type}'", MugValueType.Bool);
+            ExpectSameTypes(type, position, $"Expected 'bool' type, got '{type}'", MugValueType.Bool);
         }
 
         /// <summary>
@@ -437,7 +457,7 @@ namespace Mug.Models.Generator
                 // declares it
                 function = Module.AddFunction(prototype.Pragmas.GetPragma("extern"),
                         LLVMTypeRef.CreateFunction(
-                            type.LLVMType,
+                            type.LLVMType(this),
                             MugTypesToLLVMTypes(parameters)));
 
             // adding a new symbol
@@ -658,6 +678,9 @@ namespace Mug.Models.Generator
                 case TypeStatement structure:
                     Table.DeclaredTypes.Add(structure);
                     break;
+                case VariantStatement variant:
+                    Table.DeclareVariant(variant);
+                    break;
                 case EnumStatement enumstatement:
                     EmitEnum(enumstatement);
                     break;
@@ -762,7 +785,7 @@ namespace Mug.Models.Generator
                 paramTypes[i + baseoffset] = types[i];
 
             var llvmfunction = Module.AddFunction(function.Name, LLVMTypeRef.CreateFunction(
-                retType.LLVMType,
+                retType.LLVMType(this),
                 MugTypesToLLVMTypes(paramTypes)));
 
             GenericParameters = oldgenerics;

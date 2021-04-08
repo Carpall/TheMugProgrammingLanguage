@@ -14,23 +14,7 @@ namespace Mug.MugValueSystem
     {
         private object BaseType { get; set; }
         public MugValueTypeKind TypeKind { get; set; }
-        public LLVMTypeRef LLVMType
-        {
-            get
-            {
-                return TypeKind switch
-                {
-                    MugValueTypeKind.Pointer or
-                    MugValueTypeKind.Reference => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).LLVMType, 0),
-                    MugValueTypeKind.Struct => GetStructure().LLVMValue,
-                    MugValueTypeKind.Enum => GetEnumInfo().Item1.LLVMType,
-                    MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).LLVMType, 0),
-                    MugValueTypeKind.EnumError => GetEnumError().LLVMValue,
-                    _ => (LLVMTypeRef)BaseType,
-                };
-            }
-        }
-
+        
         public MugValueType PointerBaseElementType
         {
             get
@@ -51,6 +35,24 @@ namespace Mug.MugValueSystem
 
                 throw new("");
             }
+        }
+
+        public LLVMTypeRef LLVMType(IRGenerator generator)
+        {
+            return TypeKind switch
+            {
+                MugValueTypeKind.Pointer or
+                MugValueTypeKind.Reference => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).LLVMType(generator), 0),
+                MugValueTypeKind.Struct => GetStructure().LLVMValue,
+                MugValueTypeKind.Enum => GetEnumInfo().Item1.LLVMType(generator),
+                MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).LLVMType(generator), 0),
+                MugValueTypeKind.EnumError => GetEnumError().LLVMValue,
+                MugValueTypeKind.Variant => LLVMTypeRef.CreateStruct(new[]
+                {
+                        LLVMTypeRef.Int8, generator.GetBiggestTypeOFVariant(GetVariant()).LLVMType(generator)
+                }, true),
+                _ => (LLVMTypeRef)BaseType,
+            };
         }
 
         public int Size(int sizeofpointer)
@@ -86,7 +88,7 @@ namespace Mug.MugValueSystem
             return new MugValueType() { TypeKind = MugValueTypeKind.Pointer, BaseType = type };
         }
 
-        public static MugValueType Struct(string name, MugValueType[] body, string[] structure, ModulePosition[] positions)
+        public static MugValueType Struct(string name, MugValueType[] body, string[] structure, ModulePosition[] positions, IRGenerator generator)
         {
             return new MugValueType()
             {
@@ -96,18 +98,18 @@ namespace Mug.MugValueSystem
                     FieldNames = structure,
                     FieldPositions = positions,
                     FieldTypes = body,
-                    LLVMValue = LLVMTypeRef.CreateStruct(GetLLVMTypes(body), false)
+                    LLVMValue = LLVMTypeRef.CreateStruct(GetLLVMTypes(body, generator), false)
                 },
                 TypeKind = MugValueTypeKind.Struct
             };
         }
 
-        private static LLVMTypeRef[] GetLLVMTypes(MugValueType[] body)
+        private static LLVMTypeRef[] GetLLVMTypes(MugValueType[] body, IRGenerator generator)
         {
             var result = new LLVMTypeRef[body.Length];
 
             for (int i = 0; i < body.Length; i++)
-                result[i] = body[i].LLVMType;
+                result[i] = body[i].LLVMType(generator);
 
             return result;
         }
@@ -135,6 +137,11 @@ namespace Mug.MugValueSystem
         public static MugValueType Float128 => From(LLVMTypeRef.FP128, MugValueTypeKind.Float128);
         public static MugValueType Undefinied => From(LLVMTypeRef.Void, MugValueTypeKind.Undefined);
 
+        public static MugValueType Variant(VariantStatement variant)
+        {
+            return new MugValueType { BaseType = variant, TypeKind = MugValueTypeKind.Variant };
+        }
+
         public static MugValueType EnumError(EnumErrorInfo enumerrorInfo)
         {
             return new MugValueType() { BaseType = enumerrorInfo, TypeKind = MugValueTypeKind.EnumError };
@@ -149,7 +156,7 @@ namespace Mug.MugValueSystem
         {
             return TypeKind switch
             {
-                MugValueTypeKind.Bool => "u1",
+                MugValueTypeKind.Bool => "bool",
                 MugValueTypeKind.Int8 => "u8",
                 MugValueTypeKind.Int32 => "i32",
                 MugValueTypeKind.Int64 => "i64",
@@ -165,7 +172,8 @@ namespace Mug.MugValueSystem
                 MugValueTypeKind.Reference => $"&{BaseType}",
                 MugValueTypeKind.Enum => GetEnum().Name,
                 MugValueTypeKind.Array => $"[{BaseType}]",
-                MugValueTypeKind.EnumError => $"{GetEnumError().Name}"
+                MugValueTypeKind.EnumError => $"{GetEnumError().Name}",
+                MugValueTypeKind.Variant => $"{GetVariant().Name}"
             };
         }
 
@@ -232,6 +240,11 @@ namespace Mug.MugValueSystem
             return GetEnumInfo().Item2;
         }
 
+        public VariantStatement GetVariant()
+        {
+            return BaseType as VariantStatement;
+        }
+
         public bool IsSameEnumOf(MugValueType st)
         {
             return IsEnum() && st.IsEnum() && GetEnum().Name == st.GetEnum().Name;
@@ -261,6 +274,9 @@ namespace Mug.MugValueSystem
                 (TypeKind == MugValueTypeKind.Pointer && type.TypeKind == MugValueTypeKind.Reference))
                 return BaseType.Equals(type.BaseType);
 
+            if (TypeKind == MugValueTypeKind.Variant && type.TypeKind == MugValueTypeKind.Variant)
+                return GetVariant().Name == type.GetVariant().Name;
+
             return base.Equals(type);
         }
 
@@ -269,11 +285,23 @@ namespace Mug.MugValueSystem
             return BaseType is StructureInfo;
         }
 
+        public bool IsVariant()
+        {
+            return BaseType is VariantStatement && TypeKind == MugValueTypeKind.Variant;
+        }
+
         public bool MatchFloatType()
         {
             return TypeKind == MugValueTypeKind.Float32 ||
                 TypeKind == MugValueTypeKind.Float64 ||
                 TypeKind == MugValueTypeKind.Float128;
+        }
+
+        public bool IsAllocableTypeNew()
+        {
+            return
+                TypeKind == MugValueTypeKind.Struct ||
+                TypeKind == MugValueTypeKind.Array;
         }
     }
 }
