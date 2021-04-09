@@ -115,6 +115,7 @@ namespace Mug.TypeSystem
                 TypeKind.String => "str",
                 TypeKind.Reference => $"&{BaseType}",
                 TypeKind.Void => "void",
+                TypeKind.Err => "err",
                 TypeKind.EnumError => $"{GetEnumError().Item1}!{GetEnumError().Item2}",
             };
         }
@@ -195,7 +196,8 @@ namespace Mug.TypeSystem
         public MugValueType ToMugValueType(IRGenerator generator) => Kind switch
         {
             TypeKind.Int32 => MugValueType.Int32,
-            TypeKind.UInt8 => MugValueType.Int8,
+            TypeKind.UInt8 or
+            TypeKind.Err => MugValueType.Int8,
             TypeKind.Int64 => MugValueType.Int64,
             TypeKind.Float32 => MugValueType.Float32,
             TypeKind.Float64 => MugValueType.Float64,

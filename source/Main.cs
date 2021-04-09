@@ -14,8 +14,13 @@ try
 
     const string test = @"
 
-func main(): i32 {
-  y = x(y).do()
+enum ParseErr: err {
+  a
+  b
+}
+
+func main(): ParseErr!i32 {
+  return 10
 }
 
 ";
@@ -23,8 +28,8 @@ func main(): i32 {
     var unit = new CompilationUnit("test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    Console.WriteLine(unit.GenerateAST().Dump());
-    // unit.Generate(true, true);
+    // Console.WriteLine(unit.GenerateAST().Dump());
+    unit.Generate(true, true);
 
 #else
 

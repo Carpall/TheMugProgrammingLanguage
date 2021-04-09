@@ -201,10 +201,6 @@ namespace Mug.Models.Generator
 
                 return EmitBooleanOperator(literal, llvmpredicate, kind, position);
             }
-            /*else if ((kind == OperatorKind.CompareEQ || kind == OperatorKind.CompareNEQ) &&
-                ft.TypeKind == MugValueTypeKind.EnumError &&
-                st.TypeKind == MugValueTypeKind.EnumError) // enum error == enum error
-                _emitter.CompareInt(llvmpredicate, left, right);*/
             else if (ft.MatchSameAnyIntType(st)) // int == int (works for all low-level integers like chr and bool ..)
                 _emitter.CompareInt(llvmpredicate, left, right);
             else if (ft.MatchSameFloatType(st)) // float == float

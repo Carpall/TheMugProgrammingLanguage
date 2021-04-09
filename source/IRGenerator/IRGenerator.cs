@@ -171,9 +171,12 @@ namespace Mug.Models.Generator
             // todo: cache generated enum error
             var errortype = error.ToMugValueType(this);
             var successtype = type.ToMugValueType(this);
+            var basetype = errortype.GetEnum().BaseType.Kind;
 
             if (!errortype.IsEnum())
                 Error(error.Position, "Expected enum type");
+            else if (basetype != TypeKind.Err)
+                Error(error.Position, $"Expected enum with base type 'err', not '{basetype}'");
 
             return MugValueType.EnumError(new EnumErrorInfo()
             {

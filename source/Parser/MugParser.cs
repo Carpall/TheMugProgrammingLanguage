@@ -1255,7 +1255,8 @@ namespace Mug.Models.Parser
             {
                 Name = name.Value,
                 Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false) : Back,
-                Position = name.Position };
+                Position = name.Position
+            };
         }
 
         private MugType ExpectPrimitiveType()
@@ -1277,6 +1278,19 @@ namespace Mug.Models.Parser
         private void Report(ModulePosition position, string error)
         {
             Lexer.DiagnosticBag.Report(position, error);
+        }
+
+        private bool MatchSpecificIdentifier(string value, bool linesensitive = false)
+        {
+            return MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
+        }
+
+        private MugType ExpectEnumBaseType()
+        {
+            if (MatchSpecificIdentifier("err"))
+                return new MugType(Back.Position, TypeKind.Err);
+
+            return ExpectPrimitiveType();
         }
 
         private bool EnumDefinition(out INode node)
@@ -1301,7 +1315,7 @@ namespace Mug.Models.Parser
             if (errorsNum != Lexer.DiagnosticBag.Count)
                 return false;
 
-            statement.BaseType = ExpectPrimitiveType();
+            statement.BaseType = ExpectEnumBaseType();
 
             // enum body
             Expect(UnexpectedToken, TokenKind.OpenBrace);
@@ -1310,9 +1324,9 @@ namespace Mug.Models.Parser
             {
                 var value = -1;
                 if (statement.Body.Count > 0)
-                    int.TryParse(statement.Body.Last().Value.Value, out value);
+                    _ = int.TryParse(statement.Body.Last().Value.Value, out value);
 
-                var member = ExpectMemberDefinition(statement.BaseType.IsInt(), value);
+                var member = ExpectMemberDefinition(statement.BaseType.IsInt() || statement.BaseType.Kind == TypeKind.Err, value);
                 if (member is null)
                     return false;
 
