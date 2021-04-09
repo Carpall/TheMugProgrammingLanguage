@@ -150,7 +150,7 @@ namespace Mug.TypeSystem
             if (!symbol.HasValue) // could be a generic type, a enum type
             {
                 if (generator.Table.IsAVariantType(name, out var variant))
-                    return variant;
+                    return variant.Value;
 
                 var enumtype = generator.Table.GetEnumType(name, position, false);
                 if (enumtype.HasValue)

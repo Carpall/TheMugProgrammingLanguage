@@ -125,7 +125,7 @@ namespace Mug.Compilation.Symbols
             return result;
         }
 
-        public bool GetGenericFunctionSymbol(string name, MugValueType basetype, MugValueType[] parameters, MugValueType returntype, out FunctionSymbol identifier)
+        public bool GetGenericFunctionSymbol(string name, MugValueType? basetype, MugValueType[] parameters, MugValueType returntype, out FunctionSymbol identifier)
         {
             identifier = new();
 
@@ -150,7 +150,7 @@ namespace Mug.Compilation.Symbols
             return false;
         }
 
-        public bool IsAVariantType(string name, out MugValueType variant)
+        public bool IsAVariantType(string name, out MugValueType? variant)
         {
             // todo: cache variant time for next use
             variant = null;

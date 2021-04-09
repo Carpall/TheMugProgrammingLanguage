@@ -1,4 +1,4 @@
-using LLVMSharp.Interop;
+﻿using LLVMSharp.Interop;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
@@ -7,24 +7,26 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Mug.Compilation
 {
     public class CompilationUnit
     {
         public static readonly string[] AllowedExtensions = new[] { ".mug" };
+
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
         private string[] _paths;
+
         private static string ClangFilename
         {
             get
             {
-                return Environment.OSVersion.Platform switch
-                {
-                    PlatformID.Win32NT => "C:/Program Files/LLVM/bin/clang.exe",
-                    _ => "/usr/bin/clang"
-                };
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                    return "C:/Program Files/LLVM/bin/clang.exe";
+                else
+                    return "/usr/bin/clang";
             }
         }
         internal const string MainFileName = "main.mug";
@@ -174,14 +176,14 @@ namespace Mug.Compilation
             foreach (var path in _paths)
             {
                 // only mug files
-                if (Path.GetExtension(path) != ".mug")
+                if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
                 var unit = new CompilationUnit(path, Path.GetFileName(path) == MainFileName, true);
                 head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
             }
 
-            IRGenerator.IsMainModule = true;
+            IRGenerator._isMainModule = true;
             IRGenerator.Parser.Module = head;
             IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");
         }
@@ -194,8 +196,8 @@ namespace Mug.Compilation
             GenerateAST();
             IRGenerator.Generate();
 
-	    if (dump)
-	        IRGenerator.Module.Dump();
+	        if (dump)
+	            IRGenerator.Module.Dump();
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))

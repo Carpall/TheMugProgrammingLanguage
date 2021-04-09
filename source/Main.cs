@@ -13,20 +13,21 @@ try
 
     const string test = @"
 
-type A { a: AB }
-type B { b: i32 }
+type A { a: i32 }
+type B { b: i64 }
 
-type AB = ( A | B )
+type AB = ( i32 | i64 )
 
-func main() {
-    const x = new A { } as AB
+func main(): i32 {
+  return 2
+  +2
 }
 
 ";
     
     var unit = new CompilationUnit("test.mug", test, true);
 
-    // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
+    unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine(unit.GenerateAST().Dump());
     unit.Generate(true, true);
 

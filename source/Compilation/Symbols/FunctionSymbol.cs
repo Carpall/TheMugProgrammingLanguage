@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-#nullable enable
-
 namespace Mug.Compilation.Symbols
 {
     public struct FunctionSymbol

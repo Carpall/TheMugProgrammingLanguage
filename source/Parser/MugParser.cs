@@ -476,7 +476,7 @@ namespace Mug.Models.Parser
         {
             if (MatchPrefixOperator(out var prefixOP))
             {
-                if (!MatchTerm(out e, false))
+                if (!MatchTerm(out e, allowNullExpression))
                 {
                     Report("Unexpected prefix operator");
                     return false;
@@ -501,7 +501,7 @@ namespace Mug.Models.Parser
                     return true;
             }
 
-            if (e is null && !allowNullExpression)
+            if (e is null)
             {
                 Report("Expected term");
                 return false;
@@ -520,9 +520,9 @@ namespace Mug.Models.Parser
             return true;
         }
 
-        private INode ExpectFactor()
+        private INode ExpectFactor(bool allowNullExpression)
         {
-            if (!MatchFactor(out INode e, false) &&
+            if (!MatchFactor(out INode e, allowNullExpression) &&
                 !MatchInParExpression(out e))
                 ParseError("Expected expression factor here");
 
@@ -554,9 +554,9 @@ namespace Mug.Models.Parser
             return new FieldAssignmentNode() { Name = name.Value.ToString(), Body = expression, Position = name.Position };
         }
 
-        private INode ExpectTerm()
+        private INode ExpectTerm(bool allowNullExpression)
         {
-            if (!MatchTerm(out var e, false))
+            if (!MatchTerm(out var e, allowNullExpression))
                 Report("Expected term");
 
             return e;
@@ -570,7 +570,7 @@ namespace Mug.Models.Parser
             if (MatchFactorOps())
             {
                 var op = Back;
-                var right = ExpectTerm();
+                var right = ExpectTerm(allowNullExpression);
                 do
                 {
                     e = new ExpressionNode() { Left = e, Right = right, Operator = op.Kind, Position = op.Position };
@@ -668,7 +668,7 @@ namespace Mug.Models.Parser
                 if (MatchPlusMinus())
                 {
                     var op = Back;
-                    var right = ExpectFactor();
+                    var right = ExpectFactor(allowNullExpression);
 
                     do
                     {
