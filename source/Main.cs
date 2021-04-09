@@ -9,27 +9,22 @@ try
 
 #if DEBUG
 
-    // todo: add illegal recursion check in variants, check for constant coercion in value boxing, remake llvmtype a property
+    // todo: fix enum errors, fix lexer tests
+    // todo: add illegal recursion check in variants, check if variant contains multiple times the same type
 
     const string test = @"
 
-type A { a: i32 }
-type B { b: i64 }
-
-type AB = ( i32 | i64 )
-
 func main(): i32 {
-  return 2
-  +2
+  y = x(y).do()
 }
 
 ";
     
     var unit = new CompilationUnit("test.mug", test, true);
 
-    unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    // Console.WriteLine(unit.GenerateAST().Dump());
-    unit.Generate(true, true);
+    // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
+    Console.WriteLine(unit.GenerateAST().Dump());
+    // unit.Generate(true, true);
 
 #else
 

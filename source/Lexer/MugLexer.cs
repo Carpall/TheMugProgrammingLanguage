@@ -10,15 +10,14 @@ namespace Mug.Models.Lexer
     public class MugLexer
     {
         public MugDiagnostic DiagnosticBag { get; } = new();
-
+        public List<Token> TokenCollection { get; set; }
 
         public readonly string Source;
         public readonly string ModuleName;
         public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=' };
 
-        public List<Token> TokenCollection { get; set; }
-
         private StringBuilder CurrentSymbol { get; set; }
+        private bool _eol = false;
         private int CurrentIndex { get; set; }
 
         /// <summary>
@@ -58,12 +57,19 @@ namespace Mug.Models.Lexer
             return new(this, position);
         }
 
+        private bool GetEOL()
+        {
+            var eol = _eol;
+            _eol = false;
+            return eol;
+        }
+
         /// <summary>
         /// adds a keyword to the tokens stream and returns true
         /// </summary>
         private bool AddKeyword(TokenKind kind, string keyword)
         {
-            TokenCollection.Add(new(kind, keyword, ModPos((CurrentIndex - keyword.Length)..CurrentIndex)));
+            TokenCollection.Add(new(kind, keyword, ModPos((CurrentIndex - keyword.Length)..CurrentIndex), GetEOL()));
             return true;
         }
 
@@ -162,9 +168,9 @@ namespace Mug.Models.Lexer
         private void AddToken(TokenKind kind, string value)
         {
             if (value is not null)
-                TokenCollection.Add(new(kind, value, ModPos((CurrentIndex - value.ToString().Length)..CurrentIndex)));
+                TokenCollection.Add(new(kind, value, ModPos((CurrentIndex - value.ToString().Length)..CurrentIndex), GetEOL()));
             else // chatching null reference exception
-                TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1))));
+                TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1)), GetEOL()));
         }
 
         /// <summary>
@@ -172,7 +178,7 @@ namespace Mug.Models.Lexer
         /// </summary>
         private void AddSingle(TokenKind kind, string value)
         {
-            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1))));
+            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(CurrentIndex + 1)), GetEOL()));
         }
 
         /// <summary>
@@ -185,13 +191,13 @@ namespace Mug.Models.Lexer
              * moves the index by one: a double token occupies 2 chars
              */
 
-            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(++CurrentIndex + 1))));
+            TokenCollection.Add(new(kind, value, ModPos(CurrentIndex..(++CurrentIndex + 1)), GetEOL()));
         }
 
         /// <summary>
         /// tests if value is a boolean constant
         /// </summary>
-        private bool IsBoolean(string value)
+        private static bool IsBoolean(string value)
         {
             return value == "true" || value == "false";
         }
@@ -285,7 +291,7 @@ namespace Mug.Models.Lexer
                 DiagnosticBag.Report(ModPos(start..end), "Not enough characters in const char");
 
             //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), ModPos(start..end)));
+            TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), ModPos(start..end), GetEOL()));
             CurrentSymbol.Clear();
         }
 
@@ -330,7 +336,7 @@ namespace Mug.Models.Lexer
                 reportNotCorrectlyEnclosed();
 
             //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), ModPos(start..(end + 1))));
+            TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), ModPos(start..(end + 1)), GetEOL()));
             CurrentSymbol.Clear();
 
             void reportNotCorrectlyEnclosed() {
@@ -388,7 +394,7 @@ namespace Mug.Models.Lexer
                 DiagnosticBag.Report(pos, "Invalid backtick sequence");
 
             //else add closing simbol, removing whitespaces
-            TokenCollection.Add(new(TokenKind.Identifier, sequence, pos));
+            TokenCollection.Add(new(TokenKind.Identifier, sequence, pos, GetEOL()));
             CurrentSymbol.Clear();
         }
 
@@ -504,10 +510,22 @@ namespace Mug.Models.Lexer
             if (s.Length >= 21)
                 DiagnosticBag.Report(position, "Constant overflow");
 
-            TokenCollection.Add(new(isfloat ? TokenKind.ConstantFloatDigit : TokenKind.ConstantDigit, s, position));
+            TokenCollection.Add(new(isfloat ? TokenKind.ConstantFloatDigit : TokenKind.ConstantDigit, s, position, GetEOL()));
             CurrentSymbol.Clear();
 
             CurrentIndex--;
+        }
+
+        private bool MatchEOL()
+        {
+            var oldIndex = CurrentIndex;
+            while (HasNext() && Current == '\n')
+            {
+                // var CRLFOffset = Convert.ToInt32(HasNext() && GetNext() == '\n');
+                CurrentIndex += 1;// + CRLFOffset;
+            }
+
+            return CurrentIndex != oldIndex;
         }
 
         /// <summary>
@@ -522,17 +540,8 @@ namespace Mug.Models.Lexer
             if (CurrentIndex >= Source.Length)
                 return;
 
-            if (Current == '\r')
-            {
-                if (TokenCollection.LastOrDefault().Kind != TokenKind.EOL)
-                    TokenCollection.Add(new(TokenKind.EOL, "\\n", ModPos(CurrentIndex..(++CurrentIndex))));
-
-                // detecting CRLF
-                var CRLFOffset = HasNext() && Source[CurrentIndex + 1] == '\n';
-
-                CurrentIndex += Convert.ToInt32(CRLFOffset);
-                return;
-            }
+            if (!_eol)
+                _eol = MatchEOL();
 
             // to avoid a massive array access, also better to read
             char current = Current;

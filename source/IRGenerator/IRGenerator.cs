@@ -619,7 +619,7 @@ namespace Mug.Models.Generator
         internal bool EvaluateCompTimeExprAndGetResult(CompTimeExpression comptimeExpr)
         {
             bool result = true;
-            var lastOP = new Token(TokenKind.Bad, null, new());
+            Token lastOP = default;
 
             foreach (var token in comptimeExpr.Expression)
             {

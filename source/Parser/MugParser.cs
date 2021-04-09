@@ -127,13 +127,7 @@ namespace Mug.Models.Parser
 
         private bool Match(TokenKind kind, bool linesensitive = false)
         {
-            if (!linesensitive && Current.Kind == TokenKind.EOL)
-            {
-                if (_currentIndex < Lexer.TokenCollection.Count && Lexer.TokenCollection[_currentIndex+1].Kind == kind)
-                    _currentIndex++;
-            }
-
-            if (!linesensitive && Current.Kind == TokenKind.EOL)
+            if (linesensitive && Current.IsOnNewLine)
                 return false;
 
             return Current.Kind == kind;
@@ -455,13 +449,13 @@ namespace Mug.Models.Parser
         private bool MatchPrefixOperator(out Token prefix)
         {
             return
-                MatchAdvance(TokenKind.Minus, out prefix, true)             ||
-                MatchAdvance(TokenKind.Plus, out prefix, true)              ||
-                MatchAdvance(TokenKind.Negation, out prefix, true)          ||
-                MatchAdvance(TokenKind.BooleanAND, out prefix, true)        ||
-                MatchAdvance(TokenKind.Star, out prefix, true)              ||
-                MatchAdvance(TokenKind.OperatorIncrement, out prefix, true) ||
-                MatchAdvance(TokenKind.OperatorDecrement, out prefix, true);
+                MatchAdvance(TokenKind.Minus, out prefix)             ||
+                MatchAdvance(TokenKind.Plus, out prefix)              ||
+                MatchAdvance(TokenKind.Negation, out prefix)          ||
+                MatchAdvance(TokenKind.BooleanAND, out prefix)        ||
+                MatchAdvance(TokenKind.Star, out prefix)              ||
+                MatchAdvance(TokenKind.OperatorIncrement, out prefix) ||
+                MatchAdvance(TokenKind.OperatorDecrement, out prefix);
         }
 
         internal static bool HasElseBody(ConditionalStatement condition)
@@ -659,10 +653,6 @@ namespace Mug.Models.Parser
 
         private INode ExpectExpression(bool allowBoolOP = true, bool allowLogicOP = true, bool allowNullExpression = false, params TokenKind[] end)
         {
-            // skipping new line in expressions
-            if (Current.Kind == TokenKind.EOL)
-                _currentIndex++;
-
             if (MatchFactor(out var e, allowNullExpression))
             {
                 if (MatchPlusMinus())
@@ -1091,7 +1081,7 @@ namespace Mug.Models.Parser
         private CompTimeExpression ExpectCompTimeExpression()
         {
             CompTimeExpression comptimeExpr = new();
-            var boolOP = new Token(TokenKind.Bad, null, new());
+            var boolOP = Token.NewInfo(TokenKind.Bad, null);
 
             do
             {
@@ -1264,7 +1254,7 @@ namespace Mug.Models.Parser
             return new EnumMemberNode()
             {
                 Name = name.Value,
-                Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position) : Back,
+                Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false) : Back,
                 Position = name.Position };
         }
 
@@ -1413,7 +1403,7 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 return Module;
 
-            Module.Name = new Token(TokenKind.Identifier, Lexer.ModuleName, new(Lexer, 0..(Lexer.Source.Length - 1)));
+            Module.Name = Token.NewInfo(TokenKind.Identifier, Lexer.ModuleName);
 
             // search for members
             Module.Members = ExpectNamespaceMembers();

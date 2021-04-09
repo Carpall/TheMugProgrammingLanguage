@@ -51,3 +51,4 @@ done: +
 - consider adding an intermediate phase between the irgenerator and the llvm interface -> irgenerator shouldn't comunicate with llvm anymore
 - refactor 'or' and 'and' emit functions and 'ret'
 - add constant globally
+- implement a better constant overflow check
