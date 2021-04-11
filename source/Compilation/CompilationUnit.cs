@@ -201,7 +201,7 @@ namespace Mug.Compilation
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))
-                    CompilationErrors.Throw($"Cannot build due to external compiler error: {error}");
+                    CompilationErrors.Throw($"Cannot build due to external compiler's errors: {error}");
         }
     }
 }

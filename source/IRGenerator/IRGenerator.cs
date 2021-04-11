@@ -151,7 +151,7 @@ namespace Mug.Models.Generator
         {
             var result = new LLVMTypeRef[parameterTypes.Length];
             for (int i = 0; i < parameterTypes.Length; i++)
-                result[i] = parameterTypes[i].LLVMType(this);
+                result[i] = parameterTypes[i].GetLLVMType(this);
 
             return result;
         }
@@ -171,11 +171,11 @@ namespace Mug.Models.Generator
             // todo: cache generated enum error
             var errortype = error.ToMugValueType(this);
             var successtype = type.ToMugValueType(this);
-            var basetype = errortype.GetEnum().BaseType.Kind;
+            var basetype = errortype.GetEnum().BaseType;
 
             if (!errortype.IsEnum())
                 Error(error.Position, "Expected enum type");
-            else if (basetype != TypeKind.Err)
+            else if (basetype.Kind != TypeKind.Err)
                 Error(error.Position, $"Expected enum with base type 'err', not '{basetype}'");
 
             return MugValueType.EnumError(new EnumErrorInfo()
@@ -183,7 +183,7 @@ namespace Mug.Models.Generator
                 Name = $"{error}!{type}",
                 ErrorType = errortype,
                 SuccessType = successtype,
-                LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.LLVMType(this) }, true)
+                LLVMValue = LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, successtype.GetLLVMType(this) }, true)
             });
         }
 
@@ -194,8 +194,8 @@ namespace Mug.Models.Generator
 
             foreach (var type in variant.Body)
             {
-                var casttype = type.ToMugValueType(this);
-                var typesize = casttype.Size(SizeOfPointer);
+                var casttype = type.Kind != TypeKind.Pointer ? type.ToMugValueType(this) : MugValueType.Unknown;
+                var typesize = casttype.Size(SizeOfPointer, this);
                 if (typesize >= biggestsize)
                 {
                     biggestsize = typesize;
@@ -269,7 +269,7 @@ namespace Mug.Models.Generator
             }
 
             var structuretype = MugValueType.Struct($"{type.Name}{(type.Generics.Count > 0 ? $"<{string.Join(", ", generics)}>" : "")}", structModel, fields, fieldPositions, this);
-            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.LLVMType(this), type.Name), structuretype);
+            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.GetLLVMType(this), type.Name), structuretype);
 
             GenericParameters = oldGenericParameters;
 
@@ -460,7 +460,7 @@ namespace Mug.Models.Generator
                 // declares it
                 function = Module.AddFunction(prototype.Pragmas.GetPragma("extern"),
                         LLVMTypeRef.CreateFunction(
-                            type.LLVMType(this),
+                            type.GetLLVMType(this),
                             MugTypesToLLVMTypes(parameters)));
 
             // adding a new symbol
@@ -661,6 +661,35 @@ namespace Mug.Models.Generator
                 MergeTree((NodeBuilder)when.Body);
         }
 
+        private Token CheckGlobalConstant(INode body, MugType type, ModulePosition position)
+        {
+            if (body is not Token token)
+            {
+                Report(position, "Not comptime evaluable");
+                return default;
+            }
+
+            if (token.Kind == TokenKind.Identifier)
+                Report(position, "Place the content of the item here instead");
+
+            checkTypes(token.Kind switch
+            {
+                TokenKind.ConstantString => TypeKind.String,
+                TokenKind.ConstantFloatDigit => TypeKind.Float32,
+                TokenKind.ConstantDigit => TypeKind.Int32,
+                TokenKind.ConstantChar => TypeKind.Char,
+                TokenKind.ConstantBoolean => TypeKind.Bool
+            });
+
+            return token;
+
+            void checkTypes(TypeKind gotTypekind)
+            {
+                if (!type.IsAutomatic() && type.Kind != gotTypekind)
+                    Report(position, $"Expected type '{type}'");
+            }
+        }
+
         /// <summary>
         /// recognize the type of the AST node and depending on the type call methods
         /// to convert it to the corresponding low-level code
@@ -695,6 +724,9 @@ namespace Mug.Models.Generator
                     break;
                 case DeclareDirective declare:
                     DeclareCompilerSymbol(declare.Symbol.Value, true, declare.Position);
+                    break;
+                case ConstantStatement constant:
+                    // Table.DeclareConstant(constant.Name, CheckGlobalConstant(constant.Body, constant.Type), constant.Position);
                     break;
                 default:
                     Error(member.Position, "Declaration not supported yet");
@@ -788,7 +820,7 @@ namespace Mug.Models.Generator
                 paramTypes[i + baseoffset] = types[i];
 
             var llvmfunction = Module.AddFunction(function.Name, LLVMTypeRef.CreateFunction(
-                retType.LLVMType(this),
+                retType.GetLLVMType(this),
                 MugTypesToLLVMTypes(paramTypes)));
 
             GenericParameters = oldgenerics;

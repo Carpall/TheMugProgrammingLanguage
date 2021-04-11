@@ -40,12 +40,12 @@ namespace Mug.TypeSystem
             throw new();
         }
 
-        public int Size(int sizeofpointer)
+        public int Size(int sizeofpointer, IRGenerator generator)
         {
             var result = 0;
 
             for (int i = 0; i < FieldTypes.Length; i++)
-                result += FieldTypes[i].Size(sizeofpointer);
+                result += FieldTypes[i].Size(sizeofpointer, generator);
 
             return result;
         }

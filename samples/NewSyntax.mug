@@ -1,0 +1,48 @@
+type A:
+  a: i32
+
+type B:
+  b: i64
+
+type AB = ( A | B )
+
+enum ABKind u8:
+  FirstKind
+  SecondKind
+
+func add(a: i32, b: i32) i32: return a + b
+
+func main() i32:
+  return add(1, 2)
+
+func some():
+  const abc = "abc"
+  var xyz = 10f
+
+enum MyErr err:
+  SomeErr
+  OtherErr
+
+func do(a: i32) MyErr!void:
+  return
+    if a == 10: MyErr.SomeErr
+    else: MyErr.OtherErr
+
+func other<T>(a: T) T:
+  while true:
+    if a == 10:
+      a++
+      continue
+    break
+  
+  for i in 0..10:
+    println(i)
+  
+  for i: i32, i < 100, i++ {
+    println(++i)
+  }
+
+  if a == 10:
+    return 10
+  else:
+    return A

@@ -12,7 +12,7 @@ namespace Mug.Compilation
         public string Message { get; }
         public int LineAt(string source)
         {
-            return CompilationErrors.CountLines(source, Bad.Position.Start.Value) - 1;
+            return CompilationErrors.CountLines(source, Bad.Position.Start.Value);
         }
 
         public MugError(ModulePosition position, string message)

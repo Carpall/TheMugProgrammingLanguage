@@ -14,13 +14,14 @@ try
 
     const string test = @"
 
-enum ParseErr: err {
-  a
-  b
-}
+type A { a: i32 }
+type B { a: i64 }
 
-func main(): ParseErr!i32 {
-  return 10
+type AB = ( A | *B )
+
+func main() {
+  const ab = new A { } as AB
+  const a = unbox<A>(ab)
 }
 
 ";

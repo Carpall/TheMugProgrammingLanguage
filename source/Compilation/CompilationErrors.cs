@@ -94,7 +94,7 @@ namespace Mug.Compilation
         /// </summary
         public static void WriteModuleStyle(string moduleName, int lineAt, int column, string error = "")
         {
-            Console.Write($" ---> {Path.GetRelativePath(Environment.CurrentDirectory, moduleName.Pastel(Color.GreenYellow))}{(lineAt > 0 ? $"{"(".Pastel(Color.HotPink)}{lineAt}{":".Pastel(Color.HotPink)}{column}{")".Pastel(Color.HotPink)}" : "")}");
+            Console.Write($" ---> {Path.GetRelativePath(Environment.CurrentDirectory, moduleName).Pastel(Color.GreenYellow)}{(lineAt > 0 ? $"{"(".Pastel(Color.HotPink)}{lineAt}{":".Pastel(Color.HotPink)}{column}{")".Pastel(Color.HotPink)}" : "")}");
             Console.WriteLine(error != "" ? $": {error.Pastel(Color.Orange)}" : "");
         }
 

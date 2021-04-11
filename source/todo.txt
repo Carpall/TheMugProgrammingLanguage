@@ -52,3 +52,7 @@ done: +
 - refactor 'or' and 'and' emit functions and 'ret'
 - add constant globally
 - implement a better constant overflow check
+- add an option type to allow type recursion
+- fix hidden buffer type infer with enum errors
+- refactor local generator -> hide llvm references
+- add a block for function return

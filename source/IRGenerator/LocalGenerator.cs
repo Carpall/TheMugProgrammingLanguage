@@ -81,7 +81,7 @@ namespace Mug.Models.Generator
                 case TokenKind.ConstantDigit:
                     if (isenum)
                     {
-                        llvmvalue = LLVMValueRef.CreateConstInt(forcedIntSize.LLVMType(_generator), Convert.ToUInt64(constant.Value));
+                        llvmvalue = LLVMValueRef.CreateConstInt(forcedIntSize.GetLLVMType(_generator), Convert.ToUInt64(constant.Value));
                         type = forcedIntSize;
                     }
                     else
@@ -336,7 +336,7 @@ namespace Mug.Models.Generator
             _emitter.Builder.BuildStore(
                 value.LLVMValue,
                 _emitter.Builder.BuildBitCast(
-                    gepOF(tmp, 1), LLVMTypeRef.CreatePointer(value.Type.LLVMType(_generator), 0))
+                    gepOF(tmp, 1), LLVMTypeRef.CreatePointer(value.Type.GetLLVMType(_generator), 0))
                 );
 
             return _emitter.Builder.BuildLoad(tmp);
@@ -387,12 +387,12 @@ namespace Mug.Models.Generator
             {
                 var value = _emitter.Pop();
 
-                if (!value.Type.IsPointer() && !value.Type.IsIndexable() && value.Type.TypeKind != MugValueTypeKind.Unknown)
+                if (!value.Type.IsPointer() && !value.Type.IsIndexable())
                     return Report(position, "Expected pointer when in cast expression something is unknown");
-
+                
                 _emitter.Load(
-                    MugValue.From(_emitter.Builder.BuildBitCast(value.LLVMValue, castType.LLVMType(_generator)),
-                    MugValueType.Variant(value.Type.GetVariant())));
+                    MugValue.From(_emitter.Builder.BuildBitCast(value.LLVMValue, castType.GetLLVMType(_generator)),
+                    castType));
             }
             else if (castType.IsVariant())
             {
@@ -404,7 +404,7 @@ namespace Mug.Models.Generator
 
                 _emitter.Load(
                     MugValue.Struct(
-                        BoxValue(_emitter.Pop(), index, _generator.GetBiggestTypeOFVariant(variant).LLVMType(_generator)),
+                        BoxValue(_emitter.Pop(), index, _generator.GetBiggestTypeOFVariant(variant).GetLLVMType(_generator)),
                         MugValueType.Variant(variant))
                     );
             }
@@ -670,7 +670,7 @@ namespace Mug.Models.Generator
             var functionType = function?.ReturnType;
 
             if (expectedNonVoid)
-                _generator.ExpectNonVoidType(functionType.Value.LLVMType(_generator), c.Position);
+                _generator.ExpectNonVoidType(functionType.Value.GetLLVMType(_generator), c.Position);
 
             _emitter.Call(function.Value.Value.LLVMValue, parameters, functionType.Value, basevalue);
 
@@ -684,7 +684,7 @@ namespace Mug.Models.Generator
 
         private void CompTime_sizeof(MugType generic)
         {
-            var size = generic.ToMugValueType(_generator).Size(_generator.SizeOfPointer);
+            var size = generic.ToMugValueType(_generator).Size(_generator.SizeOfPointer, _generator);
 
             _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)size), MugValueType.Int32, isconstant: true));
         }
@@ -729,7 +729,7 @@ namespace Mug.Models.Generator
                 var index = boxtype.Body.FindIndex(type => type.ToMugValueType(_generator).RawEquals(castType));
                 if (index == -1)
                     return Report(position, $"Variant type '{boxtype.Name}' does not include type '{castType}'");
-
+                
                 _emitter.Load(UnboxValue(expr, boxtype, castType));
             }
 
@@ -802,7 +802,7 @@ namespace Mug.Models.Generator
         public bool EmitIsInstruction(INode left, MugType right, Token? alias, ModulePosition position)
         {
             var value = EvaluateLeftValue(left);
-
+            
             if (!value.Type.IsVariant())
                 return Report(position, "Unable to perform 'is' operator over a non-boxed value");
 
@@ -811,6 +811,13 @@ namespace Mug.Models.Generator
             var index = boxtype.Body.FindIndex(type => type.ToMugValueType(_generator).RawEquals(righttype));
             if (index == -1)
                 return Report(position, $"Variant type '{boxtype.Name}' does not include type '{righttype}'");
+
+            if (!value.IsAllocaInstruction())
+            {
+                var tmp = _emitter.Builder.BuildAlloca(value.Type.GetLLVMType(_generator));
+                _emitter.Builder.BuildStore(value.LLVMValue, tmp);
+                value.LLVMValue = tmp;
+            }
 
             var check = MugValue.From(
                 _emitter.Builder.BuildICmp(
@@ -832,21 +839,22 @@ namespace Mug.Models.Generator
 
         private MugValue UnboxValue(MugValue value, VariantStatement boxtype, MugValueType castType)
         {
+            LLVMValueRef ptr = castType.RawEquals(_generator.GetBiggestTypeOFVariant(boxtype)) ? value.LLVMValue : EmitBitcast(value, castType).LLVMValue;
+
+            ptr = gepOF(ptr, 1);
+
             return
-                MugValue.From(_emitter.Builder.BuildLoad(
-                    gepOF(
-                        !castType.RawEquals(_generator.GetBiggestTypeOFVariant(boxtype)) ? EmitUnbox(value, castType).LLVMValue : value.LLVMValue,
-                        1)
-                    ), castType);
+                MugValue.From(_emitter.Builder.BuildLoad(ptr), castType);
         }
 
-        private MugValue EmitUnbox(MugValue value, MugValueType righttype)
+        private MugValue EmitBitcast(MugValue value, MugValueType righttype)
         {
             return MugValue.From(
-                _emitter.Builder.BuildBitCast(
-                    value.LLVMValue,
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, righttype.LLVMType(_generator) }, true), 0)),
-                righttype);
+                _emitter.Builder.BuildLoad(
+                    _emitter.Builder.BuildBitCast(
+                        value.LLVMValue,
+                        LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, righttype.GetLLVMType(_generator) }, true), 0))
+                ), righttype);
         }
 
         private bool EmitExprArrayElemSelect(ArraySelectElemNode a, bool buildload = true)
@@ -895,9 +903,9 @@ namespace Mug.Models.Generator
             else if (!EvaluateExpression(aa.Size))
                 return;
 
-            var array = MugValue.From(_emitter.Builder.BuildAlloca(arraytype.LLVMType(_generator)), arraytype);
+            var array = MugValue.From(_emitter.Builder.BuildAlloca(arraytype.GetLLVMType(_generator)), arraytype);
 
-            var allocation = CreateHeapArray(arraytype.ArrayBaseElementType.LLVMType(_generator), _emitter.Pop().LLVMValue);
+            var allocation = CreateHeapArray(arraytype.ArrayBaseElementType.GetLLVMType(_generator), _emitter.Pop().LLVMValue);
 
             _emitter.Builder.BuildStore(allocation, array.LLVMValue);
 
@@ -930,7 +938,7 @@ namespace Mug.Models.Generator
             if (!structure.IsAllocableTypeNew())
                 return Report(ta.Position, $"Unable to allocate type {ta.Name} with 'new' operator");
 
-            var tmp = _emitter.Builder.BuildAlloca(structure.LLVMType(_generator));
+            var tmp = _emitter.Builder.BuildAlloca(structure.GetLLVMType(_generator));
 
             if (structure.IsEnum())
                 return Report(ta.Position, "Unable to allocate an enum");
@@ -972,7 +980,7 @@ namespace Mug.Models.Generator
                 if (fields.Contains(structureInfo.FieldNames[i]))
                     continue;
 
-                _emitter.Load(GetDefaultValueOf(structureInfo.FieldTypes[i], structureInfo.FieldPositions[i]));
+                _emitter.Load(GetDefaultValueOf(structureInfo.FieldTypes[i], ta.Name.Position));
 
                 _emitter.StoreField(tmp, i);
             }
@@ -1001,10 +1009,12 @@ namespace Mug.Models.Generator
                 _emitter.LoadFieldName();
             }
 
-            if (!_emitter.PeekType().IsStructure())
-                return Report(m.Base.Position, "Accessed inaccessible type");
+            var valuetype = _emitter.PeekType();
 
-            var structure = _emitter.PeekType().GetStructure();
+            if (!valuetype.IsStructure())
+                return Report(m.Base.Position, $"Type '{valuetype}' is not accessible via '.'");
+
+            var structure = valuetype.GetStructure();
             var type = structure.GetFieldTypeFromName(m.Member.Value, _generator, m.Member.Position);
             var index = structure.GetFieldIndexFromName(m.Member.Value, _generator, m.Member.Position);
             var instance = _emitter.Pop();
@@ -1350,7 +1360,13 @@ namespace Mug.Models.Generator
         private MugValue ReferencesPointersMandatoryInitialization(ModulePosition position, MugValueType type)
         {
             _generator.Report(position, "References and pointers must be initialized");
-            return MugValue.From(LLVMValueRef.CreateConstAllOnes(type.LLVMType(_generator)), type);
+            return MugValue.From(LLVMValueRef.CreateConstAllOnes(type.GetLLVMType(_generator)), type);
+        }
+
+        private MugValue ReportUnitializedVariant(ModulePosition position, MugValueType type)
+        {
+            _generator.Error(position, "Variants must be initilized");
+            return MugValue.From(LLVMValueRef.CreateConstAllOnes(type.GetLLVMType(_generator)), type);
         }
 
         private MugValue GetDefaultValueOf(MugValueType type, ModulePosition position)
@@ -1361,14 +1377,15 @@ namespace Mug.Models.Generator
                 MugValueTypeKind.Int8 or
                 MugValueTypeKind.Int32 or
                 MugValueTypeKind.Int64 or
-                MugValueTypeKind.Bool => MugValue.From(LLVMValueRef.CreateConstInt(type.LLVMType(_generator), 0), type, true),
+                MugValueTypeKind.Bool => MugValue.From(LLVMValueRef.CreateConstInt(type.GetLLVMType(_generator), 0), type, true),
                 MugValueTypeKind.Float32 or
                 MugValueTypeKind.Float64 or
-                MugValueTypeKind.Float128 => MugValue.From(LLVMValueRef.CreateConstSIToFP(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0), type.LLVMType(_generator)), type, true),
+                MugValueTypeKind.Float128 => MugValue.From(LLVMValueRef.CreateConstSIToFP(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0), type.GetLLVMType(_generator)), type, true),
                 MugValueTypeKind.String => MugValue.From(CreateConstString(""), type, true),
-                MugValueTypeKind.Array => MugValue.From(CreateHeapArray(type.ArrayBaseElementType.LLVMType(_generator), LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)), type, true),
+                MugValueTypeKind.Array => MugValue.From(CreateHeapArray(type.ArrayBaseElementType.GetLLVMType(_generator), LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)), type, true),
                 MugValueTypeKind.Enum or
                 MugValueTypeKind.Struct => GetDefaultValueOfDefinedType(type, position),
+                MugValueTypeKind.Variant => ReportUnitializedVariant(position, type),
                 MugValueTypeKind.Unknown or
                 MugValueTypeKind.Reference or
                 MugValueTypeKind.Pointer => ReferencesPointersMandatoryInitialization(position, type),
@@ -1439,7 +1456,7 @@ namespace Mug.Models.Generator
                     }
 
                     if (enumerrorType.SuccessType.TypeKind != MugValueTypeKind.Void) {
-                        var tmp = _emitter.Builder.BuildAlloca(type.LLVMType(_generator));
+                        var tmp = _emitter.Builder.BuildAlloca(type.GetLLVMType(_generator));
 
                         if (value.HasValue)
                             _emitter.Builder.BuildStore(
@@ -1539,27 +1556,28 @@ namespace Mug.Models.Generator
         /// </summary>
         private MugValue EvaluateLeftValue(INode leftexpression, bool isfirst = true)
         {
+            MugValue result;
             if (leftexpression is Token token && token.Kind == TokenKind.Identifier)
             {
                 var allocation = _emitter.GetMemoryAllocation(token.Value, token.Position);
                 if (!allocation.HasValue)
                     Stop();
 
-                return allocation.Value;
+                result = allocation.Value;
             }
             else if (leftexpression is ArraySelectElemNode indexing)
             {
                 if (!EmitExprArrayElemSelect(indexing, false))
                     Stop();
 
-                return _emitter.Pop();
+                result = _emitter.Pop();
             }
             else if (leftexpression is MemberNode member)
             {
                 if (!EmitExprMemberAccess(member, false))
                     Stop();
 
-                return _emitter.Pop();
+                result = _emitter.Pop();
             }
             else if (leftexpression is PrefixOperator prefix)
             {
@@ -1567,26 +1585,38 @@ namespace Mug.Models.Generator
                     Error(leftexpression.Position, "Unable to assign a value to an expression");
 
                 var ptr = EvaluateLeftValue(prefix.Expression, false);
+                
+                if (!ptr.Type.IsPointer(false))
+                    Error(leftexpression.Position, "Cannot apply operator '*' to a left value which is not a pointer in assigment");
 
-                return MugValue.From(ptr.IsConst ? ptr.LLVMValue : _emitter.LoadFromPointer(ptr, prefix.Position).LLVMValue, ptr.Type.PointerBaseElementType);
+               result = MugValue.From(ptr.IsConst ? ptr.LLVMValue : _emitter.LoadFromPointer(ptr, prefix.Position).LLVMValue, ptr.Type.PointerBaseElementType);
             }
             else
             {
-                Report(leftexpression.Position, "Bad construction: illegal left expression");
+                Report(leftexpression.Position, "Illegal left expression");
                 Stop();
                 throw new();
                 /*EvaluateExpression(leftexpression);
 
                 return _emitter.Pop();*/
             }
+
+            if (result.LLVMValue.TypeOf.Kind != LLVMTypeKind.LLVMPointerTypeKind)
+            {
+                var tmp = _emitter.Builder.BuildAlloca(result.LLVMValue.TypeOf);
+                _emitter.Builder.BuildStore(result.LLVMValue, tmp);
+                result.LLVMValue = tmp;
+            }
+
+            return result;
         }
 
         private void EmitAssignmentStatement(AssignmentStatement assignment)
         {
             var ptr = EvaluateLeftValue(assignment.Name);
 
-            if (ptr.Type.TypeKind == MugValueTypeKind.Reference)
-                ptr = MugValue.From(_emitter.Builder.BuildLoad(ptr.LLVMValue), ptr.Type.PointerBaseElementType);
+            /*if (ptr.Type.TypeKind == MugValueTypeKind.Reference)
+                ptr = MugValue.From(_emitter.Builder.BuildLoad(ptr.LLVMValue), ptr.Type.PointerBaseElementType);*/
 
             if (ptr.IsConst)
             {
@@ -1691,13 +1721,13 @@ namespace Mug.Models.Generator
             var oldCycleExitBlock = CycleExitBlock;
 
             _emitter.Builder.BuildStore(value.LLVMValue, tmp);
-            _buffer = resultIsVoid ? MugValue.From(new(), MugValueType.Void) : MugValue.From(_emitter.Builder.BuildAlloca(enumerror.SuccessType.LLVMType(_generator)), enumerror.SuccessType);
+            _buffer = resultIsVoid ? MugValue.From(new(), MugValueType.Void) : MugValue.From(_emitter.Builder.BuildAlloca(enumerror.SuccessType.GetLLVMType(_generator)), enumerror.SuccessType);
 
             if (resultIsVoid)
                 _emitter.Load(MugValue.From(value.LLVMValue, enumerror.ErrorType));
             else
             {
-                _emitter.Builder.BuildStore(GetDefaultValueOf(enumerror.SuccessType, call.Position).LLVMValue, _buffer.Value.LLVMValue);
+                // _emitter.Builder.BuildStore(GetDefaultValueOf(enumerror.SuccessType, call.Position).LLVMValue, _buffer.Value.LLVMValue);
                 _emitter.Load(LoadField(ref tmp, enumerror, 0));
             }
 
@@ -1721,7 +1751,7 @@ namespace Mug.Models.Generator
                 _emitter.Builder.BuildStore(LoadField(ref tmp, enumerror, 1).LLVMValue, _buffer.Value.LLVMValue);
                 _emitter.Exit();
 
-                _emitter = new MugEmitter(_generator, catchend, oldemitter.IsInsideSubBlock);
+                _emitter = new MugEmitter(_generator, _emitter.Memory, catchend, oldemitter.IsInsideSubBlock);
             }
 
             oldemitter = _emitter;
@@ -1837,7 +1867,7 @@ namespace Mug.Models.Generator
                 tmp.Type = _emitter.PeekType();
                 unsafe { _emitter.Builder = LLVM.CreateBuilder(); }
                 _emitter.Builder.PositionBefore(tmp.LLVMValue);
-                var x = _emitter.Builder.BuildAlloca(tmp.Type.LLVMType(_generator));
+                var x = _emitter.Builder.BuildAlloca(tmp.Type.GetLLVMType(_generator));
                 tmp.LLVMValue.InstructionEraseFromParent();
                 tmp.LLVMValue = x;
                 _emitter.Builder = oldemitterBuilder;
@@ -1868,9 +1898,11 @@ namespace Mug.Models.Generator
                     StoreInHiddenBuffer(statement.Position, isLastOFBlock);
                     break;
                 case CallStatement call:
+                    var stackcount = _emitter.StackCount;
                     EmitCallStatement(call, false);
 
-                    StoreInHiddenBuffer(statement.Position, isLastOFBlock);
+                    if (_emitter.StackCount > stackcount) // returned a value
+                        StoreInHiddenBuffer(statement.Position, isLastOFBlock);
                     break;
                 case AssignmentStatement assignment:
                     EmitAssignmentStatement(assignment);

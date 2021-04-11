@@ -130,7 +130,7 @@ namespace Mug.TypeSystem
                 Kind == TypeKind.UInt64;
         }
 
-        private MugValueType EvaluateStruct(string name, List<MugType> genericsInput, ModulePosition position, IRGenerator generator)
+        private static MugValueType EvaluateStruct(string name, List<MugType> genericsInput, ModulePosition position, IRGenerator generator)
         {
             if (generator.IsIllegalType(name))
                 generator.Error(position, "Type recursion");
@@ -185,7 +185,7 @@ namespace Mug.TypeSystem
             return symbol.Value.Value.Type;
         }
 
-        public MugValueType EvaluateEnumError(MugType error, MugType type, IRGenerator generator)
+        public static MugValueType EvaluateEnumError(MugType error, MugType type, IRGenerator generator)
         {
             return generator.EvaluateEnumError(error, type);
         }

@@ -495,7 +495,7 @@ namespace Mug.Models.Parser
                     return true;
             }
 
-            if (e is null)
+            if (!allowNullExpression && e is null)
             {
                 Report("Expected term");
                 return false;

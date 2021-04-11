@@ -1,5 +1,6 @@
 ﻿using LLVMSharp;
 using Mug.Models.Generator;
+using Mug.Models.Lexer;
 using Mug.Models.Parser.NodeKinds.Statements;
 using Mug.MugValueSystem;
 using Mug.TypeSystem;
@@ -28,6 +29,7 @@ namespace Mug.Compilation.Symbols
         public readonly Dictionary<string, List<FunctionSymbol>> DefinedGenericFunctions = new();
         public readonly Dictionary<string, List<TypeSymbol>> DefinedTypes = new();
         public readonly Dictionary<string, (MugValue model, ModulePosition position)> DefinedEnumTypes = new();
+        public readonly List<(string name, Token value)> DefinedConstants = new();
 
         // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
@@ -309,6 +311,17 @@ namespace Mug.Compilation.Symbols
             foreach (var overloads in genericFunctions)
                 foreach (var function in overloads.Value)
                     DeclareGenericFunctionSymbol(overloads.Key, function);
+        }
+
+        public void DeclareConstant(string name, Token value, ModulePosition position)
+        {
+            if (DefinedConstants.FindIndex(c => c.name == name) != -1)
+            {
+                _generator.Report(position, $"Global const '{name}' is already declared");
+                return;
+            }
+
+            DefinedConstants.Add((name, value));
         }
     }
 }
