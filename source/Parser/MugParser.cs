@@ -365,12 +365,15 @@ namespace Mug.Models.Parser
                 Report(Back.Position, "Expected parameter's expression");
         }
 
-        private List<MugType> CollectGenericParameters()
+        private List<MugType> CollectGenericParameters(ref bool builtin)
         {
             var oldindex = _currentIndex;
 
             if (MatchAdvance(TokenKind.BooleanLess, true))
             {
+                if (builtin)
+                    ParseError(UnexpectedToken);
+
                 if (MatchType(out var type))
                 {
                     var generics = new List<MugType>() { type };
@@ -379,7 +382,10 @@ namespace Mug.Models.Parser
                         generics.Add(ExpectType());
 
                     if (MatchAdvance(TokenKind.BooleanGreater))
+                    {
+                        builtin = CollectBuiltInSymbol();
                         return generics;
+                    }
                 }
             }
 
@@ -387,42 +393,42 @@ namespace Mug.Models.Parser
             return new List<MugType>();
         }
 
+        private bool CollectBuiltInSymbol()
+        {
+            return MatchAdvance(TokenKind.Negation);
+        }
+
         private bool MatchCallStatement(out INode e, INode name)
         {
             e = null;
-            var token = Current;
 
-            if (!MatchAdvance(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
+            var builtin = CollectBuiltInSymbol();
+
+            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
                 return false;
 
-            var parameters = new NodeBuilder();
+            var generics = CollectGenericParameters(ref builtin);
 
-            /*if (name is MemberNode instanceAccesses)
+            if (!MatchAdvance(TokenKind.OpenPar))
             {
-                // parameters.Add(instanceAccesses.Base);
-
-                name = instanceAccesses*//*.Member*//*;
-            }*/
-
-            var generics = CollectGenericParameters();
-
-            if (token.Kind == TokenKind.BooleanLess && !MatchAdvance(TokenKind.OpenPar, true))
-            {
-                if (generics.Count != 0)
-                    ParseError("Expected call after generic parameter specification");
+                if (generics.Count > 0)
+                    Report("Invalid generic parameters here");
 
                 return false;
             }
 
+            var parameters = new NodeBuilder();
             CollectParameters(ref parameters);
             
-            e = new CallStatement() { Generics = generics, Name = name, Parameters = parameters, Position = name is null ? name.Position : name.Position };
+            e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Name = name, Parameters = parameters, Position = name is null ? name.Position : name.Position };
 
             while (MatchAdvance(TokenKind.Dot))
             {
                 name = Expect("Expected member after '.'", TokenKind.Identifier);
 
-                generics = CollectGenericParameters();
+                builtin = CollectBuiltInSymbol();
+
+                generics = CollectGenericParameters(ref builtin);
 
                 if (MatchAdvance(TokenKind.OpenPar, true))
                 {
@@ -430,9 +436,7 @@ namespace Mug.Models.Parser
 
                     CollectParameters(ref parameters);
 
-                    // parameters.Insert(0, e);
-
-                    e = new CallStatement() { Generics = generics, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
+                    e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
                 }
                 else
                 {

@@ -14,14 +14,23 @@ try
 
     const string test = @"
 
-type A { a: i32 }
-type B { a: i64 }
+type Person { name: str  age: u8 }
+type Animal { kind: AnimalKind  name: str  ton: AnimalTonnage  is_pet: bool }
 
-type AB = ( A | *B )
+type AnimalTonnage { kilos: i32 }
+enum AnimalKind: u8 { dog cat bat }
+
+
+type Entity = ( Person | Animal )
+
+func printf(text: str)
 
 func main() {
-  const ab = new A { } as AB
-  const a = unbox<A>(ab)
+  var some = new Person { } as Entity
+  some = new Animal { } as Entity
+  if some is Animal animal {
+    
+  }
 }
 
 ";

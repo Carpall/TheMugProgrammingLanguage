@@ -497,6 +497,7 @@ namespace Mug.Models.Generator
             }
             else // (expr)()
             {
+                Error(leftexpression.Position, "Currently unsupported");
                 // fix when implemented function pointers
                 EvaluateExpression(leftexpression);
                 throw new(); // tofix
@@ -636,8 +637,8 @@ namespace Mug.Models.Generator
         private bool EmitCallStatement(CallStatement c, bool expectedNonVoid, bool isInCatch = false)
         {
             // to replace with built in macros
-            if (IsBuiltInFunction(c.Name, c.Generics, c.Parameters.Nodes, expectedNonVoid, c.Position, out var result))
-                return result;
+            if (c.IsBuiltIn)
+                return ExecuteBuiltIn(c.Name, c.Generics, c.Parameters.Nodes, expectedNonVoid, c.Position);
 
             // an array is prepared for the parameter types of function to call
             var parameters = new MugValue[c.Parameters.Length];
@@ -682,35 +683,32 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private void CompTime_sizeof(MugType generic)
+        private bool CompTime_sizeof(MugType generic)
         {
             var size = generic.ToMugValueType(_generator).Size(_generator.SizeOfPointer, _generator);
 
             _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)size), MugValueType.Int32, isconstant: true));
+            return true;
         }
 
-        private bool IsBuiltInFunction(INode name, List<MugType> generics, INode[] parameters, bool expectedNonVoid, ModulePosition position, out bool result)
+        private bool ExecuteBuiltIn(INode name, List<MugType> generics, INode[] parameters, bool expectedNonVoid, ModulePosition position)
         {
-            result = true;
-
             if (name is not Token id)
-                return false;
+                return Report(position, "Built in functions have no base");
 
             switch (id.Value)
             {
                 case "size" when generics.Count == 1 && parameters.Length == 0:
-                    checkUseless();
-                    CompTime_sizeof(generics.First());
-                    return true;
+                    checkUselessWhenStatement();
+                    return CompTime_sizeof(generics.First());
                 case "unbox" when generics.Count == 1 && parameters.Length == 1:
-                    checkUseless();
-                    result = CompTime_unbox(generics.First(), parameters.First(), position);
-                    return true;
+                    checkUselessWhenStatement();
+                    return CompTime_unbox(generics.First(), parameters.First(), position);
                 default:
-                    return false;
+                    return Report(position, $"Unknown built in function '{id.Value}'");
             }
 
-            void checkUseless()
+            void checkUselessWhenStatement()
             {
                 if (!expectedNonVoid)
                     Report(position, "Useless here");
@@ -719,19 +717,24 @@ namespace Mug.Models.Generator
 
         private bool CompTime_unbox(MugType type, INode expression, ModulePosition position)
         {
-            var expr = EvaluateLeftValue(expression);
+            if (!EvaluateExpression(expression))
+                return false;
+
+            _emitter.MakeTempAllocation();
+
+            var expr = _emitter.Pop();
             var expressionType = expr.Type;
             var castType = type.ToMugValueType(_generator);
 
-            if (expressionType.IsVariant() && !castType.IsVariant())
-            {
-                var boxtype = expressionType.GetVariant();
-                var index = boxtype.Body.FindIndex(type => type.ToMugValueType(_generator).RawEquals(castType));
-                if (index == -1)
-                    return Report(position, $"Variant type '{boxtype.Name}' does not include type '{castType}'");
-                
-                _emitter.Load(UnboxValue(expr, boxtype, castType));
-            }
+            if (!expressionType.IsVariant())
+                return Report(expression.Position, $"Required argument of type variant");
+
+            var boxtype = expressionType.GetVariant();
+            var index = boxtype.Body.FindIndex(type => type.ToMugValueType(_generator).RawEquals(castType));
+            if (index == -1)
+                return Report(position, $"Variant type '{boxtype.Name}' does not include type '{castType}'");
+
+            _emitter.Load(UnboxValue(expr, boxtype, castType));
 
             return true;
         }
@@ -801,7 +804,11 @@ namespace Mug.Models.Generator
 
         public bool EmitIsInstruction(INode left, MugType right, Token? alias, ModulePosition position)
         {
-            var value = EvaluateLeftValue(left);
+            if (!EvaluateExpression(left))
+                return false;
+
+            _emitter.MakeTempAllocation();
+            var value = _emitter.Pop();
             
             if (!value.Type.IsVariant())
                 return Report(position, "Unable to perform 'is' operator over a non-boxed value");
@@ -839,22 +846,13 @@ namespace Mug.Models.Generator
 
         private MugValue UnboxValue(MugValue value, VariantStatement boxtype, MugValueType castType)
         {
-            LLVMValueRef ptr = castType.RawEquals(_generator.GetBiggestTypeOFVariant(boxtype)) ? value.LLVMValue : EmitBitcast(value, castType).LLVMValue;
+            var ptr = castType.GetLLVMType(_generator) == _generator.GetBiggestTypeOFVariant(boxtype).GetLLVMType(_generator)
+                ? value.LLVMValue : _emitter.EmitBitcast(value, castType).LLVMValue;
 
             ptr = gepOF(ptr, 1);
 
             return
                 MugValue.From(_emitter.Builder.BuildLoad(ptr), castType);
-        }
-
-        private MugValue EmitBitcast(MugValue value, MugValueType righttype)
-        {
-            return MugValue.From(
-                _emitter.Builder.BuildLoad(
-                    _emitter.Builder.BuildBitCast(
-                        value.LLVMValue,
-                        LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, righttype.GetLLVMType(_generator) }, true), 0))
-                ), righttype);
         }
 
         private bool EmitExprArrayElemSelect(ArraySelectElemNode a, bool buildload = true)
@@ -1596,16 +1594,6 @@ namespace Mug.Models.Generator
                 Report(leftexpression.Position, "Illegal left expression");
                 Stop();
                 throw new();
-                /*EvaluateExpression(leftexpression);
-
-                return _emitter.Pop();*/
-            }
-
-            if (result.LLVMValue.TypeOf.Kind != LLVMTypeKind.LLVMPointerTypeKind)
-            {
-                var tmp = _emitter.Builder.BuildAlloca(result.LLVMValue.TypeOf);
-                _emitter.Builder.BuildStore(result.LLVMValue, tmp);
-                result.LLVMValue = tmp;
             }
 
             return result;
@@ -1614,9 +1602,6 @@ namespace Mug.Models.Generator
         private void EmitAssignmentStatement(AssignmentStatement assignment)
         {
             var ptr = EvaluateLeftValue(assignment.Name);
-
-            /*if (ptr.Type.TypeKind == MugValueTypeKind.Reference)
-                ptr = MugValue.From(_emitter.Builder.BuildLoad(ptr.LLVMValue), ptr.Type.PointerBaseElementType);*/
 
             if (ptr.IsConst)
             {
@@ -1839,7 +1824,7 @@ namespace Mug.Models.Generator
             var oldCycleCompareBlock = CycleCompareBlock;
 
             CycleExitBlock = endcycle;
-            CycleCompareBlock = compare;
+            CycleCompareBlock = operate;
 
             // define if and else bodies
             DefineConditionBody(cycle, operate, forstatement.Body, oldemitter);

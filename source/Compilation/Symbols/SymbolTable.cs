@@ -275,11 +275,23 @@ namespace Mug.Compilation.Symbols
                 CompilerSymbols.Add(symbol);
         }
 
-        public void MergeDefinedSymbols(Dictionary<string, List<FunctionSymbol>> functions)
+        public void MergeDefinedFunctionSymbols(Dictionary<string, List<FunctionSymbol>> functions)
         {
             foreach (var overloads in functions)
                 foreach (var function in overloads.Value)
                     DeclareFunctionSymbol(overloads.Key, function, function.Position, out _);
+        }
+
+        public void MergeDeclaredFunctionSymbols(List<FunctionNode> functions)
+        {
+            foreach (var function in functions)
+                DeclaredFunctions.Add(function);
+        }
+
+        public void MergeDeclaredTypeSymbols(List<TypeStatement> types)
+        {
+            foreach (var type in types)
+                DeclaredTypes.Add(type);
         }
 
         public void MergeDeclaredGenericFunctionSymbols(List<FunctionNode> genericFunctions)

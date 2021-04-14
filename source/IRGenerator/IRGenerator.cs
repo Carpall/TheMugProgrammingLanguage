@@ -372,7 +372,7 @@ namespace Mug.Models.Generator
                 function.Name == EntryPointName &&
                 !function.Base.HasValue &&
                 function.Generics.Count == 0 &&
-                function.ParameterList.Length == 0;
+                (function.ParameterList.Length == 0 || function.ParameterList.Length == 2);
         }
 
         private void ReadModule(string filename)
@@ -492,10 +492,11 @@ namespace Mug.Models.Generator
             Paths.Add(path);
         }
 
-        private void MergeSymbols(ref CompilationUnit unit)
+        private void MergeSymbols(CompilationUnit unit)
         {
             Table.MergeCompilerSymbols(unit.IRGenerator.Table.CompilerSymbols);
-            Table.MergeDefinedSymbols(unit.IRGenerator.Table.DefinedFunctions);
+            Table.MergeDefinedFunctionSymbols(unit.IRGenerator.Table.DefinedFunctions);
+            Table.MergeDeclaredFunctionSymbols(unit.IRGenerator.Table.DeclaredFunctions);
             Table.MergeDeclaredGenericFunctionSymbols(unit.IRGenerator.Table.DeclaredGenericFunctions);
             Table.MergeDeclaredGenericTypesSymbols(unit.IRGenerator.Table.DeclaredGenericTypes);
             Table.MergeDeclaredAsOperatorSymbols(unit.IRGenerator.Table.DefinedAsOperators);
@@ -564,7 +565,7 @@ namespace Mug.Models.Generator
             unit.IRGenerator.Paths = Paths;
             unit.IRGenerator.Module = Module;
             unit.Generate();
-            MergeSymbols(ref unit);
+            MergeSymbols(unit);
         }
 
         private TokenKind GetValueTokenKindFromType(MugValueTypeKind kind, ModulePosition position)
@@ -767,7 +768,7 @@ namespace Mug.Models.Generator
             return llvmfunction;
         }
 
-        private bool CheckAsOperator(FunctionNode function)
+        private static bool CheckAsOperator(FunctionNode function)
         {
             return
                 !function.Base.HasValue &&

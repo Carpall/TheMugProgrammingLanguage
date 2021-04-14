@@ -56,3 +56,6 @@ done: +
 - fix hidden buffer type infer with enum errors
 - refactor local generator -> hide llvm references
 - add a block for function return
+- make the compile a multi pass compiler
+- emit hidden instructions to save argv
+- make impossible to change field of a constant

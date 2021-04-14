@@ -93,7 +93,8 @@ namespace Mug.Compilation
             {
                 // deletes a possible file named in the same way as the result, to avoid bugs in the while under
                 if (File.Exists(bitcode)) File.Delete(bitcode);
-                
+                if (File.Exists(output)) File.Delete(output);
+
                 // writes the module to a file
                 if (module.WriteBitcodeToFile(bitcode) != 0)
                     CompilationErrors.Throw("Error writing to file");
@@ -101,7 +102,7 @@ namespace Mug.Compilation
                 if (onlyBitcode) return;
 
                 // the program goes in this keeps the program waiting until it finds the file containing the compiled program
-                while (!File.Exists(bitcode)) nothing();
+                while (!File.Exists(bitcode) || File.Exists(output)) nothing();
 
                 // clang compiler
                 CallClang($"{bitcode} -o {output} {optionalFlag}", optimizazioneLevel);

@@ -684,5 +684,25 @@ namespace Mug.Models.Generator.Emitter
         {
             Memory = new Dictionary<string, MugValue>(Memory);
         }
+
+        public void MakeTempAllocation()
+        {
+            var value = Pop();
+            var tmp = Builder.BuildAlloca(value.Type.GetLLVMType(_generator));
+
+            Builder.BuildStore(value.LLVMValue, tmp);
+
+            value.LLVMValue = tmp;
+            Load(value);
+        }
+
+        public MugValue EmitBitcast(MugValue value, MugValueType righttype)
+        {
+            return MugValue.From(
+                    Builder.BuildBitCast(
+                        value.LLVMValue,
+                        LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, righttype.GetLLVMType(_generator) }, true), 0)),
+                    righttype);
+        }
     }
 }
