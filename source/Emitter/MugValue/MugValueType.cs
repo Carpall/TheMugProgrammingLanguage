@@ -1,4 +1,5 @@
-﻿using LLVMSharp.Interop;
+﻿using LLVMSharp;
+using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
@@ -45,11 +46,18 @@ namespace Mug.MugValueSystem
                 MugValueTypeKind.Reference => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0),
                 MugValueTypeKind.Struct => GetStructure().LLVMValue,
                 MugValueTypeKind.Enum => GetEnumInfo().basetype.GetLLVMType(generator),
-                MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0),
+                MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(
+                    LLVMTypeRef.CreateStruct(new[]
+                    {
+                        LLVMTypeRef.Int64,
+                        LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0)
+                    },
+                    false),
+                    0),
                 MugValueTypeKind.EnumError => GetEnumError().LLVMValue,
                 MugValueTypeKind.Variant => LLVMTypeRef.CreateStruct(new[]
                 {
-                        LLVMTypeRef.Int8, generator.GetBiggestTypeOFVariant(GetVariant()).GetLLVMType(generator)
+                    LLVMTypeRef.Int8, generator.GetBiggestTypeOFVariant(GetVariant()).GetLLVMType(generator)
                 }, true),
                 _ => (LLVMTypeRef)BaseType,
             };
@@ -91,6 +99,18 @@ namespace Mug.MugValueSystem
 
         public static MugValueType Struct(string name, MugValueType[] body, string[] structure, ModulePosition[] positions, IRGenerator generator)
         {
+            var llvmstructure = generator.Module.Context.CreateNamedStruct(name);
+            unsafe
+            {
+                LLVMOpaqueType*[] types = new LLVMOpaqueType*[body.Length];
+                var paramtypes = generator.MugTypesToLLVMTypes(body);
+                for (int i = 0; i < body.Length; i++)
+                    types[i] = paramtypes[i];
+
+                fixed (LLVMOpaqueType** fix = types)
+                LLVM.StructSetBody(llvmstructure, fix, (uint)body.Length, 0);
+            }
+
             return new MugValueType()
             {
                 BaseType = new StructureInfo()
@@ -99,7 +119,7 @@ namespace Mug.MugValueSystem
                     FieldNames = structure,
                     FieldPositions = positions,
                     FieldTypes = body,
-                    LLVMValue = LLVMTypeRef.CreateStruct(GetLLVMTypes(body, generator), false)
+                    LLVMValue = llvmstructure
                 },
                 TypeKind = MugValueTypeKind.Struct
             };
@@ -131,7 +151,8 @@ namespace Mug.MugValueSystem
         public static MugValueType Int64 => From(LLVMTypeRef.Int64, MugValueTypeKind.Int64);
         public static MugValueType Void => From(LLVMTypeRef.Void, MugValueTypeKind.Void);
         public static MugValueType Char => From(LLVMTypeRef.Int8, MugValueTypeKind.Char);
-        public static MugValueType String => From(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), MugValueTypeKind.String);
+        public static MugValueType String => From(LLVMTypeRef.CreatePointer(IRGenerator.CurrentInstance.Module.GetTypeByName("struct.str"), 0), MugValueTypeKind.String);
+        public static MugValueType CString => MugValueType.Pointer(MugValueType.Char);
         public static MugValueType Unknown => From(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), MugValueTypeKind.Unknown);
         public static MugValueType Float32 => From(LLVMTypeRef.Float, MugValueTypeKind.Float32);
         public static MugValueType Float64 => From(LLVMTypeRef.Double, MugValueTypeKind.Float64);
@@ -303,6 +324,13 @@ namespace Mug.MugValueSystem
             return
                 TypeKind == MugValueTypeKind.Struct ||
                 TypeKind == MugValueTypeKind.Array;
+        }
+
+        public bool IsQuotable()
+        {
+            return
+                TypeKind == MugValueTypeKind.Char ||
+                TypeKind == MugValueTypeKind.String;
         }
     }
 }

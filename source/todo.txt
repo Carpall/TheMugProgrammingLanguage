@@ -59,3 +59,11 @@ done: +
 - make the compile a multi pass compiler
 - emit hidden instructions to save argv
 - make impossible to change field of a constant
+- start to work for debugger (break points with built in functions)
+- replace when statement with built in functions
+- make check for dupplicates in variant types
+- evaluate at compile time fmt macro and throw errors for bad formattation
+- implement arc
+- implement destructors `~`
+- fix export pragmas
+- fix constant floats: llvmsharp does not expose any function for constant float creation

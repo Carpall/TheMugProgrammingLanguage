@@ -132,6 +132,8 @@ namespace Mug.Compilation
         /// </summary>
         public static void WriteSourceLineStyle(string modulename, Range position, int lineAt, string source, string error)
         {
+            error = error.Replace("\n", "\\n");
+
             GetColumn(position, ref source, out var start, out var end);
 
             WriteModuleStyle(modulename, lineAt, start, error);

@@ -14,7 +14,7 @@ namespace Mug.Models.Lexer
 
         public readonly string Source;
         public readonly string ModuleName;
-        public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=' };
+        public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=', '$' };
 
         private StringBuilder CurrentSymbol { get; set; }
         private bool _eol = false;
@@ -100,19 +100,6 @@ namespace Mug.Models.Lexer
             "func" => AddKeyword(TokenKind.KeyFunc, s),
             "var" => AddKeyword(TokenKind.KeyVar, s),
             "const" => AddKeyword(TokenKind.KeyConst, s),
-            "str" => AddKeyword(TokenKind.KeyTstr, s),
-            "chr" => AddKeyword(TokenKind.KeyTchr, s),
-            "i32" => AddKeyword(TokenKind.KeyTi32, s),
-            "i64" => AddKeyword(TokenKind.KeyTi64, s),
-            "f32" => AddKeyword(TokenKind.KeyTf32, s),
-            "f64" => AddKeyword(TokenKind.KeyTf64, s),
-            "f128" => AddKeyword(TokenKind.KeyTf128, s),
-            "void" => AddKeyword(TokenKind.KeyTVoid, s),
-            "bool" => AddKeyword(TokenKind.KeyTbool, s),
-            "u8" => AddKeyword(TokenKind.KeyTu8, s),
-            "u32" => AddKeyword(TokenKind.KeyTu32, s),
-            "u64" => AddKeyword(TokenKind.KeyTu64, s),
-            "unknown" => AddKeyword(TokenKind.KeyTunknown, s),
             "when" => AddKeyword(TokenKind.KeyWhen, s),
             "declare" => AddKeyword(TokenKind.KeyDeclare, s),
             "catch" => AddKeyword(TokenKind.KeyCatch, s),

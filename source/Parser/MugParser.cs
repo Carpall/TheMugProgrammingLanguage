@@ -262,22 +262,31 @@ namespace Mug.Models.Parser
             return true;
         }
 
+        private bool MatchIdentifier(string value)
+        {
+            var match = Current.Kind == TokenKind.Identifier && Current.Value == value;
+            if (match)
+                _currentIndex++;
+
+            return match;
+        }
+
         private bool MatchPrimitiveType(out Token type)
         {
+            type = Current;
+
             return
-                MatchAdvance(TokenKind.KeyTi32, out type) ||
-                MatchAdvance(TokenKind.KeyTVoid, out type) ||
-                MatchAdvance(TokenKind.KeyTbool, out type) ||
-                MatchAdvance(TokenKind.KeyTchr, out type) ||
-                MatchAdvance(TokenKind.KeyTf32, out type) ||
-                MatchAdvance(TokenKind.KeyTf64, out type) ||
-                MatchAdvance(TokenKind.KeyTf128, out type) ||
-                MatchAdvance(TokenKind.KeyTi64, out type) ||
-                MatchAdvance(TokenKind.KeyTu32, out type) ||
-                MatchAdvance(TokenKind.KeyTu8, out type) ||
-                MatchAdvance(TokenKind.KeyTu64, out type) ||
-                MatchAdvance(TokenKind.KeyTstr, out type) ||
-                MatchAdvance(TokenKind.KeyTunknown, out type);
+                MatchIdentifier("str") ||
+                MatchIdentifier("chr") ||
+                MatchIdentifier("u8") ||
+                MatchIdentifier("i32") ||
+                MatchIdentifier("i64") ||
+                MatchIdentifier("f32") ||
+                MatchIdentifier("f64") ||
+                MatchIdentifier("f128") ||
+                MatchIdentifier("void") ||
+                MatchIdentifier("bool") ||
+                MatchIdentifier("unknown");
         }
 
         private bool MatchValue()
@@ -301,11 +310,11 @@ namespace Mug.Models.Parser
         {
             e = null;
 
-            if (!MatchAdvance(TokenKind.OpenPar, out var token))
+            if (!MatchAdvance(TokenKind.OpenPar))
                 return false;
 
-            e = ExpectExpression(true, end: TokenKind.ClosePar);
-
+            e = ExpectExpression(end: TokenKind.ClosePar);
+            
             return true;
         }
 
@@ -351,7 +360,7 @@ namespace Mug.Models.Parser
             var lastiscomma = false;
             while (!MatchAdvance(TokenKind.ClosePar))
             {
-                parameters.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar}));
+                parameters.Nodes.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar}));
 
                 lastiscomma = Back.Kind == TokenKind.Comma;
                 if (Back.Kind == TokenKind.ClosePar)
@@ -520,9 +529,8 @@ namespace Mug.Models.Parser
 
         private INode ExpectFactor(bool allowNullExpression)
         {
-            if (!MatchFactor(out INode e, allowNullExpression) &&
-                !MatchInParExpression(out e))
-                ParseError("Expected expression factor here");
+            if (!MatchFactor(out INode e, allowNullExpression))
+                ParseError("Expected factor here");
 
             return e;
         }
@@ -617,7 +625,7 @@ namespace Mug.Models.Parser
                 {
                     do
                     {
-                        array.AddArrayElement(ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace));
+                        array.Body.Add(ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace));
                         _currentIndex--;
                     }
                     while (MatchAdvance(TokenKind.Comma));
@@ -721,13 +729,11 @@ namespace Mug.Models.Parser
                     Position = Back.Position
                 };
 
-            if (allowBoolOP && allowLogicOP) // if is first call
-            {
-                if (MatchAssigmentOperators(out var @operator))
-                    e = new AssignmentStatement() { Name = e, Operator = @operator.Kind, Position = @operator.Position, Body = ExpectExpression(end: end) };
+            if (MatchAssigmentOperators(out var @operator))
+                e = new AssignmentStatement() { Name = e, Operator = @operator.Kind, Position = @operator.Position, Body = ExpectExpression() };
 
-                ExpectMultiple($"Invalid token in the current context, maybe missing one of '{TokenKindsToString(end)}'", end);
-            }
+            if (allowBoolOP && allowLogicOP) // if is first call
+                ExpectMultiple($"Invalid token here, missing one of '{TokenKindsToString(end)}'?", end);
 
             return e;
         }
@@ -763,7 +769,11 @@ namespace Mug.Models.Parser
             var name = Expect("Expected the constant name", TokenKind.Identifier);
             var type = ExpectVariableType();
 
-            Expect("A constant cannot be declared without a body", TokenKind.Equal);
+            if (!MatchAdvance(TokenKind.Equal))
+            {
+                Report(name.Position, "A constant cannot be declared without a body");
+                return true;
+            }
 
             var body = ExpectExpression(true);
             statement = new ConstantStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type };
@@ -1406,7 +1416,7 @@ namespace Mug.Models.Parser
                     }
 
                 // adds the statement to the members
-                nodes.Add(statement);
+                nodes.Nodes.Add(statement);
             }
 
             return nodes;

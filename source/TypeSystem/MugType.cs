@@ -36,23 +36,20 @@ namespace Mug.TypeSystem
         /// </summary>
         public static MugType FromToken(Token t)
         {
-            return t.Kind switch
+            return t.Value switch
             {
-                TokenKind.KeyTstr => new MugType(t.Position, TypeKind.String),
-                TokenKind.KeyTchr => new MugType(t.Position, TypeKind.Char),
-                TokenKind.KeyTbool => new MugType(t.Position, TypeKind.Bool),
-                TokenKind.KeyTi32 => new MugType(t.Position, TypeKind.Int32),
-                TokenKind.KeyTi64 => new MugType(t.Position, TypeKind.Int64),
-                TokenKind.KeyTf32 => new MugType(t.Position, TypeKind.Float32),
-                TokenKind.KeyTf64 => new MugType(t.Position, TypeKind.Float64),
-                TokenKind.KeyTf128 => new MugType(t.Position, TypeKind.Float128),
-                TokenKind.KeyTu8 => new MugType(t.Position, TypeKind.UInt8),
-                TokenKind.KeyTu32 => new MugType(t.Position, TypeKind.UInt32),
-                TokenKind.KeyTu64 => new MugType(t.Position, TypeKind.UInt64),
-                TokenKind.KeyTVoid => new MugType(t.Position, TypeKind.Void),
-                TokenKind.Identifier => new MugType(t.Position, TypeKind.DefinedType, t.Value),
-                TokenKind.KeyTunknown => new MugType(t.Position, TypeKind.Unknown),
-                _ => Error(t.Kind.ToString())
+                "str" => new MugType(t.Position, TypeKind.String),
+                "chr" => new MugType(t.Position, TypeKind.Char),
+                "bool" => new MugType(t.Position, TypeKind.Bool),
+                "i32" => new MugType(t.Position, TypeKind.Int32),
+                "i64" => new MugType(t.Position, TypeKind.Int64),
+                "f32" => new MugType(t.Position, TypeKind.Float32),
+                "f64" => new MugType(t.Position, TypeKind.Float64),
+                "f128" => new MugType(t.Position, TypeKind.Float128),
+                "u8" => new MugType(t.Position, TypeKind.UInt8),
+                "void" => new MugType(t.Position, TypeKind.Void),
+                "unknown" => new MugType(t.Position, TypeKind.Unknown),
+                _ => new MugType(t.Position, TypeKind.DefinedType, t.Value)
             };
         }
 

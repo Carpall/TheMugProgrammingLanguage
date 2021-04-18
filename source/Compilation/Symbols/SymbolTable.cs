@@ -1,4 +1,5 @@
 ﻿using LLVMSharp;
+using LLVMSharp.Interop;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser.NodeKinds.Statements;
@@ -15,6 +16,7 @@ namespace Mug.Compilation.Symbols
         private readonly IRGenerator _generator;
 
         // prototypes
+        public readonly List<FunctionPrototypeNode> DeclaredFunctionPrototypes = new();
         public readonly List<FunctionNode> DeclaredFunctions = new();
         public readonly List<TypeStatement> DeclaredTypes = new();
         public readonly List<VariantStatement> DeclaredVariants = new();

@@ -11,19 +11,7 @@ namespace Mug.Models.Parser.NodeKinds
         public MugType Type { get; set; }
         public INode Size { get; set; }
         public bool SizeIsImplicit { get; set; }
-        private List<INode> _body { get; set; } = new();
-        public INode[] Body
-        {
-            get
-            {
-                return _body.ToArray();
-            }
-        }
+        public List<INode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
-
-        public void AddArrayElement(INode element)
-        {
-            _body.Add(element);
-        }
     }
 }

@@ -9,33 +9,19 @@ try
 
 #if DEBUG
 
-    // todo: fix enum errors, fix lexer tests
-    // todo: add illegal recursion check in variants, check if variant contains multiple times the same type
-
     const string test = @"
 
-type Person { name: str  age: u8 }
-type Animal { kind: AnimalKind  name: str  ton: AnimalTonnage  is_pet: bool }
-
-type AnimalTonnage { kilos: i32 }
-enum AnimalKind: u8 { dog cat bat }
-
-
-type Entity = ( Person | Animal )
-
-func printf(text: str)
+type Person { name: i32 }
 
 func main() {
-  var some = new Person { } as Entity
-  some = new Animal { } as Entity
-  if some is Animal animal {
-    
-  }
+  // todo: [args!()], [flag args in run command], [str.len], [arr.len], add repr for struct and arrays, [fix fgets with buffer of size 100 when it is useless], add fixed arrays (llvm vectors)
+  var x = new [i32] { }
+  var y = x
 }
 
 ";
     
-    var unit = new CompilationUnit("test.mug", test, true);
+    var unit = new CompilationUnit(@"test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine(unit.GenerateAST().Dump());

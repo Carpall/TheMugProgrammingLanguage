@@ -26,8 +26,6 @@ namespace Mug.Models.Lexer
         OpenPar,
         [Description(")")]
         ClosePar,
-        [Description("void")]
-        KeyTVoid,
         [Description(":")]
         Colon,
         [Description("{")]
@@ -52,24 +50,6 @@ namespace Mug.Models.Lexer
         Slash,
         [Description("!=")]
         BooleanNEQ,
-        [Description("i32")]
-        KeyTi32,
-        [Description("i64")]
-        KeyTi64,
-        [Description("unknown")]
-        KeyTunknown,
-        [Description("chr")]
-        KeyTchr,
-        [Description("str")]
-        KeyTstr,
-        [Description("bool")]
-        KeyTbool,
-        [Description("u8")]
-        KeyTu8,
-        [Description("u32")]
-        KeyTu32,
-        [Description("u64")]
-        KeyTu64,
         [Description("+=")]
         AddAssignment,
         [Description("-=")]
@@ -150,14 +130,6 @@ namespace Mug.Models.Lexer
         KeyDeclare,
         [Description("catch")]
         KeyCatch,
-        [Description("error")]
-        KeyError,
-        [Description("f32")]
-        KeyTf32,
-        [Description("f64")]
-        KeyTf64,
-        [Description("f128")]
-        KeyTf128,
         [Description("is")]
         KeyIs
     }

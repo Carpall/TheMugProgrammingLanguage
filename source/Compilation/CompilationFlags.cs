@@ -40,11 +40,11 @@ Compilation Flags:
   - mode: the compilation mode: {release: fast and small exe, debug: faster compilation, slower exe, allows to use llvmdbg}
   - target: file format to generate: {exe, lib, bc, asm, ast, ll}
   - output: output file name
+  - args: arguments to pass to the compiled program
 
 How To Use:
   - compilation action: it's a command to give to the compiler, only one compilation action for call
-  - compilation flag: it's a directive to give to the compilatio action, each compilation flag must be preceded by 
-*'
+  - compilation flag: it's a directive to give to the compilatio action, each compilation flag must be preceded by *
 ";
         private const string SRC_HELP = @"
 USAGE: mug <action> <options> *src <file>
@@ -59,7 +59,7 @@ HELP: uses the next argument as compilation mode:
   - release: for a faster runtime execution, supports code optiminzation
 ";
         private const string TARGET_HELP = @"
-USAGE: mug <action> <file> <options> *target (exe | lib | bc | asm | ast | ll)
+USAGE: mug build <file> <options> *target ( exe | lib | bc | asm | ast | ll )
 
 HELP: uses the next argument as compilation target:
   - exe: executable with platform specific extension
@@ -79,6 +79,11 @@ USAGE: mug <action> <file> <options> *output <name>
 
 HELP: uses the next argument as output file name. The extension is not required
 ";
+        private const string ARGS_HELP = @"
+USAGE: mug run <file> <options> *args <arg0> <arg1> ...
+
+HELP: uses the next argument as arguments to pass to the compiled program, available only whe compilation action is 'run'
+";
 
         private string[] _arguments = null;
         private int _argumentSelector = 0;
@@ -86,10 +91,11 @@ HELP: uses the next argument as output file name. The extension is not required
         private CompilationUnit unit = null;
         private readonly Dictionary<string, object> _flags = new()
         {
-            ["output"]      = null,
-            ["target"]      = null,
-            ["mode"]        = null,
+            ["output"]      = null, // output filename
+            ["target"]      = null, // extension
+            ["mode"]        = null, // debug | release
             ["src"]         = null, // file to compile
+            ["args"]        = null, // arguments
         };
 
         private string[] GetAllFilesInFolder(string directory)
@@ -113,7 +119,7 @@ HELP: uses the next argument as output file name. The extension is not required
             return file != "." ? file : GetAllFilesInFolder(Environment.CurrentDirectory);
         }
 
-        private string GetMainFile(object filenames)
+        private static string GetMainFile(object filenames)
         {
             if (filenames is string main)
                 return main;
@@ -159,12 +165,12 @@ HELP: uses the next argument as output file name. The extension is not required
             return GetFlag<object>(flag) is null;
         }
 
-        private void DumpBytecode(string path, LLVMModuleRef module)
+        private static void DumpBytecode(string path, LLVMModuleRef module)
         {
             File.WriteAllText(path, module.ToString());
         }
 
-        private void DumpAbstractSyntaxTree(string path, INode head)
+        private static void DumpAbstractSyntaxTree(string path, INode head)
         {
             File.WriteAllText(path, head.Dump());
         }
@@ -189,7 +195,12 @@ HELP: uses the next argument as output file name. The extension is not required
         private void Build(bool loadArgs = true)
         {
             if (loadArgs)
+            {
                 LoadArguments();
+
+                if (!IsDefault("args"))
+                    CompilationErrors.Throw("Unable to use flag 'args' when compilation action is 'run'");
+            }
 
             var path = GetFile();
             GetMainFile(path); // checks
@@ -254,14 +265,13 @@ HELP: uses the next argument as output file name. The extension is not required
 
             Build(false);
 
-            var process = Process.Start(GetFlag<string>("output"));
+            var process = Process.Start(GetFlag<string>("output"), GetFlag<string>("args"));
 
             process.WaitForExit();
-
-            Environment.Exit(process.ExitCode);
+            Environment.ExitCode = process.ExitCode;
         }
 
-        private string CheckPath(string path)
+        private static string CheckPath(string path)
         {
             if (!File.Exists(path))
                 CompilationErrors.Throw($"Unable to find path '{path}'");
@@ -377,6 +387,9 @@ HELP: uses the next argument as output file name. The extension is not required
                     case "dec":
                         _preDeclaredSymbols.Add(NextArgument());
                         break;
+                    case "args":
+                        ConfigureFlag("args", NextArgument());
+                        break;
                     case "":
                         CompilationErrors.Throw("Invalid empty flag");
                         break;
@@ -397,13 +410,13 @@ HELP: uses the next argument as output file name. The extension is not required
             SetDefaultIFNeeded();
         }
 
-        private void PrintUsageAndHelp()
+        private static void PrintUsageAndHelp()
         {
             Console.Write(USAGE);
             Console.Write(HELP);
         }
         
-        private void PrintHelpFor(string flag)
+        private static void PrintHelpFor(string flag)
         {
             switch (flag)
             {
@@ -421,6 +434,9 @@ HELP: uses the next argument as output file name. The extension is not required
                     break;
                 case "dec":
                     Console.Write(DEC_HELP);
+                    break;
+                case "args":
+                    Console.WriteLine(ARGS_HELP);
                     break;
                 default:
                     CompilationErrors.Throw($"Unkown compiler flag '{flag}'");

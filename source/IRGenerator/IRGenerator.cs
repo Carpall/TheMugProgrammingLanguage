@@ -1,4 +1,5 @@
-﻿using LLVMSharp.Interop;
+﻿using LLVMSharp;
+using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Compilation.Symbols;
 using Mug.Models.Generator.Emitter;
@@ -19,6 +20,8 @@ namespace Mug.Models.Generator
 {
     public class IRGenerator
     {
+        internal static IRGenerator CurrentInstance = null;
+
         public LLVMModuleRef Module { get; set; }
 
         public readonly MugParser Parser;
@@ -26,9 +29,8 @@ namespace Mug.Models.Generator
 
         internal readonly List<string> IllegalTypes = new();
         internal List<(string name, MugValueType type)> GenericParameters = new();
-        internal List<string> Paths = new(); /// to put in map
+        internal List<string> Paths = new(); /// to put in table
 
-        private readonly Dictionary<string, List<FunctionNode>> _genericFunctions = new();
         internal bool _isMainModule = false;
 
         internal int SizeOfPointer => (int)LLVMTargetDataRef.FromStringRepresentation(Module.DataLayout)
@@ -36,6 +38,7 @@ namespace Mug.Models.Generator
 
         internal const string EntryPointName = "main";
         internal const string AsOperatorOverloading = "as";
+        internal const string BuiltInsFunctionImpls = "builtins";
 
         public string LocalPath
         {
@@ -73,7 +76,7 @@ namespace Mug.Models.Generator
 
         internal static string GetPlural(int ammout)
         {
-            return ammout > 1 ? "s" : "";
+            return ammout != 1 ? "s" : "";
         }
 
         internal static string ExpectTypeMessage(MugValueType expectedType, MugValueType type)
@@ -269,8 +272,10 @@ namespace Mug.Models.Generator
             }
 
             var structuretype = MugValueType.Struct($"{type.Name}{(type.Generics.Count > 0 ? $"<{string.Join(", ", generics)}>" : "")}", structModel, fields, fieldPositions, this);
-            var structsymbol = MugValue.Struct(Module.AddGlobal(structuretype.GetLLVMType(this), type.Name), structuretype);
+            var llvmstructure = Module.AddGlobal(structuretype.GetLLVMType(this), type.Name);
 
+            var structsymbol = MugValue.Struct(llvmstructure, structuretype);
+            
             GenericParameters = oldGenericParameters;
 
             PopIllegalType();
@@ -366,13 +371,13 @@ namespace Mug.Models.Generator
         /// check if an id is equal to the id of the entry point and if the parameters are 0,
         /// to allow overload of the main function
         /// </summary>
-        internal bool IsEntryPoint(FunctionNode function)
+        internal static bool IsEntryPoint(FunctionNode function)
         {
             return
                 function.Name == EntryPointName &&
                 !function.Base.HasValue &&
                 function.Generics.Count == 0 &&
-                (function.ParameterList.Length == 0 || function.ParameterList.Length == 2);
+                function.ParameterList.Length == 0;
         }
 
         private void ReadModule(string filename)
@@ -454,15 +459,17 @@ namespace Mug.Models.Generator
             var function = Module.GetNamedFunction(prototype.Pragmas.GetPragma("extern"));
 
             var type = prototype.Type.ToMugValueType(this);
-            
+
             // if the function is not declared yet
             if (function.Handle == IntPtr.Zero)
                 // declares it
-                function = Module.AddFunction(prototype.Pragmas.GetPragma("extern"),
-                        LLVMTypeRef.CreateFunction(
-                            type.GetLLVMType(this),
-                            MugTypesToLLVMTypes(parameters)));
-
+                function = Module.AddFunction(
+                    prototype.Pragmas.GetPragma("extern"),
+                    LLVMTypeRef.CreateFunction(
+                        type.GetLLVMType(this),
+                        MugTypesToLLVMTypes(parameters))
+                    );
+            
             // adding a new symbol
             Table.DeclareFunctionSymbol(
                 prototype.Name,
@@ -706,7 +713,7 @@ namespace Mug.Models.Generator
                         Table.DeclaredFunctions.Add(function);
                     break;
                 case FunctionPrototypeNode prototype:
-                    EmitFunctionPrototype(prototype);
+                    Table.DeclaredFunctionPrototypes.Add(prototype);
                     break;
                 case TypeStatement structure:
                     Table.DeclaredTypes.Add(structure);
@@ -735,13 +742,22 @@ namespace Mug.Models.Generator
             }
         }
 
+        private static string RequiredFilename(string name)
+        {
+#if DEBUG
+            return Path.ChangeExtension(Path.Combine(@"..\..\Release\net5.0\includes\requirements", name), "bc");
+#else
+            return Path.ChangeExtension(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "includes\\requirements", name), "bc");
+#endif
+        }
+
         internal void AddGenericParameters(List<Token> generics, MugValueType[] genericsInput)
         {
             for (int i = 0; i < generics.Count; i++)
                 GenericParametersAdd((generics[i].Value, genericsInput[i]), generics[i].Position);
         }
 
-        internal LLVMValueRef EvaluateFunction(FunctionNode function, LLVMValueRef llvmfunction, MugValueType[] generics)
+        internal LLVMValueRef EvaluateFunction(FunctionNode function, LLVMValueRef llvmfunction, MugValueType[] generics, bool isMain = false)
         {
             var oldgenerics = GenericParameters;
 
@@ -756,7 +772,13 @@ namespace Mug.Models.Generator
             emitter.Builder.PositionAtEnd(entry);
 
             var generator = new LocalGenerator(this, ref llvmfunction, ref function, ref emitter);
+            if (isMain)
+                generator.SetUpGlobals();
+
             generator.Generate();
+
+            if (isMain)
+                generator.EndGlobals();
 
             // if the type is void check if the last statement was ret, if it was not ret add one implicitly
             if (llvmfunction.LastBasicBlock.Terminator.IsAReturnInst.Handle == IntPtr.Zero &&
@@ -800,7 +822,16 @@ namespace Mug.Models.Generator
             Table.DefinedAsOperators[index] = functionIdentifier;
         }
 
-        internal MugValue GetLLVMPrototype(FunctionNode function, MugValueType[] generics, bool addgenerics = true)
+        private static LLVMTypeRef[] GetMainFunctionLLVMParameters()
+        {
+            return new[]
+            {
+                LLVMTypeRef.Int32,
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)
+            };
+        }
+
+        internal MugValue GetLLVMPrototype(FunctionNode function, MugValueType[] generics, bool addgenerics = true, bool isMain = false)
         {
             var oldgenerics = GenericParameters;
             GenericParameters = new();
@@ -822,14 +853,14 @@ namespace Mug.Models.Generator
 
             var llvmfunction = Module.AddFunction(function.Name, LLVMTypeRef.CreateFunction(
                 retType.GetLLVMType(this),
-                MugTypesToLLVMTypes(paramTypes)));
+                isMain ? GetMainFunctionLLVMParameters() : MugTypesToLLVMTypes(paramTypes)));
 
             GenericParameters = oldgenerics;
 
             return MugValue.From(llvmfunction, retType);
         }
 
-        private void GenerateFunction(FunctionNode function, MugValueType[] generics)
+        private void GenerateFunction(FunctionNode function, MugValueType[] generics, bool isMain = false)
         {
             if (function.Name == AsOperatorOverloading)
             {
@@ -845,16 +876,25 @@ namespace Mug.Models.Generator
                 function.Base?.Type.ToMugValueType(this),
                 generics,
                 ParameterTypesToMugTypes(function.ParameterList.Parameters),
-                function.ReturnType.ToMugValueType(this), GetLLVMPrototype(function, generics, false),
+                function.ReturnType.ToMugValueType(this), GetLLVMPrototype(function, generics, false, isMain),
                 function.Position);
 
             Table.DeclareFunctionSymbol(function.Name, functionIdentifier, function.Position, out var index);
 
-            functionIdentifier.Value.LLVMValue = EvaluateFunction(function, functionIdentifier.Value.LLVMValue, generics);
+            functionIdentifier.Value.LLVMValue = EvaluateFunction(function, functionIdentifier.Value.LLVMValue, generics, isMain);
 
             Table.DefinedFunctions[function.Name][index] = functionIdentifier;
 
             GenericParameters = oldgenerics;
+        }
+
+        internal LLVMValueRef RequireFunction(string name, LLVMTypeRef type, params LLVMTypeRef[] args)
+        {
+            var function = Module.GetNamedFunction(name);
+            if (function.Handle == IntPtr.Zero)
+                function = Module.AddFunction(name, LLVMTypeRef.CreateFunction(type, args, false));
+
+            return function;
         }
 
         private void GenerateType(TypeStatement type)
@@ -880,11 +920,44 @@ namespace Mug.Models.Generator
             foreach (var function in Table.DeclaredFunctions)
                 if (IsEntryPoint(function))
                 {
-                    GenerateFunction(function, Array.Empty<MugValueType>());
+                    GenerateFunction(function, Array.Empty<MugValueType>(), true);
                     return;
                 }
 
             CompilationErrors.Throw("No entrypoint declared");
+        }
+
+        private void ImportUtilities()
+        {
+            ReadModule(RequiredFilename(BuiltInsFunctionImpls));
+        }
+
+        private void SetUp()
+        {
+            // setting up stdout, stdin, stderr
+            var ptrtype = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+            var argvtype = LLVMTypeRef.CreatePointer(ptrtype, 0);
+            init(Module.AddGlobal(ptrtype, "@stdout"));
+            init(Module.AddGlobal(ptrtype, "@stdin"));
+            init(Module.AddGlobal(argvtype, "@args"), argvtype);
+
+            void init(LLVMValueRef value, LLVMTypeRef type = default)
+            {
+                if (type.Handle == IntPtr.Zero)
+                    type = ptrtype;
+
+                unsafe
+                {
+                    LLVM.SetInitializer(value, LLVMValueRef.CreateConstPointerNull(type));
+                    LLVM.SetLinkage(value, LLVMLinkage.LLVMPrivateLinkage);
+                }
+            }
+        }
+
+        private void GeneratePrototypes()
+        {
+            foreach (var prototype in Table.DeclaredFunctionPrototypes)
+                EmitFunctionPrototype(prototype);
         }
 
         /// <summary>
@@ -893,16 +966,27 @@ namespace Mug.Models.Generator
         /// </summary>
         public void Generate()
         {
+            var oldinstance = CurrentInstance;
+            CurrentInstance = this;
+
             // prototypes' declaration
             foreach (var member in Parser.Module.Members.Nodes)
                 RecognizeMember(member);
 
             if (_isMainModule)
+            {
+                ImportUtilities();
+                SetUp();
+                GeneratePrototypes();
                 // generate all functions here
                 GenerateEntrypoint();
+            }
+            else
+                GeneratePrototypes();
 
             // checking for errors
             Parser.Lexer.CheckDiagnostic();
+            CurrentInstance = oldinstance;
         }
     }
 }

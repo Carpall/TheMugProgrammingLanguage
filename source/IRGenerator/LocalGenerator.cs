@@ -56,16 +56,20 @@ namespace Mug.Models.Generator
             _generator.Parser.Lexer.CheckDiagnostic();
         }
 
-        private LLVMValueRef CreateConstString(string value)
+        private LLVMValueRef FlatString(LLVMValueRef value, LLVMValueRef size, LLVMBuilderRef builder = default)
         {
-            return _emitter.Builder.BuildGEP(
-                    _emitter.Builder.BuildGlobalString(value),
-                    new[]
-                    {
-                        LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0),
-                        LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0),
-                    }
-                );
+            SetToEmitterWhenDefault(ref builder);
+
+            return builder.BuildCall(GetUtilFunction("create_string"), new[] { value, size });
+        }
+
+        private LLVMValueRef CreateConstString(string value, bool cstring = true)
+        {
+            var str = GepOF(_emitter.Builder.BuildGlobalString(value), 0);
+            if (cstring)
+                return str;
+
+            return FlatString(str, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, (uint)value.Length));
         }
 
         /// <summary>
@@ -95,7 +99,7 @@ namespace Mug.Models.Generator
                     type = MugValueType.Bool;
                     break;
                 case TokenKind.ConstantString:
-                    llvmvalue = CreateConstString(constant.Value);
+                    llvmvalue = CreateConstString(constant.Value, false);
                     type = MugValueType.String;
                     break;
                 case TokenKind.ConstantChar:
@@ -103,7 +107,7 @@ namespace Mug.Models.Generator
                     type = MugValueType.Char;
                     break;
                 case TokenKind.ConstantFloatDigit:
-                    llvmvalue = LLVMValueRef.CreateConstUIToFP(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)float.Parse(constant.Value)), LLVMTypeRef.Float);
+                    // llvmvalue = 
                     type = MugValueType.Float32;
                     break;
                 default:
@@ -313,17 +317,20 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private bool IsABitcast(MugValueType expressionType, MugValueType castType)
+        private static bool IsABitcast(MugValueType expressionType, MugValueType castType)
         {
-            return (expressionType.TypeKind == MugValueTypeKind.String && castType.Equals(MugValueType.Array(MugValueType.Char))) ||
-                 (castType.TypeKind == MugValueTypeKind.String && expressionType.Equals(MugValueType.Array(MugValueType.Char)))   ||
-                 (castType.TypeKind == MugValueTypeKind.Reference && expressionType.Equals(MugValueType.Pointer(castType.PointerBaseElementType))) ||
-                 (expressionType.TypeKind == MugValueTypeKind.Reference && castType.Equals(MugValueType.Pointer(expressionType.PointerBaseElementType)));
+            return
+                (expressionType.TypeKind == MugValueTypeKind.String && castType.Equals(MugValueType.Array(MugValueType.Char))) ||
+                (castType.TypeKind == MugValueTypeKind.String && expressionType.Equals(MugValueType.Array(MugValueType.Char)))   ||
+                (castType.TypeKind == MugValueTypeKind.Reference && expressionType.Equals(MugValueType.Pointer(castType.PointerBaseElementType))) ||
+                (expressionType.TypeKind == MugValueTypeKind.Reference && castType.Equals(MugValueType.Pointer(expressionType.PointerBaseElementType)));
         }
 
-        LLVMValueRef gepOF(LLVMValueRef tmp, int index)
+        LLVMValueRef GepOF(LLVMValueRef tmp, int index, LLVMBuilderRef builder = default)
         {
-            return _emitter.Builder.BuildStructGEP(tmp, (uint)index);
+            SetToEmitterWhenDefault(ref builder);
+
+            return builder.BuildStructGEP(tmp, (uint)index);
         }
 
         private LLVMValueRef BoxValue(MugValue value, int index, LLVMTypeRef biggesttype)
@@ -331,12 +338,12 @@ namespace Mug.Models.Generator
             var tmp = _emitter.Builder.BuildAlloca( // tag and type
                 LLVMTypeRef.CreateStruct(new[] { LLVMTypeRef.Int8, biggesttype }, true));
 
-            _emitter.Builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index), gepOF(tmp, 0));
+            _emitter.Builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index), GepOF(tmp, 0));
 
             _emitter.Builder.BuildStore(
                 value.LLVMValue,
                 _emitter.Builder.BuildBitCast(
-                    gepOF(tmp, 1), LLVMTypeRef.CreatePointer(value.Type.GetLLVMType(_generator), 0))
+                    GepOF(tmp, 1), LLVMTypeRef.CreatePointer(value.Type.GetLLVMType(_generator), 0))
                 );
 
             return _emitter.Builder.BuildLoad(tmp);
@@ -631,6 +638,16 @@ namespace Mug.Models.Generator
             return null;
         }
 
+        private static bool IsEntryPoint(CallStatement c)
+        {
+            return
+                c.Name is Token t &&
+                t.Value == IRGenerator.EntryPointName &&
+                c.Generics.Count == 0 &&
+                c.Parameters.Nodes.Count == 0 &&
+                c.IsBuiltIn == false;
+        }
+
         /// <summary>
         /// the function converts a Callstatement node to the corresponding low-level code
         /// </summary>
@@ -638,10 +655,13 @@ namespace Mug.Models.Generator
         {
             // to replace with built in macros
             if (c.IsBuiltIn)
-                return ExecuteBuiltIn(c.Name, c.Generics, c.Parameters.Nodes, expectedNonVoid, c.Position);
+                return EmitBuiltIn(c.Name, c.Generics, c.Parameters.Nodes.ToArray(), expectedNonVoid, c.Position);
+
+            if (IsEntryPoint(c))
+                return Report(c.Position, "Entry point cannot be called");
 
             // an array is prepared for the parameter types of function to call
-            var parameters = new MugValue[c.Parameters.Length];
+            var parameters = new MugValue[c.Parameters.Nodes.Count];
             var paramsAreOk = true;
 
             // here you can infer the generic type
@@ -649,7 +669,7 @@ namespace Mug.Models.Generator
             /* the array is cycled with the expressions of the respective parameters and each expression
              * is evaluated and assigned its type to the array of parameter types
              */
-            for (int i = 0; i < c.Parameters.Length; i++)
+            for (int i = 0; i < c.Parameters.Nodes.Count; i++)
                 if (paramsAreOk &= EvaluateExpression(c.Parameters.Nodes[i]))
                     parameters[i] = _emitter.Pop();
 
@@ -683,6 +703,48 @@ namespace Mug.Models.Generator
             return true;
         }
 
+        internal void SetUpGlobals()
+        {
+            var int64_1 = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 1);
+            var int64_0 = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 0);
+            var strtype = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+
+            var open = _generator.RequireFunction(
+                "_fdopen",
+                // file stream
+                strtype, // return type
+                LLVMTypeRef.Int64,
+                strtype);
+
+            var stdout = _emitter.Builder.BuildCall(open, new[] { int64_1, CreateConstString("w") });
+            var stdin = _emitter.Builder.BuildCall(open, new[] { int64_0, CreateConstString("r") });
+            var args = _llvmfunction.GetParam(1); // called only when main, so params will ever be argc and argv
+
+            _emitter.Builder.BuildStore(stdout, _generator.Module.GetNamedGlobal("@stdout"));
+            _emitter.Builder.BuildStore(stdin, _generator.Module.GetNamedGlobal("@stdin"));
+            _emitter.Builder.BuildStore(args, _generator.Module.GetNamedGlobal("@args"));
+        }
+
+        internal void EndGlobals()
+        {
+            var open = _generator.RequireFunction(
+                "fclose",
+                // file stream
+                LLVMTypeRef.Int64,
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+
+            if (_llvmfunction.LastBasicBlock.Terminator.Handle != IntPtr.Zero)
+            {
+                unsafe { _emitter.Builder = LLVM.CreateBuilder(); }
+                _emitter.Builder.PositionBefore(_llvmfunction.LastBasicBlock.Terminator);
+            }
+            var stdout = _emitter.Builder.BuildLoad(_generator.Module.GetNamedGlobal("@stdout"));
+            var stdin = _emitter.Builder.BuildLoad(_generator.Module.GetNamedGlobal("@stdin"));
+
+            _emitter.Builder.BuildCall(open, new[] { stdout });
+            _emitter.Builder.BuildCall(open, new[] { stdin });
+        }
+
         private bool CompTime_sizeof(MugType generic)
         {
             var size = generic.ToMugValueType(_generator).Size(_generator.SizeOfPointer, _generator);
@@ -691,27 +753,433 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private bool ExecuteBuiltIn(INode name, List<MugType> generics, INode[] parameters, bool expectedNonVoid, ModulePosition position)
+        private bool CompTime_box_kind(INode expression)
+        {
+            if (!EvaluateExpression(expression))
+                return false;
+
+            _emitter.MakeTempAllocation();
+            
+            var box = _emitter.Pop();
+
+            if (!box.Type.IsVariant())
+                return Report(expression.Position, "Required argument of type variant");
+            
+            var kind = _emitter.Builder.BuildIntCast(_emitter.Builder.BuildLoad(GepOF(box.LLVMValue, 0)), LLVMTypeRef.Int32);
+
+            _emitter.Load(MugValue.From(kind, MugValueType.Int32, isconstant: true));
+            return true;
+        }
+
+        private static ArrayAllocationNode GetArrayFromVarArgs(INode[] parameters)
+        {
+            var args = new INode[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+                args[i] = new CallStatement()
+                {
+                    Position = parameters[i].Position,
+                    IsBuiltIn = true,
+                    Name = new Token(TokenKind.Identifier, "str", parameters[i].Position, false),
+                    Parameters = new NodeBuilder() { Nodes = new() { parameters[i] } },
+                };
+
+            return new ArrayAllocationNode()
+            {
+                Position = parameters.First().Position,
+                Body = args.ToList(),
+                Type = new MugType(parameters.First().Position, TypeKind.String),
+                SizeIsImplicit = true
+            };
+        }
+
+        private bool CheckFormat(string format, int argsCount, ModulePosition position)
+        {
+            var errorsCount = _generator.Parser.Lexer.DiagnosticBag.Count;
+            var i = 0;
+            var formatsCount = 0;
+
+            bool hasNext() => i + 1 < format.Length;
+
+            ModulePosition atChar(int count = 0, int endCount = 1) => new(position.Lexer, (position.Position.Start.Value + 1 + i + count)..(position.Position.Start.Value + 1 + i + count  + endCount));
+
+            for (; i < format.Length; i++)
+            {
+                var c = format[i];
+
+                if (c == '}')
+                {
+                    if (hasNext() && format[i + 1] == '}')
+                        i++;
+                    else
+                        Report(atChar(), "Unexpected '}'");
+                }
+                else if (c == '{')
+                {
+                    if (!hasNext())
+                    {
+                        Report(atChar(), "Needed another '{', or '}'");
+                        continue;
+                    }
+                    
+                    var next = format[i + 1];
+                    if (next == '{')
+                        i++;
+                    else if (next == '}')
+                    {
+                        i++;
+                        formatsCount++;
+                    }
+                    else
+                    {
+                        var nextIsControl = char.IsControl(next);
+                        Report(atChar(1, 1 + Convert.ToInt32(nextIsControl)), $"Unexpected '{next.ToString().Replace("\n", "\\n")}', needed '}}'");
+                    }
+                }
+            }
+
+            if (formatsCount != argsCount)
+                Report(position, $"Passed '{argsCount}' argument{IRGenerator.GetPlural(argsCount)}, referred '{formatsCount}'");
+
+            return errorsCount == _generator.Parser.Lexer.DiagnosticBag.Count;
+        }
+
+        private bool FormatString(ref INode[] parameters, out Token result)
+        {
+            result = default;
+
+            var format = parameters.First();
+            parameters = parameters[1..]; // popping the formatter
+
+            if (format is not Token fmt || fmt.Kind != TokenKind.ConstantString)
+                return Report(format.Position, "Expected a constant string to format");
+
+            result = fmt;
+            return CheckFormat(fmt.Value, parameters.Length, fmt.Position);
+        }
+
+        private bool CompTime_fmt(INode[] parameters, ModulePosition position)
+        {
+            if (!FormatString(ref parameters, out var fmt) || parameters.Length == 0 || !EmitExprAllocateArray(GetArrayFromVarArgs(parameters)))
+                return false;
+
+            var args = _emitter.Pop();
+
+            _emitter.Load(
+                MugValue.From(
+                    _emitter.Builder.BuildCall(
+                        GetUtilFunction("fmt"),
+                        new[] { CreateConstString(fmt.Value), args.LLVMValue }),
+                    MugValueType.String)
+                );
+            return true;
+        }
+
+        private LLVMValueRef GetStdOut()
+        {
+            return _emitter.Builder.BuildLoad(_generator.Module.GetNamedGlobal("@stdout"));
+        }
+
+        private LLVMValueRef GetStdIn(LLVMBuilderRef builder = default)
+        {
+            SetToEmitterWhenDefault(ref builder);
+
+            return builder.BuildLoad(_generator.Module.GetNamedGlobal("@stdin"));
+        }
+
+        private LLVMValueRef GetArgs()
+        {
+            return _emitter.Builder.BuildLoad(_generator.Module.GetNamedGlobal("@args"));
+        }
+
+        private void SetToEmitterWhenDefault(ref LLVMBuilderRef builder)
+        {
+            if (builder.Handle == IntPtr.Zero)
+                builder = _emitter.Builder;
+        }
+
+        private bool CompTime_cstr(INode parameter, ModulePosition position)
+        {
+            if (parameter is Token t && t.Kind == TokenKind.ConstantString)
+                _emitter.Load(MugValue.From(CreateConstString(t.Value), MugValueType.CString));
+            else
+            {
+                if (!EvaluateExpression(parameter))
+                    return false;
+
+                var value = _emitter.Pop();
+                if (value.Type.TypeKind != MugValueTypeKind.String)
+                    return Report(position, "Required a parameter of type 'str'");
+
+                LoadCStr(value);
+            }
+
+            return true;
+        }
+
+        private void LoadCStr(MugValue str)
+        {
+            _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(GepOF(str.LLVMValue, 1)), MugValueType.CString));
+        }
+
+        private bool CompTime_print(INode[] parameters, ModulePosition position)
+        {
+            if (parameters.Length == 0)
+                return false;
+
+            if (parameters.Length == 1)
+            {
+                if (!FormatString(ref parameters, out var fmt))
+                    return false;
+
+                _emitter.Load(MugValue.From(CreateConstString(fmt.Value.Replace("{{", "{").Replace("}}", "}"), false), MugValueType.String, isconstant: true));
+            }
+            else if (!CompTime_fmt(parameters, position))
+                return false;
+
+            var formatted = _emitter.Pop();
+
+            var write = _generator.RequireFunction(
+                "fwrite", // name
+                LLVMTypeRef.Int64, // return type
+                // buf
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                // size, count
+                LLVMTypeRef.Int64, LLVMTypeRef.Int64,
+                // file stream
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // arg types
+
+            var flush = _generator.RequireFunction(
+                "fflush",
+                LLVMTypeRef.Int32, // return type
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+
+            var stdout = GetStdOut();
+
+            EvaluateArrayFieldAccess(formatted, "len64", true, position);
+            var len = _emitter.Pop().LLVMValue;
+            LoadCStr(formatted);
+            var cstrformat = _emitter.Pop().LLVMValue;
+            var int64_1 = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 1);
+
+            _emitter.Builder.BuildCall(write, new[]
+            {
+                cstrformat,
+                int64_1,
+                len,
+                stdout
+            });
+
+            _emitter.Builder.BuildCall(flush, new[] { stdout });
+            return true;
+        }
+
+        private LLVMValueRef GetInputFunctionImpl()
+        {
+            const string name = "^input_impl";
+            var func = _generator.Module.GetNamedFunction(name);
+            if (func.Handle != IntPtr.Zero)
+                return func;
+
+            var function = LLVMTypeRef.CreateFunction(
+                MugValueType.String.GetLLVMType(_generator), Array.Empty<LLVMTypeRef>());
+
+            func = _generator.Module.AddFunction(name, function);
+
+            var entry = func.AppendBasicBlock("");
+            unsafe
+            {
+                var builder = (LLVMBuilderRef)LLVM.CreateBuilder();
+                builder.PositionAtEnd(entry);
+
+                var strtype = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+                var size = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 100);
+                var buffer = GepOF(builder.BuildAlloca(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 100)), 0, builder);
+
+                var gets = _generator.RequireFunction(
+                    "fgets",
+                    strtype, // return type
+                    strtype,
+                    LLVMTypeRef.Int32,
+                    strtype);
+
+                var strlen = _generator.RequireFunction(
+                    "strlen",
+                    LLVMTypeRef.Int64, // return type
+                    strtype);
+
+                var result = builder.BuildCall(gets, new[]
+                {
+                    buffer,
+                    size,
+                    GetStdIn(builder)
+                });
+
+                var len = builder.BuildCall(strlen, new[] { result });
+
+                var int64_1 = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 1);
+
+                var value = FlatString(result, builder.BuildSub(len, int64_1), builder);
+
+                builder.BuildRet(value);
+            }
+
+            return func;
+        }
+
+        private bool CompTime_input(INode[] parameters, ModulePosition position)
+        {
+            if (parameters.Length > 0 && !CompTime_print(parameters, position))
+                return false;
+
+            var result = _emitter.Builder.BuildCall(GetInputFunctionImpl(), Array.Empty<LLVMValueRef>());
+
+            _emitter.Load(MugValue.From(result, MugValueType.String));
+            return true;
+        }
+
+        private LLVMValueRef GetUtilFunction(string name)
+        {
+            return _generator.Module.GetNamedFunction($"${name}");
+        }
+
+        private LLVMValueRef EmitReprCall(ref MugValue value)
+        {
+            switch (value.Type.TypeKind)
+            {
+                case MugValueTypeKind.Unknown:
+                case MugValueTypeKind.Float32:
+                case MugValueTypeKind.Float64:
+                case MugValueTypeKind.Int8:
+                case MugValueTypeKind.Int32:
+                case MugValueTypeKind.Int64:
+                case MugValueTypeKind.Bool:
+                    return GetUtilFunction($"repr_{value.Type}");
+                case MugValueTypeKind.Char:
+                case MugValueTypeKind.String:
+                    return GetUtilFunction($"quote_{value.Type}");
+                case MugValueTypeKind.Pointer:
+                    return GetUtilFunction("star");
+                case MugValueTypeKind.Struct:
+                    return GetUtilFunction("repr_struct");
+                case MugValueTypeKind.Float128:
+                    _emitter.Load(value);
+                    _emitter.CastFloat(MugValueType.Float64);
+                    value = _emitter.Pop();
+                    return GetUtilFunction("repr_f64");
+                case MugValueTypeKind.Enum:
+                    break;
+                case MugValueTypeKind.Array:
+                    break;
+                case MugValueTypeKind.EnumError:
+                    break;
+                case MugValueTypeKind.Reference:
+                    break;
+                case MugValueTypeKind.Variant:
+                    break;
+                default:
+                    throw new();
+            }
+
+            throw new();
+        }
+
+        private bool CompTime_repr(INode parameter, ModulePosition position, bool quoteString)
+        {
+            if (!EvaluateExpression(parameter))
+                return false;
+
+            if (!quoteString && _emitter.PeekType().IsQuotable())
+            {
+                if (_emitter.PeekType().TypeKind == MugValueTypeKind.Char)
+                    _emitter.Call(GetUtilFunction("chr_to_str"), new[] { _emitter.Pop() }, MugValueType.String, null);
+
+                return true;
+            }
+
+            var value = _emitter.Pop();
+            var func = EmitReprCall(ref value);
+
+            _emitter.Call(func, new[] { value }, MugValueType.String, null);
+            return true;
+        }
+
+        private bool CompTime_args()
+        {
+            _emitter.Load(
+                MugValue.From(
+                    GetArgs(),
+                    MugValueType.Array(MugValueType.String))
+                );
+
+            return true;
+        }
+
+        private bool EmitBuiltIn(INode name, List<MugType> generics, INode[] parameters, bool expectedNonVoid, ModulePosition position)
         {
             if (name is not Token id)
                 return Report(position, "Built in functions have no base");
 
             switch (id.Value)
             {
-                case "size" when generics.Count == 1 && parameters.Length == 0:
-                    checkUselessWhenStatement();
+                case "size":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 1, parameters.Length == 0);
                     return CompTime_sizeof(generics.First());
-                case "unbox" when generics.Count == 1 && parameters.Length == 1:
-                    checkUselessWhenStatement();
+                case "unbox":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 1, parameters.Length == 1);
                     return CompTime_unbox(generics.First(), parameters.First(), position);
+                case "box_kind":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 1);
+                    return CompTime_box_kind(parameters.First());
+                case "fmt":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length > 1);
+                    return CompTime_fmt(parameters, position);
+                case "print":
+                    reportWhenInExpression();
+                    checkOverload(generics.Count == 0, parameters.Length > 0);
+                    return CompTime_print(parameters, position);
+                case "input":
+                    checkOverload(generics.Count == 0);
+                    return CompTime_input(parameters, position);
+                case "cstr":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 1);
+                    return CompTime_cstr(parameters.First(), position);
+                case "args":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 0);
+                    return CompTime_args();
+                case "repr" or "str":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 1);
+                    return CompTime_repr(parameters.First(), position, id.Value == "repr");
+                /*case "panic" when parameters.Length > 0 && generics.Count == 0:
+                    return;*/
                 default:
                     return Report(position, $"Unknown built in function '{id.Value}'");
             }
 
-            void checkUselessWhenStatement()
+            void reportWhenInExpression()
+            {
+                if (expectedNonVoid)
+                    Report(position, "Void expression");
+            }
+
+            void reportWhenUseless()
             {
                 if (!expectedNonVoid)
                     Report(position, "Useless here");
+            }
+
+            void checkOverload(bool genericsCheck = true, bool paramsCheck = true)
+            {
+                if (!genericsCheck)
+                    Error(position, $"Unexpected '{generics.Count}' generic parameter{IRGenerator.GetPlural(generics.Count)}");
+                if (!paramsCheck)
+                    Error(position, $"Unexpected '{parameters.Length}' parameter{IRGenerator.GetPlural(parameters.Length)}");
             }
         }
 
@@ -828,7 +1296,7 @@ namespace Mug.Models.Generator
 
             var check = MugValue.From(
                 _emitter.Builder.BuildICmp(
-                    LLVMIntPredicate.LLVMIntEQ, _emitter.Builder.BuildLoad(gepOF(value.LLVMValue, 0)),
+                    LLVMIntPredicate.LLVMIntEQ, _emitter.Builder.BuildLoad(GepOF(value.LLVMValue, 0)),
                     LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, (uint)index)),
                 MugValueType.Bool);
 
@@ -849,7 +1317,7 @@ namespace Mug.Models.Generator
             var ptr = castType.GetLLVMType(_generator) == _generator.GetBiggestTypeOFVariant(boxtype).GetLLVMType(_generator)
                 ? value.LLVMValue : _emitter.EmitBitcast(value, castType).LLVMValue;
 
-            ptr = gepOF(ptr, 1);
+            ptr = GepOF(ptr, 1);
 
             return
                 MugValue.From(_emitter.Builder.BuildLoad(ptr), castType);
@@ -875,7 +1343,7 @@ namespace Mug.Models.Generator
             var index = _emitter.Pop();
 
             if (indexed.Type.IsIndexable()) // loading the element
-                _emitter.SelectArrayElement(buildload, indexed, index);
+                _emitter.SelectArrayElement(buildload, GepOF(indexed.LLVMValue, 1), indexed.Type.ArrayBaseElementType, index);
             else
             {
                 var parameters = new[] { indexed, index };
@@ -885,25 +1353,45 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private LLVMValueRef CreateHeapArray(LLVMTypeRef baseElementType, LLVMValueRef size)
+        private LLVMValueRef CreateHeapArray(MugValueType type, LLVMValueRef size, LLVMBuilderRef builder = default)
         {
-            return _emitter.Builder.BuildArrayMalloc(baseElementType, size);
+            SetToEmitterWhenDefault(ref builder);
+
+            var allocation = _emitter.Builder.BuildAlloca(type.GetLLVMType(_generator));
+            var malloc = _emitter.Builder.BuildMalloc(type.GetLLVMType(_generator));
+            _emitter.Builder.BuildStore(_emitter.Builder.BuildLoad(malloc), allocation);
+            var nullarr = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(type.ArrayBaseElementType.GetLLVMType(_generator), 0));
+            _emitter.Builder.BuildStore(size, GepOF(_emitter.Builder.BuildLoad(allocation), 0));
+            _emitter.Builder.BuildStore(nullarr, GepOF(_emitter.Builder.BuildLoad(allocation), 1));
+
+            return _emitter.Builder.BuildLoad(allocation);
         }
 
-        private void EmitExprAllocateArray(ArrayAllocationNode aa)
+        private void StoreElementArray(LLVMValueRef arrayload, int i)
+        {
+            var ptr = _emitter.Builder.BuildLoad(_emitter.Builder.BuildGEP(GepOF(arrayload, 1), new[]
+            {
+                LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)i)
+            }));
+
+            _emitter.Builder.BuildStore(_emitter.Pop().LLVMValue, ptr);
+        }
+
+        private bool EmitExprAllocateArray(ArrayAllocationNode aa)
         {
             var arraytype = MugValueType.Array(aa.Type.ToMugValueType(_generator));
 
             // loading the array
 
             if (aa.SizeIsImplicit)
-                _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)aa.Body.Length), MugValueType.Int32));
+                _emitter.Load(MugValue.From(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)aa.Body.Count), MugValueType.Int32));
             else if (!EvaluateExpression(aa.Size))
-                return;
+                return false;
 
             var array = MugValue.From(_emitter.Builder.BuildAlloca(arraytype.GetLLVMType(_generator)), arraytype);
 
-            var allocation = CreateHeapArray(arraytype.ArrayBaseElementType.GetLLVMType(_generator), _emitter.Pop().LLVMValue);
+            _emitter.CastInt(MugValueType.Int64);
+            var allocation = CreateHeapArray(arraytype, _emitter.Pop().LLVMValue);
 
             _emitter.Builder.BuildStore(allocation, array.LLVMValue);
 
@@ -921,12 +1409,13 @@ namespace Mug.Models.Generator
                 if (!_emitter.PeekType().Equals(arraytype.ArrayBaseElementType))
                     Report(elem.Position, IRGenerator.ExpectTypeMessage(arraytype.ArrayBaseElementType, _emitter.PeekType()));
 
-                _emitter.StoreElementArray(arraypointer, i);
+                StoreElementArray(arraypointer, i);
 
                 i++;
             }
 
             _emitter.Load(MugValue.From(arraypointer, arraytype));
+            return true;
         }
 
         private bool EmitExprAllocateStruct(TypeAllocationNode ta)
@@ -987,9 +1476,27 @@ namespace Mug.Models.Generator
             return true;
         }
 
+        private bool EvaluateArrayFieldAccess(MugValue str, string fieldname, bool buildload, ModulePosition memberposition)
+        {
+            // long len
+            if (fieldname == "len64")
+                loadLength();
+            else if (fieldname == "len")
+            {
+                loadLength();
+                _emitter.CastInt(MugValueType.Int32);
+            }
+            else
+                return Report(memberposition, $"Undeclared field '{fieldname}'");
+
+            return buildload || Report(memberposition, $"Field '{fieldname}' is readonly");
+
+            void loadLength() => _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(GepOF(_emitter.Builder.BuildLoad(str.LLVMValue), 0)), MugValueType.Int64));
+        }
+
         private bool EmitExprMemberAccess(MemberNode m, bool buildload = true)
         {
-            if (m.Base is Token token)
+            if (m.Base is Token token && token.Kind == TokenKind.Identifier)
             {
                 if (_emitter.IsDeclared(token.Value))
                 {
@@ -1010,7 +1517,10 @@ namespace Mug.Models.Generator
             var valuetype = _emitter.PeekType();
 
             if (!valuetype.IsStructure())
-                return Report(m.Base.Position, $"Type '{valuetype}' is not accessible via '.'");
+                return
+                    valuetype.IsIndexable() ?
+                    EvaluateArrayFieldAccess(_emitter.Pop(), m.Member.Value, buildload, m.Member.Position) :
+                    Report(m.Base.Position, $"Type '{valuetype}' is not accessible via '.'");
 
             var structure = valuetype.GetStructure();
             var type = structure.GetFieldTypeFromName(m.Member.Value, _generator, m.Member.Position);
@@ -1367,6 +1877,14 @@ namespace Mug.Models.Generator
             return MugValue.From(LLVMValueRef.CreateConstAllOnes(type.GetLLVMType(_generator)), type);
         }
 
+        private MugValue DefaultArrayValue(MugValueType type, ModulePosition position)
+        {
+            var size = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 0);
+            var emptyarray = CreateHeapArray(type, size);
+
+            return MugValue.From(emptyarray, type, isconstant: true);
+        }
+
         private MugValue GetDefaultValueOf(MugValueType type, ModulePosition position)
         {
             return type.TypeKind switch
@@ -1379,8 +1897,8 @@ namespace Mug.Models.Generator
                 MugValueTypeKind.Float32 or
                 MugValueTypeKind.Float64 or
                 MugValueTypeKind.Float128 => MugValue.From(LLVMValueRef.CreateConstSIToFP(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0), type.GetLLVMType(_generator)), type, true),
-                MugValueTypeKind.String => MugValue.From(CreateConstString(""), type, true),
-                MugValueTypeKind.Array => MugValue.From(CreateHeapArray(type.ArrayBaseElementType.GetLLVMType(_generator), LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)), type, true),
+                MugValueTypeKind.String => MugValue.From(CreateConstString("", false), type, true),
+                MugValueTypeKind.Array => DefaultArrayValue(type, position),
                 MugValueTypeKind.Enum or
                 MugValueTypeKind.Struct => GetDefaultValueOfDefinedType(type, position),
                 MugValueTypeKind.Variant => ReportUnitializedVariant(position, type),

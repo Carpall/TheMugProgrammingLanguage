@@ -575,7 +575,7 @@ namespace Mug.Models.Generator.Emitter
                 return false;
             }
 
-            Load(MugValue.From(allocation.LLVMValue, MugValueType.Reference(allocation.Type)));
+            Load(MugValue.From(allocation.LLVMValue, MugValueType.Pointer(allocation.Type)));
             return true;
         }
 
@@ -592,16 +592,6 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(Pop().LLVMValue, ptr.LLVMValue);
         }
 
-        public void StoreElementArray(LLVMValueRef arrayload, int i)
-        {
-            var ptr = Builder.BuildGEP(arrayload, new[]
-            {
-                LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)i)
-            });
-            
-            Builder.BuildStore(Pop().LLVMValue, ptr);
-        }
-
         public void MakePostfixIntOperation(Func<LLVMValueRef, LLVMValueRef, string, LLVMValueRef> operation)
         {
             var target = Pop();
@@ -615,15 +605,15 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(Pop().LLVMValue, target.LLVMValue);
         }
 
-        public void SelectArrayElement(bool buildload, MugValue array, MugValue index)
+        public void SelectArrayElement(bool buildload, LLVMValueRef array, MugValueType arrayBaseElementType, MugValue index)
         {
             // selecting the element
-            var ptr = Builder.BuildGEP( array.LLVMValue, new[] { index.LLVMValue });
+            var ptr = Builder.BuildGEP(Builder.BuildLoad(array), new[] { index.LLVMValue });
 
             if (buildload) // load from pointer 
                 ptr = Builder.BuildLoad(ptr);
 
-            Load(MugValue.From(ptr, array.Type.ArrayBaseElementType));
+            Load(MugValue.From(ptr, arrayBaseElementType));
         }
 
         public void Swap()

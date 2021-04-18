@@ -181,7 +181,7 @@ namespace Mug.Compilation
                     continue;
 
                 var unit = new CompilationUnit(path, Path.GetFileName(path) == MainFileName, true);
-                head.Members.AddRange(((NamespaceNode)unit.GenerateAST()).Members);
+                head.Members.Nodes.AddRange(((NamespaceNode)unit.GenerateAST()).Members.Nodes);
             }
 
             IRGenerator._isMainModule = true;
@@ -202,7 +202,7 @@ namespace Mug.Compilation
 
             if (verifyLLVMModule)
                 if (!IRGenerator.Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var error))
-                    CompilationErrors.Throw($"Cannot build due to external compiler's errors: {error}");
+                    CompilationErrors.Throw($"Cannot build due to external compiler's errors:\n{error}");
         }
     }
 }
