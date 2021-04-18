@@ -11,12 +11,8 @@ try
 
     const string test = @"
 
-type Person { name: i32 }
-
 func main() {
   // todo: [args!()], [flag args in run command], [str.len], [arr.len], add repr for struct and arrays, [fix fgets with buffer of size 100 when it is useless], add fixed arrays (llvm vectors)
-  var x = new [i32] { }
-  var y = x
 }
 
 ";

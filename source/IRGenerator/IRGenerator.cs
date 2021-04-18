@@ -826,7 +826,7 @@ namespace Mug.Models.Generator
         {
             return new[]
             {
-                LLVMTypeRef.Int32,
+                LLVMTypeRef.Int64,
                 LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)
             };
         }
@@ -936,7 +936,7 @@ namespace Mug.Models.Generator
         {
             // setting up stdout, stdin, stderr
             var ptrtype = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-            var argvtype = LLVMTypeRef.CreatePointer(ptrtype, 0);
+            var argvtype = MugValueType.Array(MugValueType.CString).GetLLVMType(this);
             init(Module.AddGlobal(ptrtype, "@stdout"));
             init(Module.AddGlobal(ptrtype, "@stdin"));
             init(Module.AddGlobal(argvtype, "@args"), argvtype);

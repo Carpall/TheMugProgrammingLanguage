@@ -718,7 +718,8 @@ namespace Mug.Models.Generator
 
             var stdout = _emitter.Builder.BuildCall(open, new[] { int64_1, CreateConstString("w") });
             var stdin = _emitter.Builder.BuildCall(open, new[] { int64_0, CreateConstString("r") });
-            var args = _llvmfunction.GetParam(1); // called only when main, so params will ever be argc and argv
+            var args = CreateHeapArray(MugValueType.Array(MugValueType.CString), _llvmfunction.GetParam(0)); // called only when main, so params will ever be argc and argv
+            _emitter.Builder.BuildStore(_llvmfunction.GetParam(1), GepOF(args, 1));
 
             _emitter.Builder.BuildStore(stdout, _generator.Module.GetNamedGlobal("@stdout"));
             _emitter.Builder.BuildStore(stdin, _generator.Module.GetNamedGlobal("@stdin"));
@@ -916,9 +917,28 @@ namespace Mug.Models.Generator
             return true;
         }
 
+        private bool CompTime_carr(INode parameter, ModulePosition position)
+        {
+            if (!EvaluateExpression(parameter))
+                return false;
+
+            var value = _emitter.Pop();
+            if (value.Type.TypeKind != MugValueTypeKind.Array)
+                return Report(position, "Required a value of type array as parameter");
+
+            LoadCArr(value);
+
+            return true;
+        }
+
         private void LoadCStr(MugValue str)
         {
             _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(GepOF(str.LLVMValue, 1)), MugValueType.CString));
+        }
+
+        private void LoadCArr(MugValue arr)
+        {
+            _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(GepOF(arr.LLVMValue, 1)), MugValueType.Pointer(arr.Type.ArrayBaseElementType)));
         }
 
         private bool CompTime_print(INode[] parameters, ModulePosition position)
@@ -1108,7 +1128,7 @@ namespace Mug.Models.Generator
             _emitter.Load(
                 MugValue.From(
                     GetArgs(),
-                    MugValueType.Array(MugValueType.String))
+                    MugValueType.Array(MugValueType.CString))
                 );
 
             return true;
@@ -1144,10 +1164,12 @@ namespace Mug.Models.Generator
                 case "input":
                     checkOverload(generics.Count == 0);
                     return CompTime_input(parameters, position);
-                case "cstr":
+                case "carr" or "cstr":
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length == 1);
-                    return CompTime_cstr(parameters.First(), position);
+                    var func = id.Value == "cstr" ? (Func<INode, ModulePosition, bool>)CompTime_cstr : CompTime_carr;
+
+                    return func(parameters.First(), position);
                 case "args":
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length == 0);
