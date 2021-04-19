@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Models.Generator;
+using Mug.Models.Lexer;
 using Mug.Models.Parser;
 using Mug.Models.Parser.NodeKinds;
 using Mug.Models.Parser.NodeKinds.Statements;
@@ -65,15 +66,24 @@ namespace Mug.Models.Lowerering
             return expression;
         }
 
-        public static ConditionalStatement LowerMatchExpression(MatchExpression matchexpr)
+        public static bool LowerMatchExpression(
+            MatchExpression matchexpr,
+            out ConditionalStatement conditional,
+            LocalGenerator localgenerator)
         {
-            var conditional = new ConditionalStatement() { };
+            conditional = new();
             var temp = conditional;
+            var foundElseNode = false;
+            var i = 0;
+            var result = true;
 
-            for (int i = 0; i < matchexpr.Body.Count; i++)
+            for (; i < matchexpr.Body.Count; i++)
             {
                 var matchnode = matchexpr.Body[i];
+                if (matchnode.IsElseNode && foundElseNode)
+                    result = localgenerator.Report(matchexpr.Position, "'else' node already declared in 'match' expression");
 
+                foundElseNode = matchnode.IsElseNode;
                 temp.ElseNode = new ConditionalStatement()
                 {
                     Position = matchexpr.Position,
@@ -85,7 +95,13 @@ namespace Mug.Models.Lowerering
                 temp = temp.ElseNode;
             }
 
-            return conditional.ElseNode;
+            if (i == 1 && foundElseNode)
+                result = localgenerator.Report(matchexpr.Body.First().Position, "'else' node must have predecessor cases");
+            else if (i == 0)
+                result = localgenerator.Report(matchexpr.Position, "Expected at least one match node");
+
+            conditional = conditional.ElseNode;
+            return result;
 
             // to inline
             INode addCase(ref MatchNode matchnode)

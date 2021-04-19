@@ -1717,7 +1717,7 @@ namespace Mug.Models.Generator
 
                     return EmitCastInstruction(ce.Type, ce.Position);
                 case MatchExpression me:
-                    return EvaluateExpression(Lowerer.LowerMatchExpression(me));
+                    return Lowerer.LowerMatchExpression(me, out var conditional, this) && EvaluateExpression(conditional);
                 case BooleanExpressionNode b:
                     return EmitExprBool(b);
                 case ArraySelectElemNode a:
@@ -2533,7 +2533,8 @@ namespace Mug.Models.Generator
                     StoreInHiddenBuffer(statement.Position, isLastOFBlock);
                     break;
                 case MatchExpression matchexpr:
-                    RecognizeStatement(Lowerer.LowerMatchExpression(matchexpr), isLastOFBlock);
+                    if (Lowerer.LowerMatchExpression(matchexpr, out var conditional, this))
+                        RecognizeStatement(conditional, isLastOFBlock);
                     break;
                 case CallStatement call:
                     var stackcount = _emitter.StackCount;

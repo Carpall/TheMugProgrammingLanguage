@@ -11,11 +11,8 @@ try
 
     const string test = @"
 
-func main(): i32 {
-  return match 10 {
-    11 | 12 | 13 { 1 + 2 }
-    else { 10 }
-  }
+func main() {
+  
 }
 
 ";
