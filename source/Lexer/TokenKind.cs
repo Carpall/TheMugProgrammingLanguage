@@ -127,6 +127,8 @@ namespace Mug.Models.Lexer
         [Description("catch")]
         KeyCatch,
         [Description("is")]
-        KeyIs
+        KeyIs,
+        [Description("match")]
+        KeyMatch
     }
 }

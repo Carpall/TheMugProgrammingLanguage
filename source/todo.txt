@@ -1,7 +1,9 @@
 todo: -
 done: +
 
-- match
+CHECK TODOS
+
++ match
 - 'func some() !sometype', this will mean that the function must be catched also if there is no real error to catch -> 'some() catch { return }'
 - calls that return an enum error can be also not catched if in return expression, where the return's scope owner is a function that returns the same enum error
 - reference printing (ex. the function where there is the error)
@@ -69,3 +71,6 @@ done: +
 - fix constant floats: llvmsharp does not expose any function for constant float creation
 - expose builtin functions for function and type's infos -> 'const fn: FuncInfo! = fninfo!(main) const types: MugType! = fn.param_types'
 - add runtime checks
+- implement for in 
+- consider removing 'break' in catch blocks
+- make cycles and other statement expression but not evaluable in scopes -> 'const result = for i: u8, i < 10, i++ { if i == 7 { i+10 break } }'

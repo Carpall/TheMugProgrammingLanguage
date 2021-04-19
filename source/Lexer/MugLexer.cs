@@ -104,6 +104,7 @@ namespace Mug.Models.Lexer
             "var" => AddKeyword(TokenKind.KeyVar, s),
             "const" => AddKeyword(TokenKind.KeyConst, s),
             "catch" => AddKeyword(TokenKind.KeyCatch, s),
+            "match" => AddKeyword(TokenKind.KeyMatch, s),
             _ => false
         };
 

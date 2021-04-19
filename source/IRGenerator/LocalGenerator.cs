@@ -1251,6 +1251,10 @@ namespace Mug.Models.Generator
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length == 0);
                     return CompTime_args();
+                case "or" or "and":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 2);
+                    return CompTime_or_and(id.Value, parameters, position);
                 case "frm_cstr":
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length == 1);
@@ -1285,6 +1289,28 @@ namespace Mug.Models.Generator
                 if (!paramsCheck)
                     Error(position, $"Unexpected '{parameters.Length}' parameter{IRGenerator.GetPlural(parameters.Length)}");
             }
+        }
+
+        private bool CompTime_or_and(string value, INode[] parameters, ModulePosition position)
+        {
+            if (!EvaluateExpression(parameters[1]) | !EvaluateExpression(parameters[0]))
+                return false;
+
+            var first = _emitter.Pop();
+            var second = _emitter.Pop();
+
+            if (!first.Type.MatchSameAnyIntType(second.Type))
+                return Report(position, $"Required compatible types '{first.Type}', '{second.Type}'");
+
+            var op = value == "or" ?
+                (Func<LLVMValueRef, LLVMValueRef, string, LLVMValueRef>)_emitter.Builder.BuildOr : _emitter.Builder.BuildAnd;
+
+            _emitter.Load(
+                MugValue.From(
+                    op(first.LLVMValue, second.LLVMValue, ""),
+                    first.Type)
+                );
+            return true;
         }
 
         private bool CompTime_unbox(MugType type, INode expression, ModulePosition position)
@@ -1347,7 +1373,7 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private bool EmitExpr(ExpressionNode e)
+        private bool EmitExpr(BinaryExpressionNode e)
         {
             // evaluated left and right, | allows to find bugs also in the right expression
             if (!EvaluateExpression(e.Left) | !EvaluateExpression(e.Right))
@@ -1663,7 +1689,7 @@ namespace Mug.Models.Generator
         {
             switch (expression)
             {
-                case ExpressionNode e: // binary expression: left op right
+                case BinaryExpressionNode e: // binary expression: left op right
                     return EmitExpr(e);
                 case Token t:
                     if (t.Kind == TokenKind.Identifier)
@@ -1690,6 +1716,8 @@ namespace Mug.Models.Generator
                         return false;
 
                     return EmitCastInstruction(ce.Type, ce.Position);
+                case MatchExpression me:
+                    return EvaluateExpression(Lowerer.LowerMatchExpression(me));
                 case BooleanExpressionNode b:
                     return EmitExprBool(b);
                 case ArraySelectElemNode a:
@@ -2503,6 +2531,9 @@ namespace Mug.Models.Generator
                         EmitConditionalStatement(condition);
 
                     StoreInHiddenBuffer(statement.Position, isLastOFBlock);
+                    break;
+                case MatchExpression matchexpr:
+                    RecognizeStatement(Lowerer.LowerMatchExpression(matchexpr), isLastOFBlock);
                     break;
                 case CallStatement call:
                     var stackcount = _emitter.StackCount;

@@ -7,6 +7,7 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -587,7 +588,7 @@ namespace Mug.Models.Parser
                 var right = ExpectTerm(allowNullExpression);
                 do
                 {
-                    e = new ExpressionNode() { Left = e, Right = right, Operator = op.Kind, Position = op.Position };
+                    e = new BinaryExpressionNode() { Left = e, Right = right, Operator = op.Kind, Position = op.Position };
                     if (MatchFactorOps())
                         op = Back;
                     else
@@ -682,7 +683,7 @@ namespace Mug.Models.Parser
 
                     do
                     {
-                        e = new ExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
+                        e = new BinaryExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
                         if (MatchPlusMinus())
                             op = Back;
                         else
@@ -789,6 +790,11 @@ namespace Mug.Models.Parser
             return true;
         }
 
+        private bool NextIsOnSameLine()
+        {
+            return _currentIndex < Lexer.TokenCollection.Count && !Lexer.TokenCollection[_currentIndex].IsOnNewLine;
+        }
+
         private bool ReturnDeclaration(out INode statement)
         {
             statement = null;
@@ -797,8 +803,12 @@ namespace Mug.Models.Parser
                 return false;
 
             var pos = Back.Position;
-            
-            statement = new ReturnStatement() { Position = pos, Body = ExpectExpression(allowNullExpression: true) };
+
+            statement = new ReturnStatement()
+            {
+                Position = pos,
+                Body = !NextIsOnSameLine() ? null : ExpectExpression(allowNullExpression: true)
+            };
 
             return true;
         }
@@ -813,9 +823,40 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.DivAssignment, out @operator);
         }
 
+        private bool CollectMatchExpression(out INode statement, ModulePosition position)
+        {
+            var matchexpr = new MatchExpression() { Position = position, Expression = ExpectExpression(end: TokenKind.OpenBrace) };
+
+            while (!MatchAdvance(TokenKind.CloseBrace))
+            {
+                var expression = (INode)null;
+                var pos = Current.Position;
+
+                if (!MatchAdvance(TokenKind.KeyElse))
+                {
+                    expression = ExpectExpression(end: TokenKind.OpenBrace);
+                    pos = expression.Position;
+                    _currentIndex--;
+                }
+
+                matchexpr.Body.Add(new MatchNode()
+                {
+                    Expression = expression,
+                    Body = ExpectBlock(),
+                    Position = pos,
+                });
+            }
+
+            statement = matchexpr;
+            return true;
+        }
+
         private bool ConditionDefinition(out INode statement, bool isFirstCondition = true)
         {
             statement = null;
+
+            if (isFirstCondition && MatchAdvance(TokenKind.KeyMatch, out var matchtoken))
+                return CollectMatchExpression(out statement, matchtoken.Position);
 
             if (!MatchAdvance(TokenKind.KeyIf, out Token key) &&
                 !MatchAdvance(TokenKind.KeyElif, out key) &&
@@ -927,8 +968,6 @@ namespace Mug.Models.Parser
             if (!VariableDefinition(out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;
                 !ConstantDefinition(out statement) && // const x = value;
-                !ConstantDefinition(out statement) && // const x = value;
-                !ConditionDefinition(out statement) &&
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
                 statement = ExpectExpression(true);

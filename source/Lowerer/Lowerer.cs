@@ -4,54 +4,97 @@ using Mug.Models.Parser.NodeKinds;
 using Mug.Models.Parser.NodeKinds.Statements;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Mug.Models.Lowerering
 {
     public static class Lowerer
     {
-        /*private static BlockNode LowerForInStatement(ForLoopStatement statement)
+        private static INode AddTerm(INode expression, MatchNode matchnode)
         {
-            throw new();
-        }*/
+            // fn: addterm(expr, match)
+            // if match.kind = | or &
+            //  expr <- node_call(match.expr.kind = | then or! else and!, or, (addterm(match.expr.left, match), addterm(match.expr.right, match)))
+            // else
+            //  expr <- node_bin(match.expr.left, ==, match.expr.right)
+            // ret <- expr
 
-        /*private static BlockNode LowerForToStatement(ForLoopStatement statement)
-        {
-            var result = new BlockNode() { Position = statement.Position };
-            result.Add( statement.Counter);
-
-            var whilestatement = new ConditionalStatement()
+            if (matchnode.Expression is BooleanExpressionNode boolexpr &&
+                        boolexpr.Operator == TokenKind.BooleanOR | boolexpr.Operator == TokenKind.BooleanAND)
             {
-                Body = statement.Body,
-                Kind = TokenKind.KeyWhile,
-                Expression = new BooleanExpressionNode()
+                expression = new CallStatement()
                 {
-                    Left = statement.Counter,
-                    Position = statement.RightExpression.Position,
-                    Operator = OperatorKind.CompareLEQ,
-                    Right = statement.Counter
-                },
-                Position = statement.Position
-            };
+                    Position = matchnode.Position,
+                    IsBuiltIn = true,
+                    Name = new Token(
+                        TokenKind.Identifier,
+                        new string(boolexpr.Operator.ToString().Skip(7).ToArray()).ToLower(),
+                        matchnode.Position,
+                        false),
+                    Parameters = new NodeBuilder()
+                    {
+                        Nodes = new()
+                        {
+                            AddTerm(expression, new MatchNode()
+                            {
+                                Position = matchnode.Position,
+                                Expression = boolexpr.Left,
+                                Body = matchnode.Body
+                            }),
 
-            whilestatement.Body.Add(new PostfixOperator() { Expression = statement.Counter, Postfix = TokenKind.OperatorIncrement });
+                            AddTerm(expression, new MatchNode()
+                            {
+                                Position = matchnode.Position,
+                                Expression = boolexpr.Right,
+                                Body = matchnode.Body
+                            }),
+                        }
+                    }
+                };
+            }
+            else
+                expression = new BooleanExpressionNode()
+                {
+                    Position = matchnode.Expression.Position,
+                    Left = expression,
+                    Right = matchnode.Expression,
+                    Operator = TokenKind.BooleanEQ
+                };
 
-            Console.WriteLine((result as INode).Dump());
+            return expression;
+        }
 
-            return result;
-        }*/
-
-        /// <summary>
-        /// lowers the for statement to a while statement
-        /// </summary>
-        /// <returns></returns>
-        /*public static BlockNode LowerForStatement(ForLoopStatement statement)
+        public static ConditionalStatement LowerMatchExpression(MatchExpression matchexpr)
         {
-            return statement.Operator switch
+            var conditional = new ConditionalStatement() { };
+            var temp = conditional;
+
+            for (int i = 0; i < matchexpr.Body.Count; i++)
             {
-                TokenKind.KeyTo => LowerForToStatement(statement),
-                TokenKind.KeyIn => LowerForInStatement(statement)
-            };
-        }*/
+                var matchnode = matchexpr.Body[i];
+
+                temp.ElseNode = new ConditionalStatement()
+                {
+                    Position = matchexpr.Position,
+                    Kind = i == 0 ? TokenKind.KeyIf : matchnode.IsElseNode ? TokenKind.KeyElse : TokenKind.KeyElif,
+                    Expression = addCase(ref matchnode),
+                    Body = matchnode.Body,
+                };
+
+                temp = temp.ElseNode;
+            }
+
+            return conditional.ElseNode;
+
+            // to inline
+            INode addCase(ref MatchNode matchnode)
+            {
+                if (!matchnode.IsElseNode)
+                    return AddTerm(matchexpr.Expression, matchnode);
+
+                return null;
+            }
+        }
     }
 }

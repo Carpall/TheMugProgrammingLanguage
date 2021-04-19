@@ -6,7 +6,7 @@ using System;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public class ExpressionNode : INode
+    public class BinaryExpressionNode : INode
     {
         public string NodeKind => "BinaryExpression";
         public INode Left { get; set; }

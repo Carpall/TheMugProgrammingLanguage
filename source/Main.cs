@@ -11,13 +11,15 @@ try
 
     const string test = @"
 
-func main() {
-  if cfg!(linux) | cfg!(macos) { print!(""unix!"") }
-  else { print!(""(probably) win!"") }
+func main(): i32 {
+  return match 10 {
+    11 | 12 | 13 { 1 + 2 }
+    else { 10 }
+  }
 }
 
 ";
-    
+
     var unit = new CompilationUnit(@"test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
