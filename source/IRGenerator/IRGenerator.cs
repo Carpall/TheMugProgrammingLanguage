@@ -621,35 +621,6 @@ namespace Mug.Models.Generator
                 enumstatement.Position);
         }
 
-        private void MergeTree(NodeBuilder body)
-        {
-            foreach (var member in body.Nodes)
-                RecognizeMember(member);
-        }
-
-        internal bool EvaluateCompTimeExprAndGetResult(CompTimeExpression comptimeExpr)
-        {
-            bool result = true;
-            Token lastOP = default;
-
-            foreach (var token in comptimeExpr.Expression)
-            {
-                if (token.Kind != TokenKind.Identifier)
-                    lastOP = token;
-                else
-                {
-                    var symbolResult = Table.CompilerSymbolIsDeclared(token.Value);
-
-                    if (lastOP.Kind == TokenKind.BooleanOR)
-                        result |= symbolResult;
-                    else
-                        result &= symbolResult;
-                }
-            }
-
-            return result;
-        }
-
         internal bool GenerateOverloadsOF(string name, MugValueType[] generics)
         {
             var count = 0;
@@ -661,12 +632,6 @@ namespace Mug.Models.Generator
                 }
 
             return true;
-        }
-
-        private void EmitCompTimeWhen(CompTimeWhenStatement when)
-        {
-            if (EvaluateCompTimeExprAndGetResult(when.Expression))
-                MergeTree((NodeBuilder)when.Body);
         }
 
         private Token CheckGlobalConstant(INode body, MugType type, ModulePosition position)
@@ -726,12 +691,6 @@ namespace Mug.Models.Generator
                     break;
                 case ImportDirective import:
                     EmitImport(import);
-                    break;
-                case CompTimeWhenStatement comptimewhen:
-                    EmitCompTimeWhen(comptimewhen);
-                    break;
-                case DeclareDirective declare:
-                    DeclareCompilerSymbol(declare.Symbol.Value, true, declare.Position);
                     break;
                 case ConstantStatement constant:
                     // Table.DeclareConstant(constant.Name, CheckGlobalConstant(constant.Body, constant.Type), constant.Position);

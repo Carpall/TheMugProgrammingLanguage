@@ -12,9 +12,8 @@ try
     const string test = @"
 
 func main() {
-  // todo: [args!()], [flag args in run command], [str.len], [arr.len], add repr for struct and arrays, [fix fgets with buffer of size 100 when it is useless], add fixed arrays (llvm vectors)
-  // print!(""len: {}"", args!().len)
-  var x = new [i32] { 0 }
+  if cfg!(linux) | cfg!(macos) { print!(""unix!"") }
+  else { print!(""(probably) win!"") }
 }
 
 ";

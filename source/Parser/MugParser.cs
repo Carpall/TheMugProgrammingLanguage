@@ -928,7 +928,6 @@ namespace Mug.Models.Parser
                 !ReturnDeclaration(out statement) && // return value;
                 !ConstantDefinition(out statement) && // const x = value;
                 !ConstantDefinition(out statement) && // const x = value;
-                !MatchWhenStatement(out statement, false) && // when comptimecondition {}
                 !ConditionDefinition(out statement) &&
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
@@ -1089,70 +1088,11 @@ namespace Mug.Models.Parser
             return true;
         }
 
-        private bool MatchDeclareDirective(out INode directive)
-        {
-            directive = null;
-
-            if (!MatchAdvance(TokenKind.KeyDeclare, out var token))
-                return false;
-
-            directive = new DeclareDirective() { Position = token.Position, Symbol = Expect("Expected symbol", TokenKind.Identifier) };
-            return true;
-        }
-
-        private CompTimeExpression ExpectCompTimeExpression()
-        {
-            CompTimeExpression comptimeExpr = new();
-            var boolOP = Token.NewInfo(TokenKind.Bad, null);
-
-            do
-            {
-                if (boolOP.Kind != TokenKind.Bad)
-                    comptimeExpr.Expression.Add(boolOP);
-
-                comptimeExpr.Expression.Add(Expect("Expected symbol", TokenKind.Identifier));
-
-            } while (MatchAdvance(TokenKind.BooleanAND, out boolOP) || MatchAdvance(TokenKind.BooleanOR, out boolOP));
-
-            return comptimeExpr;
-        }
-
-        private NodeBuilder ExpectWhenBlockGlobalScope()
-        {
-            Expect("Expected when body", TokenKind.OpenBrace);
-
-            var members = ExpectNamespaceMembers(TokenKind.CloseBrace);
-
-            Expect("", TokenKind.CloseBrace);
-
-            return members;
-        }
-
-        private bool MatchWhenStatement(out INode directive, bool isGlobalScope)
-        {
-            directive = null;
-
-            if (!MatchAdvance(TokenKind.KeyWhen, out var token))
-                return false;
-
-            var expression = ExpectCompTimeExpression();
-
-            directive = new CompTimeWhenStatement()
-            {
-                Position = token.Position,
-                Expression = expression,
-                Body = isGlobalScope ? (object)ExpectWhenBlockGlobalScope() : (object)ExpectBlock()
-            };
-            return true;
-        }
-
         private bool DirectiveDefinition(out INode directive)
         {
             return
-                MatchImportDirective(out directive)  ||
-                MatchUseDirective(out directive)     ||
-                MatchDeclareDirective(out directive) ||
-                MatchWhenStatement(out directive, true);
+                MatchImportDirective(out directive) ||
+                MatchUseDirective(out directive);
         }
 
         private FieldNode ExpectFieldDefinition()

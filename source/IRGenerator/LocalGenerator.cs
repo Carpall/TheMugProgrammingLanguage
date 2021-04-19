@@ -1117,6 +1117,22 @@ namespace Mug.Models.Generator
             throw new();
         }
 
+        private bool CompTime_cfg(INode parameter, ModulePosition position)
+        {
+            if (parameter is not Token sym || sym.Kind != TokenKind.Identifier)
+                return Report(position, "Required a symbol name");
+
+            _emitter.Load(
+                MugValue.From(
+                    LLVMValueRef.CreateConstInt(
+                        LLVMTypeRef.Int1,
+                        Convert.ToUInt32(_generator.Table.CompilerSymbolIsDeclared(sym.Value))),
+                    MugValueType.Bool)
+                );
+
+            return true;
+        }
+
         private bool CompTime_repr(INode parameter, ModulePosition position, bool quoteString)
         {
             if (!EvaluateExpression(parameter))
@@ -1133,7 +1149,11 @@ namespace Mug.Models.Generator
             var parameters = new List<MugValue>() { _emitter.Pop() };
             var func = EmitReprCall(ref parameters);
 
-            _emitter.Load(MugValue.From(_emitter.Builder.BuildCall(func, _generator.MugValuesToLLVMValues(parameters.ToArray())), MugValueType.String));
+            _emitter.Load(
+                MugValue.From(
+                    _emitter.Builder.BuildCall(func, _generator.MugValuesToLLVMValues(parameters.ToArray())),
+                    MugValueType.String)
+                );
             return true;
         }
 
@@ -1203,7 +1223,7 @@ namespace Mug.Models.Generator
                     reportWhenUseless();
                     checkOverload(generics.Count == 1, parameters.Length == 1);
                     return CompTime_unbox(generics.First(), parameters.First(), position);
-                case "box_kind":
+                case "knd":
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length == 1);
                     return CompTime_box_kind(parameters.First());
@@ -1211,6 +1231,10 @@ namespace Mug.Models.Generator
                     reportWhenUseless();
                     checkOverload(generics.Count == 0, parameters.Length > 1);
                     return CompTime_fmt(parameters, position);
+                case "cfg":
+                    reportWhenUseless();
+                    checkOverload(generics.Count == 0, parameters.Length == 1);
+                    return CompTime_cfg(parameters.First(), position);
                 case "print":
                     reportWhenInExpression();
                     checkOverload(generics.Count == 0, parameters.Length > 0);
@@ -2275,12 +2299,6 @@ namespace Mug.Models.Generator
                 _emitter.Jump(CycleCompareBlock);
         }
 
-        private void EmitCompTimeWhen(CompTimeWhenStatement when)
-        {
-            if (_generator.EvaluateCompTimeExprAndGetResult(when.Expression))
-                Generate((BlockNode)when.Body);
-        }
-
         private MugValue LoadField(ref LLVMValueRef tmp, EnumErrorInfo enumerror, uint index)
         {
             var gep = _emitter.Builder.BuildGEP(tmp, new[]
@@ -2501,9 +2519,6 @@ namespace Mug.Models.Generator
                     break;
                 case LoopManagementStatement loopmanagement:
                     EmitLoopManagementStatement(loopmanagement);
-                    break;
-                case CompTimeWhenStatement comptimewhen:
-                    EmitCompTimeWhen(comptimewhen);
                     break;
                 case CatchExpressionNode catchstatement:
                     EmitCatchStatement(catchstatement, !_buffer.HasValue && !isLastOFBlock);

@@ -103,8 +103,6 @@ namespace Mug.Models.Lexer
             "func" => AddKeyword(TokenKind.KeyFunc, s),
             "var" => AddKeyword(TokenKind.KeyVar, s),
             "const" => AddKeyword(TokenKind.KeyConst, s),
-            "when" => AddKeyword(TokenKind.KeyWhen, s),
-            "declare" => AddKeyword(TokenKind.KeyDeclare, s),
             "catch" => AddKeyword(TokenKind.KeyCatch, s),
             _ => false
         };
