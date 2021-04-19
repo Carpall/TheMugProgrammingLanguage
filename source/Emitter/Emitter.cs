@@ -678,7 +678,7 @@ namespace Mug.Models.Generator.Emitter
         public void MakeTempAllocation()
         {
             var value = Pop();
-            var tmp = Builder.BuildAlloca(value.Type.GetLLVMType(_generator));
+            var tmp = Builder.BuildAlloca(value.Type.GetLLVMType(_generator), "^tmp_stack_alloc");
 
             Builder.BuildStore(value.LLVMValue, tmp);
 

@@ -13,6 +13,8 @@ try
 
 func main() {
   // todo: [args!()], [flag args in run command], [str.len], [arr.len], add repr for struct and arrays, [fix fgets with buffer of size 100 when it is useless], add fixed arrays (llvm vectors)
+  // print!(""len: {}"", args!().len)
+  var x = new [i32] { 0 }
 }
 
 ";
@@ -47,7 +49,7 @@ catch (CompilationException e)
             for (; i < errors.Count; i++)
             {
                 var error = errors[i];
-                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.LineAt(error.Bad.Lexer.Source), error.Bad.Lexer.Source, error.Message);
+                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
             }
         }
         catch

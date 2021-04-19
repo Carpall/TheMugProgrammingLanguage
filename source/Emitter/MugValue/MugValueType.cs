@@ -332,5 +332,12 @@ namespace Mug.MugValueSystem
                 TypeKind == MugValueTypeKind.Char ||
                 TypeKind == MugValueTypeKind.String;
         }
+
+        public bool IsCString()
+        {
+            return
+                TypeKind == MugValueTypeKind.Pointer &&
+                PointerBaseElementType.TypeKind == MugValueTypeKind.Char;
+        }
     }
 }

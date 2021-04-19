@@ -7,6 +7,7 @@ using Mug.MugValueSystem;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Mug.Compilation.Symbols
@@ -35,6 +36,7 @@ namespace Mug.Compilation.Symbols
 
         // compiler symbols like flags
         public readonly List<string> CompilerSymbols = new();
+        public readonly Dictionary<string, LLVMValueRef> ConstStringCache = new();
 
         public SymbolTable(IRGenerator generator)
         {
@@ -251,7 +253,7 @@ namespace Mug.Compilation.Symbols
                 return symbol.Parameters[0].Equals(function.Parameters[0]) && symbol.ReturnType.Equals(function.ReturnType);
             }) != -1)
             {
-                _generator.Report(position, "'as' operator with the same specifications is already declared");
+                _generator.Report(position, $"'as' operator which casts '{function.Parameters.First()}' to '{function.ReturnType}' is already declared");
                 return;
             }
 
@@ -264,7 +266,7 @@ namespace Mug.Compilation.Symbols
             var index = DefinedAsOperators.FindIndex(function => function.Parameters[0].Equals(type) && function.ReturnType.Equals(returntype));
             if (index == -1)
             {
-                _generator.Report(position, "'as' operator with the same specifications is already declared");
+                _generator.Report(position, $"'as' operator which casts '{type}' to '{returntype}' is not declared");
                 return null;
             }
 

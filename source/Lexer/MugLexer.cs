@@ -2,6 +2,7 @@
 using Mug.Compilation;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -45,6 +46,8 @@ namespace Mug.Models.Lexer
                 return Source[CurrentIndex];
             }
         }
+
+        public string ModuleRelativePath => Path.GetRelativePath(Environment.CurrentDirectory, ModuleName);
 
         public MugLexer(string moduleName, string source)
         {

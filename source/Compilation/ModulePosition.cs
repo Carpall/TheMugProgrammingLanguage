@@ -20,5 +20,10 @@ namespace Mug.Compilation
         {
             return $"{Lexer.ModuleName}({Position})";
         }
+
+        public int LineAt()
+        {
+            return CompilationErrors.CountLines(Lexer.Source, Position.Start.Value);
+        }
     }
 }

@@ -431,32 +431,32 @@ namespace Mug.Models.Parser
             
             e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Name = name, Parameters = parameters, Position = name is null ? name.Position : name.Position };
 
-            while (MatchAdvance(TokenKind.Dot))
-            {
-                name = Expect("Expected member after '.'", TokenKind.Identifier);
-
-                builtin = CollectBuiltInSymbol();
-
-                generics = CollectGenericParameters(ref builtin);
-
-                if (MatchAdvance(TokenKind.OpenPar, true))
-                {
-                    parameters = new NodeBuilder();
-
-                    CollectParameters(ref parameters);
-
-                    e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
-                }
-                else
-                {
-                    if (generics.Count != 0)
-                        ParseError("Expected call after generic parameter specification");
-
-                    e = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
-                }
-            }
-
             return true;
+        }
+
+        private void CollectDotExpression(ref INode e)
+        {
+            var name = Expect("Expected member after '.'", TokenKind.Identifier);
+
+            var builtin = CollectBuiltInSymbol();
+
+            var generics = CollectGenericParameters(ref builtin);
+
+            if (MatchAdvance(TokenKind.OpenPar, true))
+            {
+                var parameters = new NodeBuilder();
+
+                CollectParameters(ref parameters);
+
+                e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
+            }
+            else
+            {
+                if (generics.Count != 0)
+                    ParseError("Expected call after generic parameter specification");
+
+                e = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
+            }
         }
 
         private bool MatchPrefixOperator(out Token prefix)
@@ -521,10 +521,18 @@ namespace Mug.Models.Parser
 
             CollectPossibleArrayAccessNode(ref e);
 
+            CollectPossibleDotExpression(ref e);
+
             if (MatchAdvance(TokenKind.OperatorIncrement, true) || MatchAdvance(TokenKind.OperatorDecrement, true))
                 e = new PostfixOperator() { Expression = e, Position = Back.Position, Postfix = Back.Kind };
 
             return true;
+        }
+
+        private void CollectPossibleDotExpression(ref INode e)
+        {
+            while (MatchAdvance(TokenKind.Dot))
+                CollectDotExpression(ref e);
         }
 
         private INode ExpectFactor(bool allowNullExpression)

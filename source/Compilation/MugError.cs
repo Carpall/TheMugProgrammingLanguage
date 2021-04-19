@@ -10,10 +10,6 @@ namespace Mug.Compilation
     {
         public ModulePosition Bad { get; }
         public string Message { get; }
-        public int LineAt(string source)
-        {
-            return CompilationErrors.CountLines(source, Bad.Position.Start.Value);
-        }
 
         public MugError(ModulePosition position, string message)
         {

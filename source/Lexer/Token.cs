@@ -11,7 +11,7 @@ namespace Mug.Models.Lexer
         public string NodeKind => "Literal";
         [JsonConverter(typeof(StringEnumConverter))]
         public TokenKind Kind { get; }
-        public string Value { get; }
+        public string Value { get; set; }
         public ModulePosition Position { get; set; }
         public bool IsOnNewLine { get; }
 
