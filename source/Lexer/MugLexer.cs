@@ -78,34 +78,45 @@ namespace Mug.Models.Lexer
         /// <summary>
         /// returns true and insert a keyword token if s is a keyword, otherwise returns false, see the caller to understand better
         /// </summary>
-        private bool CheckAndSetKeyword(string s) => s switch
+        private static bool CheckAndSetKeyword(string s, out TokenKind kind)
         {
-            "return" => AddKeyword(TokenKind.KeyReturn, s),
-            "continue" => AddKeyword(TokenKind.KeyContinue, s),
-            "break" => AddKeyword(TokenKind.KeyBreak, s),
-            "while" => AddKeyword(TokenKind.KeyWhile, s),
-            "pub" => AddKeyword(TokenKind.KeyPub, s),
-            "priv" => AddKeyword(TokenKind.KeyPriv, s),
-            "use" => AddKeyword(TokenKind.KeyUse, s),
-            "import" => AddKeyword(TokenKind.KeyImport, s),
-            "new" => AddKeyword(TokenKind.KeyNew, s),
-            "for" => AddKeyword(TokenKind.KeyFor, s),
-            "type" => AddKeyword(TokenKind.KeyType, s),
-            "enum" => AddKeyword(TokenKind.KeyEnum, s),
-            "as" => AddKeyword(TokenKind.KeyAs, s),
-            "is" => AddKeyword(TokenKind.KeyIs, s),
-            "in" => AddKeyword(TokenKind.KeyIn, s),
-            "to" => AddKeyword(TokenKind.KeyTo, s),
-            "if" => AddKeyword(TokenKind.KeyIf, s),
-            "elif" => AddKeyword(TokenKind.KeyElif, s),
-            "else" => AddKeyword(TokenKind.KeyElse, s),
-            "func" => AddKeyword(TokenKind.KeyFunc, s),
-            "var" => AddKeyword(TokenKind.KeyVar, s),
-            "const" => AddKeyword(TokenKind.KeyConst, s),
-            "catch" => AddKeyword(TokenKind.KeyCatch, s),
-            "switch" => AddKeyword(TokenKind.KeySwitch, s),
-            _ => false
-        };
+            /*
+             * could be converted via reflection but it costs to much
+             * could be converted via array sorting but it doesn't make any difference,
+               at least could cost more (Array.IndexOf compares all elements with the passed one, but has the overhead of the cycle)
+            */
+            kind = s switch
+            {
+                "return" => TokenKind.KeyReturn,
+                "continue" => TokenKind.KeyContinue,
+                "break" => TokenKind.KeyBreak,
+                "while" => TokenKind.KeyWhile,
+                "pub" => TokenKind.KeyPub,
+                "priv" => TokenKind.KeyPriv,
+                "use" => TokenKind.KeyUse,
+                "import" => TokenKind.KeyImport,
+                "new" => TokenKind.KeyNew,
+                "for" => TokenKind.KeyFor,
+                "type" => TokenKind.KeyType,
+                "enum" => TokenKind.KeyEnum,
+                "as" => TokenKind.KeyAs,
+                "is" => TokenKind.KeyIs,
+                "in" => TokenKind.KeyIn,
+                "to" => TokenKind.KeyTo,
+                "if" => TokenKind.KeyIf,
+                "elif" => TokenKind.KeyElif,
+                "else" => TokenKind.KeyElse,
+                "func" => TokenKind.KeyFunc,
+                "var" => TokenKind.KeyVar,
+                "const" => TokenKind.KeyConst,
+                "catch" => TokenKind.KeyCatch,
+                "switch" => TokenKind.KeySwitch,
+                "try" => TokenKind.KeyTry,
+                _ => TokenKind.Bad
+            };
+
+            return kind != TokenKind.Bad;
+        }
 
         private T InExpressionError<T>(string error)
         {
@@ -323,13 +334,9 @@ namespace Mug.Models.Lexer
             return true;
         }
 
-        private bool IsKeyword(string sequence)
+        private static bool IsKeyword(string sequence)
         {
-            var iskeyword = CheckAndSetKeyword(sequence);
-
-            if (iskeyword) TokenCollection.RemoveAt(TokenCollection.Count - 1);
-
-            return iskeyword;
+            return CheckAndSetKeyword(sequence, out _);
         }
 
         /// <summary>
@@ -354,7 +361,7 @@ namespace Mug.Models.Lexer
             if (CurrentSymbol.Length < 1)
                 DiagnosticBag.Report(pos, "Not enough characters in backtick sequence");
 
-            string sequence = CurrentSymbol.ToString().Replace(" ", "");
+            string sequence = CurrentSymbol.ToString();
 
             if (!IsValidBackTickSequence(sequence) && !IsKeyword(sequence))
                 DiagnosticBag.Report(pos, "Invalid backtick sequence");
@@ -426,7 +433,9 @@ namespace Mug.Models.Lexer
             var value = CurrentSymbol.ToString();
             CurrentSymbol.Clear();
 
-            if (!CheckAndSetKeyword(value))
+            if (CheckAndSetKeyword(value, out var kind))
+                AddKeyword(kind, value);
+            else
             {
                 if (IsBoolean(value))
                     AddToken(TokenKind.ConstantBoolean, value);

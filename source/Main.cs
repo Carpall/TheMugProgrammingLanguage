@@ -9,7 +9,6 @@ try
     const string test = @"
 
 func main() {
-  var x = (2 as i64 + 2 as i32)
 }
 
 ";

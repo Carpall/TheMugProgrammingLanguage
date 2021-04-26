@@ -438,7 +438,13 @@ namespace Mug.Models.Parser
             {
                 var match = MatchAdvance(TokenKind.Identifier, out var error);
 
-                e = new CatchExpressionNode() { Expression = e, OutError = match ? new Token?(error) : null, Position = Back.Position, Body = ExpectBlock() };
+                e = new CatchExpressionNode()
+                {
+                    Expression = e,
+                    OutError = match ? new Token?(error) : null,
+                    Position = Back.Position,
+                    Body = ExpectBlock()
+                };
             }
         }
 
@@ -489,6 +495,23 @@ namespace Mug.Models.Parser
 
         private bool MatchTerm(out INode e, bool allowNullExpression)
         {
+            if (MatchAdvance(TokenKind.KeyTry))
+            {
+                if (!MatchTerm(out e, false) || e is not CallStatement)
+                {
+                    Report(Back.Position, "Expected call expression after 'try'");
+                    return false;
+                }
+
+                e = new TryExpressionNode()
+                {
+                    Expression = e,
+                    Position = Back.Position
+                };
+
+                return true;
+            }
+
             if (MatchPrefixOperator(out var prefixOP))
             {
                 if (!MatchTerm(out e, allowNullExpression))

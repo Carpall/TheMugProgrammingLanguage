@@ -2,7 +2,7 @@
 
 namespace Mug.Models.Lexer
 {
-  public enum TokenKind
+    public enum TokenKind
     {
         [Description("bad")]
         Bad,
@@ -127,6 +127,8 @@ namespace Mug.Models.Lexer
         [Description("is")]
         KeyIs,
         [Description("switch")]
-        KeySwitch
+        KeySwitch,
+        [Description("try")]
+        KeyTry
     }
 }
