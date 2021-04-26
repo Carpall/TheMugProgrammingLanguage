@@ -1,5 +1,7 @@
 ﻿using Mug.Compilation;
+using Mug.Models.Parser;
 using System;
+using System.Text;
 
 try
 {
@@ -8,16 +10,18 @@ try
 
     const string test = @"
 
-func main() {
+func main<T>(a: i32, a: i32) {
 }
 
 ";
-
-    var unit = new CompilationUnit(@"test.mug", test, true);
+    
+    var unit = new CompilationUnit(@"test.mug", test);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    Console.WriteLine(unit.GenerateAST().Dump());
-    // unit.Generate(true, true);
+    // Console.WriteLine((unit.GenerateAST() as INode).Dump());
+    // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
+    unit.GenerateTAST();
+    Console.WriteLine(unit.Tower.Symbols.Dump());
 
 #else
 
@@ -43,14 +47,14 @@ catch (CompilationException e)
             for (; i < errors.Count; i++)
             {
                 var error = errors[i];
-                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
+                PrettyPrinter.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
             }
         }
         catch
         {
-            CompilationErrors.WriteFail(errors[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
+            PrettyPrinter.WriteFail(errors[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
         }
     }
     else
-        CompilationErrors.WriteFail("", e.Message);
+        PrettyPrinter.WriteFail("", e.Message);
 }

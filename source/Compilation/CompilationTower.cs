@@ -1,0 +1,83 @@
+﻿using LLVMSharp.Interop;
+using Mug.Generator;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Models.Parser.AST;
+using Mug.Symbols;
+using Mug.TypeResolution;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Mug.Compilation
+{
+    public class CompilationTower
+    {
+        public Diagnostic Diagnostic { get; } = new();
+        public MugLexer Lexer { get; set; }
+        public MugParser Parser { get; }
+        public ASTSolver Solver { get; }
+        public TypeInstaller TypeInstaller { get; }
+        public MIRGenerator Generator { get; }
+        public SymbolTable Symbols { get; }
+        public string ModuleName { get; internal set; }
+        public LLVMModuleRef LLVMModule { get; internal set; }
+
+        public List<Token> TokenCollection => Lexer.TokenCollection;
+        public NamespaceNode AST => Parser.Module;
+
+        public CompilationTower(string modulename)
+        {
+            ModuleName = modulename;
+            Parser = new(this);
+            Solver = new(this);
+            TypeInstaller = new(this);
+            Generator = new(this);
+            Symbols = new(this);
+        }
+
+        public static void Throw(string error)
+        {
+            throw new CompilationException(error);
+        }
+
+        public void Throw(MugLexer lexer, int pos, string error)
+        {
+            Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
+        }
+
+        public void Throw(Token token, string error)
+        {
+            Throw(token.Position, error);
+        }
+
+        public void Throw(ModulePosition position, string error)
+        {
+            Diagnostic.Report(new(position, error));
+            throw new CompilationException(error, Diagnostic);
+        }
+
+        public bool Report(ModulePosition position, string error)
+        {
+            Diagnostic.Report(position, error);
+            return false;
+        }
+
+        public void Report(MugLexer lexer, int position, string error)
+        {
+            Report(new(lexer, position..(position + 1)), error);
+        }
+
+        public void CheckDiagnostic()
+        {
+            Diagnostic.CheckDiagnostic();
+        }
+
+        internal static void Todo(string todo)
+        {
+            Throw($"TODO: {todo}");
+        }
+    }
+}

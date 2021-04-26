@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
-using Mug.Models.Parser.NodeKinds;
-using Mug.Models.Parser.NodeKinds.Directives;
-using Mug.Models.Parser.NodeKinds.Statements;
+using Mug.Models.Parser.AST;
+using Mug.Models.Parser.AST.Directives;
+using Mug.Models.Parser.AST.Statements;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,12 +10,12 @@ using System.Text;
 
 namespace Mug.Models.Parser
 {
-  public class MugParser
+    public class MugParser : MugComponent
     {
-        public NamespaceNode Module = new();
-        public MugLexer Lexer;
-        private int _currentIndex = 0;
-        private Pragmas _pragmas;
+        public NamespaceNode Module { get; } = new();
+        private int CurrentIndex { get; set; }
+
+        private Pragmas _pragmas = null;
         private TokenKind _modifier = TokenKind.Bad;
 
         private void ParseError(string error)
@@ -23,7 +23,7 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 ParseErrorEOF(error);
 
-            Lexer.Throw(Current, error);
+            Tower.Throw(Current, error);
         }
 
         private void ParseError(ModulePosition position, string error)
@@ -31,32 +31,26 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 ParseErrorEOF(error);
 
-            Lexer.Throw(position, error);
+            Tower.Throw(position, error);
         }
 
         private void ParseErrorEOF(string error)
         {
-            Lexer.Throw(Back, $"Unexpected <EOF>{(error != "" ? $": {error}" : "")}");
+            Tower.Throw(Back, $"Unexpected <EOF>{(error != "" ? $": {error}" : "")}");
         }
 
-        public MugParser(string moduleName, string source)
+        public MugParser(CompilationTower tower) : base(tower)
         {
-            Lexer = new(moduleName, source);
-        }
-
-        public MugParser(MugLexer lexer)
-        {
-            Lexer = lexer;
         }
 
         private Token Current
         {
             get
             {
-                if (_currentIndex >= Lexer.TokenCollection.Count)
+                if (CurrentIndex >= Tower.TokenCollection.Count)
                     ParseErrorEOF("");
 
-                return Lexer.TokenCollection[_currentIndex];
+                return Tower.TokenCollection[CurrentIndex];
             }
         }
 
@@ -64,8 +58,8 @@ namespace Mug.Models.Parser
         {
             get
             {
-                if (_currentIndex - 1 >= 0)
-                    return Lexer.TokenCollection[_currentIndex - 1];
+                if (CurrentIndex - 1 >= 0)
+                    return Tower.TokenCollection[CurrentIndex - 1];
 
                 return new Token();
             }
@@ -73,7 +67,7 @@ namespace Mug.Models.Parser
 
         private string UnexpectedToken => $"Unexpected token '{Current.Value}'";
 
-        private string TokenKindsToString(TokenKind[] kinds)
+        private static string TokenKindsToString(TokenKind[] kinds)
         {
             StringBuilder result = new();
 
@@ -95,7 +89,7 @@ namespace Mug.Models.Parser
                 for (int i = 0; i < kinds.Length; i++)
                     if (Match(kinds[i]))
                     {
-                        _currentIndex++;
+                        CurrentIndex++;
                         return Back;
                     }
 
@@ -118,7 +112,7 @@ namespace Mug.Models.Parser
                     Report(error);
             }
 
-            _currentIndex++;
+            CurrentIndex++;
             return Back;
         }
 
@@ -135,25 +129,28 @@ namespace Mug.Models.Parser
             var expect = Match(kind, linesensitive);
 
             if (expect)
-                _currentIndex++;
+                CurrentIndex++;
 
             return expect;
         }
 
-        private MugType ExpectType(bool allowEnumError = false)
+        private UnsolvedType ExpectType(bool allowEnumError = false)
         {
             if (MatchAdvance(TokenKind.BooleanAND, out var token))
-                return new MugType(token.Position, TypeKind.Reference, ExpectType(false));
+                return new UnsolvedType(
+                    token.Position, TypeKind.Reference, ExpectType(false));
             if (MatchAdvance(TokenKind.OpenBracket, out token))
             {
                 var type = ExpectType();
                 Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
-                return new MugType(new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End), TypeKind.Array, type);
+                return new UnsolvedType(
+                    new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End), TypeKind.Array, type);
             }
             else if (MatchAdvance(TokenKind.Star, out token))
             {
                 var type = ExpectType();
-                return new MugType(new(token.Position.Lexer, token.Position.Position.Start..type.Position.Position.End), TypeKind.Pointer, type);
+                return new UnsolvedType(
+                    new(token.Position.Lexer, token.Position.Position.Start..type.Position.Position.End), TypeKind.Pointer, type);
             }
 
             var find = ExpectBaseType();
@@ -163,11 +160,11 @@ namespace Mug.Models.Parser
             {
                 if (find.Kind != TypeKind.DefinedType)
                 {
-                    _currentIndex -= 2;
+                    CurrentIndex -= 2;
                     ParseError($"Generic parameters cannot be passed to type '{find}'");
                 }
 
-                var genericTypes = new List<MugType>();
+                var genericTypes = new List<IType>();
 
                 do
                     genericTypes.Add(ExpectType());
@@ -175,25 +172,27 @@ namespace Mug.Models.Parser
 
                 Expect("", TokenKind.BooleanGreater);
 
-                find = new MugType(new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End), TypeKind.GenericDefinedType, (find, genericTypes));
+                find = new UnsolvedType(
+                    new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End),
+                    TypeKind.GenericDefinedType, (find, genericTypes));
             }
 
             if (allowEnumError && MatchAdvance(TokenKind.Negation))
-                find = new MugType(Back.Position, TypeKind.EnumError, (find, ExpectType()));
+                find = new UnsolvedType(Back.Position, TypeKind.EnumError, (find, ExpectType()));
 
             return find;
         }
 
-        private bool MatchType(out MugType type)
+        private bool MatchType(out UnsolvedType type)
         {
             type = null;
-            MugType t = null;
+            UnsolvedType t = null;
 
             if (!Match(TokenKind.OpenBracket) && !Match(TokenKind.Star) && !MatchBaseType(out t))
                 return false;
 
             if (t is not null)
-                _currentIndex--;
+                CurrentIndex--;
 
             type = ExpectType();
             return true;
@@ -234,12 +233,12 @@ namespace Mug.Models.Parser
                 defaultvalue = ExpectConstant("Expected constant expression as default parameter value");
 
             ExpectMultiple("", TokenKind.Comma, TokenKind.ClosePar);
-            _currentIndex--;
+            CurrentIndex--;
 
             return new ParameterNode(type, name.Value, defaultvalue, name.Position);
         }
 
-        private MugType ExpectBaseType()
+        private UnsolvedType ExpectBaseType()
         {
             if (!MatchBaseType(out var type))
                 ParseError("Expected a type, but found '" + Current.Value + "'");
@@ -247,14 +246,14 @@ namespace Mug.Models.Parser
             return type;
         }
 
-        private bool MatchBaseType(out MugType type)
+        private bool MatchBaseType(out UnsolvedType type)
         {
             type = null;
             
             if (!MatchPrimitiveType(out var token) && !MatchAdvance(TokenKind.Identifier, out token))
                 return false;
 
-            type = MugType.FromToken(token);
+            type = UnsolvedType.FromToken(token);
 
             return true;
         }
@@ -355,7 +354,7 @@ namespace Mug.Models.Parser
                 if (Back.Kind == TokenKind.ClosePar)
                 {
                     lastiscomma = false;
-                    _currentIndex--;
+                    CurrentIndex--;
                 }
             }
 
@@ -363,9 +362,9 @@ namespace Mug.Models.Parser
                 Report(Back.Position, "Expected parameter's expression");
         }
 
-        private List<MugType> CollectGenericParameters(ref bool builtin)
+        private List<IType> CollectGenericParameters(ref bool builtin)
         {
-            var oldindex = _currentIndex;
+            var oldindex = CurrentIndex;
 
             if (MatchAdvance(TokenKind.BooleanLess, true))
             {
@@ -374,7 +373,7 @@ namespace Mug.Models.Parser
 
                 if (MatchType(out var type))
                 {
-                    var generics = new List<MugType>() { type };
+                    var generics = new List<IType>() { type };
 
                     while (MatchAdvance(TokenKind.Comma))
                         generics.Add(ExpectType());
@@ -387,8 +386,8 @@ namespace Mug.Models.Parser
                 }
             }
 
-            _currentIndex = oldindex;
-            return new List<MugType>();
+            CurrentIndex = oldindex;
+            return new List<IType>();
         }
 
         private bool CollectBuiltInSymbol()
@@ -598,7 +597,7 @@ namespace Mug.Models.Parser
             Expect($"When assigning a field, required ':', not '{Current.Value}'", TokenKind.Colon);
 
             var expression = ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace);
-            _currentIndex--;
+            CurrentIndex--;
 
             return new FieldAssignmentNode() { Name = name.Value.ToString(), Body = expression, Position = name.Position };
         }
@@ -656,7 +655,7 @@ namespace Mug.Models.Parser
                 if (MatchAdvance(TokenKind.Comma))
                 {
                     size = ExpectExpression(end: TokenKind.CloseBracket);
-                    _currentIndex--;
+                    CurrentIndex--;
                 }
                 
                 Expect("Expected ']' and the array body", TokenKind.CloseBracket);
@@ -669,7 +668,7 @@ namespace Mug.Models.Parser
                     do
                     {
                         array.Body.Add(ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace));
-                        _currentIndex--;
+                        CurrentIndex--;
                     }
                     while (MatchAdvance(TokenKind.Comma));
                 }
@@ -730,7 +729,7 @@ namespace Mug.Models.Parser
             if (e is null && !allowNullExpression)
             {
                 Report($"Expected expression, found '{Current.Value}'");
-                _currentIndex++; // skipping bad token
+                CurrentIndex++; // skipping bad token
             }
 
             while (allowBoolOP && MatchBooleanOperator(out var boolOP))
@@ -784,9 +783,9 @@ namespace Mug.Models.Parser
                 e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
-        private MugType ExpectVariableType()
+        private UnsolvedType ExpectVariableType()
         {
-            return MatchAdvance(TokenKind.Colon) ? ExpectType() : MugType.Automatic(Back.Position);
+            return MatchAdvance(TokenKind.Colon) ? ExpectType() : UnsolvedType.Automatic(Back.Position);
         }
 
         private bool VariableDefinition(out INode statement)
@@ -829,7 +828,7 @@ namespace Mug.Models.Parser
 
         private bool NextIsOnSameLine()
         {
-            return _currentIndex < Lexer.TokenCollection.Count && !Lexer.TokenCollection[_currentIndex].IsOnNewLine;
+            return CurrentIndex < Tower.TokenCollection.Count && !Tower.TokenCollection[CurrentIndex].IsOnNewLine;
         }
 
         private bool ReturnDeclaration(out INode statement)
@@ -873,7 +872,7 @@ namespace Mug.Models.Parser
                 {
                     expression = ExpectExpression(end: TokenKind.OpenBrace);
                     pos = expression.Position;
-                    _currentIndex--;
+                    CurrentIndex--;
                 }
 
                 matchexpr.Body.Add(new MatchNode()
@@ -903,7 +902,7 @@ namespace Mug.Models.Parser
 
             if (isFirstCondition && key.Kind != TokenKind.KeyIf && key.Kind != TokenKind.KeyWhile)
             {
-                _currentIndex--;
+                CurrentIndex--;
                 Report("The 'elif' and 'else' conditions shall be referenced to an 'if' block");
                 return false;
             }
@@ -912,7 +911,7 @@ namespace Mug.Models.Parser
             if (key.Kind != TokenKind.KeyElse)
             {
                 expression = ExpectExpression(end: TokenKind.OpenBrace);
-                _currentIndex--;
+                CurrentIndex--;
             }
 
             var body = ExpectBlock();
@@ -941,7 +940,7 @@ namespace Mug.Models.Parser
             }
             else
             {
-                result.Type = MugType.Automatic(name.Position);
+                result.Type = UnsolvedType.Automatic(name.Position);
                 Expect("Type notation or body needed", TokenKind.Equal);
                 result.Body = ExpectExpression(end: TokenKind.Comma);
             }
@@ -973,7 +972,7 @@ namespace Mug.Models.Parser
             var conditionexpr = CollectOrNull<INode>("Expected condition expression or comma", TokenKind.Comma);
             var rightexpr = CollectOrNull<IStatement>("Expected right statement or nothing", TokenKind.OpenBrace);
 
-            _currentIndex--; // returning on '{' token
+            CurrentIndex--; // returning on '{' token
 
             statement = new ForLoopStatement()
             {
@@ -1093,18 +1092,18 @@ namespace Mug.Models.Parser
 
             var parameters = ExpectParameterListDeclaration(); // func name<(..)>
 
-            MugType type;
+            IType type;
 
             if (MatchAdvance(TokenKind.Colon))
                 type = ExpectType(true);
             else
-                type = new MugType(name.Position, TypeKind.Void);
+                type = new UnsolvedType(name.Position, TypeKind.Void);
 
             if (Match(TokenKind.OpenBrace)) // function definition
             {
                 var body = ExpectBlock();
 
-                var f = new FunctionNode() { Base = @base, Modifier = modifier, Pragmas = pragmas, Body = body, Name = name.Value.ToString(), ParameterList = parameters, ReturnType = type, Position = name.Position };
+                var f = new FunctionStatement() { Base = @base, Modifier = modifier, Pragmas = pragmas, Body = body, Name = name.Value.ToString(), ParameterList = parameters, ReturnType = type, Position = name.Position };
 
                 f.Generics = generics;
 
@@ -1297,25 +1296,25 @@ namespace Mug.Models.Parser
             };
         }
 
-        private MugType ExpectPrimitiveType(bool allowErr)
+        private UnsolvedType ExpectPrimitiveType(bool allowErr)
         {
             if (!MatchPrimitiveType(out var type, allowErr))
             {
                 Report("Expected primitive type");
-                return MugType.Automatic(type.Position);
+                return UnsolvedType.Automatic(type.Position);
             }
 
-            return MugType.FromToken(type, true);
+            return UnsolvedType.FromToken(type, true);
         }
 
         private void Report(string error)
         {
-            Lexer.DiagnosticBag.Report(Current.Position, error);
+            Tower.Report(Current.Position, error);
         }
 
         private void Report(ModulePosition position, string error)
         {
-            Lexer.DiagnosticBag.Report(position, error);
+            Tower.Report(position, error);
         }
 
         private bool MatchSpecificIdentifier(string value, bool linesensitive = false)
@@ -1324,7 +1323,7 @@ namespace Mug.Models.Parser
             {
                 var match = Back.Value == value;
                 if (!match)
-                    _currentIndex--;
+                    CurrentIndex--;
 
                 return match;
             }
@@ -1332,7 +1331,7 @@ namespace Mug.Models.Parser
                 return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
         }
 
-        private MugType ExpectEnumBaseType()
+        private UnsolvedType ExpectEnumBaseType()
         {
             return ExpectPrimitiveType(true);
         }
@@ -1345,7 +1344,7 @@ namespace Mug.Models.Parser
             if (!MatchAdvance(TokenKind.KeyEnum))
                 return false;
 
-            var errorsNum = Lexer.DiagnosticBag.Count;
+            var errorsNum = Tower.Diagnostic.Count;
 
             // required an identifier
             var modifier = GetModifier();
@@ -1356,7 +1355,7 @@ namespace Mug.Models.Parser
             // base type
             Expect("An enum must have a primitive base type", TokenKind.Colon);
 
-            if (errorsNum != Lexer.DiagnosticBag.Count)
+            if (errorsNum != Tower.Diagnostic.Count)
                 return false;
 
             statement.BaseType = ExpectEnumBaseType();
@@ -1397,7 +1396,7 @@ namespace Mug.Models.Parser
                 Expect("", TokenKind.Colon);
                 var value = ExpectConstant("Non-constant expressions not allowed in pragmas");
 
-                _pragmas.SetPragma(name, value, ParseError, ref _currentIndex);
+                _pragmas.SetPragma(name, value, ParseError, Tower.TokenCollection[CurrentIndex - 3].Position);
             } while (MatchAdvance(TokenKind.Comma));
 
             Expect("Expected pragmas close", TokenKind.CloseBracket);
@@ -1441,7 +1440,7 @@ namespace Mug.Models.Parser
                             if (!VariableDefinition(out statement))
                                 // import "", import path, use x as y
                                 if (!DirectiveDefinition(out statement))
-                                    _currentIndex++; // skipping the bad token
+                                    CurrentIndex++; // skipping the bad token
                         }
                     }
 
@@ -1461,13 +1460,13 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 return Module;
 
-            Module.Name = Token.NewInfo(TokenKind.Identifier, Lexer.ModuleName);
+            Module.Name = Token.NewInfo(TokenKind.Identifier, Tower.ModuleName);
 
             // search for members
             Module.Members = ExpectNamespaceMembers();
             
             // breaking the compiler workflow if diagnostic is bad
-            Lexer.CheckDiagnostic();
+            Tower.CheckDiagnostic();
 
             return Module;
         }

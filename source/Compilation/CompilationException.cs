@@ -4,7 +4,7 @@ namespace Mug.Compilation
 {
   public class CompilationException : Exception
     {
-        public MugDiagnostic Diagnostic;
+        public Diagnostic Diagnostic;
         public bool IsGlobalError
         {
             get
@@ -13,11 +13,11 @@ namespace Mug.Compilation
             }
         }
 
-        public CompilationException(MugDiagnostic lexer) : this("Cannot build due to previous errors", lexer)
+        public CompilationException(Diagnostic lexer) : this("Cannot build due to previous errors", lexer)
         {
         }
 
-        public CompilationException(string error, MugDiagnostic diagnostic = null) : base(error)
+        public CompilationException(string error, Diagnostic diagnostic = null) : base(error)
         {
             Diagnostic = diagnostic;
         }

@@ -87,7 +87,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private string[] _arguments = null;
         private int _argumentSelector = 0;
         private readonly List<string> _preDeclaredSymbols = new();
-        private CompilationUnit unit = null;
+        private CompilationUnit _unit = null;
         private readonly Dictionary<string, object> _flags = new()
         {
             ["output"]      = null, // output filename
@@ -113,7 +113,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             var file = GetFlag<string>("src");
 
             if (file is null)
-                CompilationErrors.Throw("Undefined src to compile");
+                CompilationTower.Throw("Undefined src to compile");
 
             return file != "." ? file : GetAllFilesInFolder(Environment.CurrentDirectory);
         }
@@ -126,7 +126,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             var files = filenames as string[];
 
             if (files.Length == 0)
-                CompilationErrors.Throw("Folder is empty");
+                CompilationTower.Throw("Folder is empty");
 
             foreach (var file in files)
             {
@@ -134,7 +134,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     return file;
             }
 
-            CompilationErrors.Throw("Unable to find 'main.mug' in the folder");
+            CompilationTower.Throw("Unable to find 'main.mug' in the folder");
             return default;
         }
 
@@ -198,13 +198,13 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 LoadArguments();
 
                 if (!IsDefault("args"))
-                    CompilationErrors.Throw("Unable to use flag 'args' when compilation action is 'run'");
+                    CompilationTower.Throw("Unable to use flag 'args' when compilation action is 'run'");
             }
 
             var path = GetFile();
             GetMainFile(path); // checks
 
-            unit = new CompilationUnit(path);
+            _unit = new CompilationUnit(path);
 
             DeclareSymbol(GetFlag<CompilationMode>("mode").ToString());
             DeclarePlatformSymbol();
@@ -219,13 +219,14 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     break;
                 case CompilationTarget.Bytecode:
                     DeclareSymbol("ll");
-                    unit.Generate(false);
-                    DumpBytecode(GetOutputPath(), unit.IRGenerator.Module);
+                    CompilationTower.Todo("fix bytecode target");
+                    // _unit.Generate(false);
+                    DumpBytecode(GetOutputPath(), _unit.Tower.LLVMModule);
                     break;
                 case CompilationTarget.AbstractSyntaxTree:
                     DeclareSymbol("ast");
-                    unit.GenerateAST();
-                    DumpAbstractSyntaxTree(GetOutputPath(), unit.IRGenerator.Parser.Module);
+                    _unit.GenerateAST();
+                    DumpAbstractSyntaxTree(GetOutputPath(), _unit.Tower.Parser.Module);
                     break;
                 case CompilationTarget.Assembly:
                     DeclareSymbol("asm");
@@ -236,19 +237,20 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Compile();
                     break;
                 default:
-                    CompilationErrors.Throw("Unsupported target, try with another");
+                    CompilationTower.Throw("Unsupported target, try with another");
                     break;
             }
         }
 
         private void DeclareSymbol(string name)
         {
-            unit.IRGenerator.DeclareCompilerSymbol(name);
+            CompilationTower.Todo("fix declaresymbol in compilation flags");
+            // _unit.DeclareCompilerSymbol(name);
         }
 
         private void Compile(string flag = "", bool onlyBitcode = false)
         {
-            unit.Compile(
+            _unit.Compile(
                 (int)GetFlag<CompilationMode>("mode"),
                 GetFlag<string>("output"),
                 onlyBitcode,
@@ -260,7 +262,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             LoadArguments();
 
             if (GetFlag<CompilationTarget>("target") != CompilationTarget.Executable)
-                CompilationErrors.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
+                CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
 
             Build(false);
 
@@ -273,7 +275,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private static string CheckPath(string path)
         {
             if (!File.Exists(path))
-                CompilationErrors.Throw($"Unable to find path '{path}'");
+                CompilationTower.Throw($"Unable to find path '{path}'");
 
             return path;
         }
@@ -286,7 +288,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             CheckPath(src);
 
             if (!CompilationUnit.AllowedExtensions.Contains(Path.GetExtension(src)))
-                CompilationErrors.Throw($"Unable to recognize source file kind '{src}'");
+                CompilationTower.Throw($"Unable to recognize source file kind '{src}'");
 
             return src;
         }
@@ -294,7 +296,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void ConfigureFlag(string flag, object value)
         {
             if (!IsDefault(flag))
-                CompilationErrors.Throw($"Impossible to specify multiple times the flag '{flag}'");
+                CompilationTower.Throw($"Impossible to specify multiple times the flag '{flag}'");
             else
                 SetFlag(flag, value);
         }
@@ -302,7 +304,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private string NextArgument()
         {
             if (++_argumentSelector >= _arguments.Length)
-                CompilationErrors.Throw($"Expected a specification after flag '{_arguments[_argumentSelector-1][1..]}'");
+                CompilationTower.Throw($"Expected a specification after flag '{_arguments[_argumentSelector-1][1..]}'");
 
             return _arguments[_argumentSelector];
         }
@@ -317,13 +319,13 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             switch (target)
             {
                 case "exe": return CompilationTarget.Executable;
-                case "lib": CompilationErrors.Throw("Library traget is not supported yet"); return CompilationTarget.Library;
+                case "lib": CompilationTower.Throw("Library traget is not supported yet"); return CompilationTarget.Library;
                 case "bc": return CompilationTarget.Bitcode;
                 case "asm": return CompilationTarget.Assembly;
                 case "ast": return CompilationTarget.AbstractSyntaxTree;
                 case "ll": return CompilationTarget.Bytecode;
                 default:
-                    CompilationErrors.Throw($"Unable to recognize target '{target}'");
+                    CompilationTower.Throw($"Unable to recognize target '{target}'");
                     return CompilationTarget.Executable;
             }
         }
@@ -335,7 +337,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case "debug": return CompilationMode.Debug;
                 case "release": return CompilationMode.Release;
                 default:
-                    CompilationErrors.Throw($"Unable to recognize compilation mode '{mode}'");
+                    CompilationTower.Throw($"Unable to recognize compilation mode '{mode}'");
                     return default;
             }
         }
@@ -390,10 +392,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                         ConfigureFlag("args", NextArgument());
                         break;
                     case "":
-                        CompilationErrors.Throw("Invalid empty flag");
+                        CompilationTower.Throw("Invalid empty flag");
                         break;
                     default:
-                        CompilationErrors.Throw($"Unknown compiler flag '{arg}'");
+                        CompilationTower.Throw($"Unknown compiler flag '{arg}'");
                         break;
                 }
             }
@@ -438,7 +440,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Console.WriteLine(ARGS_HELP);
                     break;
                 default:
-                    CompilationErrors.Throw($"Unkown compiler flag '{flag}'");
+                    CompilationTower.Throw($"Unkown compiler flag '{flag}'");
                     break;
             }
         }
@@ -446,7 +448,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Help()
         {
             if (_arguments.Length > 1)
-                CompilationErrors.Throw("Too many arguments for the 'help' compilation action");
+                CompilationTower.Throw("Too many arguments for the 'help' compilation action");
             else if (_arguments.Length == 1)
                 PrintHelpFor(_arguments[_argumentSelector]);
             else
@@ -467,7 +469,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Help();
                     break;
                 default:
-                    CompilationErrors.Throw($"Invalid compilation action '{actionid}'");
+                    CompilationTower.Throw($"Invalid compilation action '{actionid}'");
                     break;
             }
         }
