@@ -1,10 +1,9 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class AssignmentStatement : IStatement
+  public class AssignmentStatement : IStatement
     {
         public string NodeKind => "Assignment";
         public TokenKind Operator { get; set; }

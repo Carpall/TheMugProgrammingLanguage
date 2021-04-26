@@ -1,11 +1,9 @@
 ﻿using Mug.Models.Lexer;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Mug.Compilation
 {
-    public struct ModulePosition
+  public struct ModulePosition
     {
         public MugLexer Lexer { get; }
         public Range Position { get; }

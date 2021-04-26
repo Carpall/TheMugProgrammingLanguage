@@ -74,3 +74,6 @@ CHECK TODOS
 - implement for in 
 - consider removing 'break' in catch blocks
 - make cycles and other statement expression but not evaluable in scopes -> 'const result = for i: u8, i < 10, i++ { if i == 7 { i+10 break } }'
+- add support for enums in or! and!
+- cache the term in the switch expression
+- add trait/interface

@@ -4,17 +4,13 @@ using Mug.Models.Parser.NodeKinds;
 using Mug.Models.Parser.NodeKinds.Directives;
 using Mug.Models.Parser.NodeKinds.Statements;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 
 namespace Mug.Models.Parser
 {
-    public class MugParser
+  public class MugParser
     {
         public NamespaceNode Module = new();
         public MugLexer Lexer;
@@ -263,31 +259,23 @@ namespace Mug.Models.Parser
             return true;
         }
 
-        private bool MatchIdentifier(string value)
-        {
-            var match = Current.Kind == TokenKind.Identifier && Current.Value == value;
-            if (match)
-                _currentIndex++;
-
-            return match;
-        }
-
-        private bool MatchPrimitiveType(out Token type)
+        private bool MatchPrimitiveType(out Token type, bool allowErr = false)
         {
             type = Current;
 
             return
-                MatchIdentifier("str") ||
-                MatchIdentifier("chr") ||
-                MatchIdentifier("u8") ||
-                MatchIdentifier("i32") ||
-                MatchIdentifier("i64") ||
-                MatchIdentifier("f32") ||
-                MatchIdentifier("f64") ||
-                MatchIdentifier("f128") ||
-                MatchIdentifier("void") ||
-                MatchIdentifier("bool") ||
-                MatchIdentifier("unknown");
+                MatchSpecificIdentifier("str") ||
+                MatchSpecificIdentifier("chr") ||
+                MatchSpecificIdentifier("u8") ||
+                MatchSpecificIdentifier("i32") ||
+                MatchSpecificIdentifier("i64") ||
+                MatchSpecificIdentifier("f32") ||
+                MatchSpecificIdentifier("f64") ||
+                MatchSpecificIdentifier("f128") ||
+                MatchSpecificIdentifier("void") ||
+                MatchSpecificIdentifier("bool") ||
+                MatchSpecificIdentifier("unknown") ||
+                (allowErr && MatchSpecificIdentifier("err"));
         }
 
         private bool MatchValue()
@@ -429,10 +417,29 @@ namespace Mug.Models.Parser
 
             var parameters = new NodeBuilder();
             CollectParameters(ref parameters);
-            
-            e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Name = name, Parameters = parameters, Position = name is null ? name.Position : name.Position };
+
+            e = new CallStatement()
+            {
+                Generics = generics,
+                IsBuiltIn = builtin,
+                Name = name,
+                Parameters = parameters,
+                Position = name is null ? name.Position : name.Position
+            };
+
+            CollectCatchExpression(ref e);
 
             return true;
+        }
+
+        private void CollectCatchExpression(ref INode e)
+        {
+            if (MatchAdvance(TokenKind.KeyCatch))
+            {
+                var match = MatchAdvance(TokenKind.Identifier, out var error);
+
+                e = new CatchExpressionNode() { Expression = e, OutError = match ? new Token?(error) : null, Position = Back.Position, Body = ExpectBlock() };
+            }
         }
 
         private void CollectDotExpression(ref INode e)
@@ -449,14 +456,14 @@ namespace Mug.Models.Parser
 
                 CollectParameters(ref parameters);
 
-                e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
+                e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
             }
             else
             {
                 if (generics.Count != 0)
                     ParseError("Expected call after generic parameter specification");
 
-                e = new MemberNode() { Base = e, Member = (Token)name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
+                e = new MemberNode() { Base = e, Member = name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
             }
         }
 
@@ -510,10 +517,7 @@ namespace Mug.Models.Parser
             }
 
             if (!allowNullExpression && e is null)
-            {
-                Report("Expected term");
                 return false;
-            }
 
             CollectPossibleArrayAccessNode(ref e);
 
@@ -524,10 +528,17 @@ namespace Mug.Models.Parser
 
             CollectPossibleDotExpression(ref e);
 
-            if (MatchAdvance(TokenKind.OperatorIncrement, true) || MatchAdvance(TokenKind.OperatorDecrement, true))
-                e = new PostfixOperator() { Expression = e, Position = Back.Position, Postfix = Back.Kind };
+            CollectPostfixOperator(ref e);
+
+            CollectAsExpression(ref e);
 
             return true;
+        }
+
+        private void CollectPostfixOperator(ref INode e)
+        {
+            if (MatchAdvance(TokenKind.OperatorIncrement, true) || MatchAdvance(TokenKind.OperatorDecrement, true))
+                e = new PostfixOperator() { Expression = e, Position = Back.Position, Postfix = Back.Kind };
         }
 
         private void CollectPossibleDotExpression(ref INode e)
@@ -539,7 +550,7 @@ namespace Mug.Models.Parser
         private INode ExpectFactor(bool allowNullExpression)
         {
             if (!MatchFactor(out INode e, allowNullExpression))
-                ParseError("Expected factor here");
+                ParseError(UnexpectedToken);
 
             return e;
         }
@@ -572,7 +583,7 @@ namespace Mug.Models.Parser
         private INode ExpectTerm(bool allowNullExpression)
         {
             if (!MatchTerm(out var e, allowNullExpression))
-                Report("Expected term");
+                Report(UnexpectedToken);
 
             return e;
         }
@@ -672,40 +683,31 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.Minus, true);
         }
 
-        private INode ExpectExpression(bool allowBoolOP = true, bool allowLogicOP = true, bool allowNullExpression = false, params TokenKind[] end)
+        private INode ExpectExpression(
+            bool allowBoolOP = true,
+            bool allowLogicOP = true,
+            bool allowNullExpression = false,
+            params TokenKind[] end)
         {
-            if (MatchFactor(out var e, allowNullExpression))
+            if (MatchFactor(out var e, allowNullExpression) && MatchPlusMinus())
             {
-                if (MatchPlusMinus())
-                {
-                    var op = Back;
-                    var right = ExpectFactor(allowNullExpression);
+                var op = Back;
+                var right = ExpectFactor(allowNullExpression);
 
-                    do
-                    {
-                        e = new BinaryExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
-                        if (MatchPlusMinus())
-                            op = Back;
-                        else
-                            break;
-                    } while (MatchFactor(out right, allowNullExpression));
-                }
+                do
+                {
+                    e = new BinaryExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
+                    if (MatchPlusMinus())
+                        op = Back;
+                    else
+                        break;
+                } while (MatchFactor(out right, allowNullExpression));
             }
 
             if (e is null && !allowNullExpression)
             {
                 Report($"Expected expression, found '{Current.Value}'");
                 _currentIndex++; // skipping bad token
-            }
-
-            if (MatchAdvance(TokenKind.KeyAs, out var token))
-                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
-
-            if (MatchAdvance(TokenKind.KeyCatch))
-            {
-                var match = MatchAdvance(TokenKind.Identifier, out var error);
-
-                e = new CatchExpressionNode() { Expression = e, OutError = match ? new Token?(error) : null, Position = Back.Position, Body = ExpectBlock() };
             }
 
             while (allowBoolOP && MatchBooleanOperator(out var boolOP))
@@ -739,12 +741,24 @@ namespace Mug.Models.Parser
                 };
 
             if (MatchAssigmentOperators(out var @operator))
-                e = new AssignmentStatement() { Name = e, Operator = @operator.Kind, Position = @operator.Position, Body = ExpectExpression() };
+                e = new AssignmentStatement()
+                {
+                    Name = e,
+                    Operator = @operator.Kind,
+                    Position = @operator.Position,
+                    Body = ExpectExpression()
+                };
 
             if (allowBoolOP && allowLogicOP) // if is first call
                 ExpectMultiple($"Invalid token here, missing one of '{TokenKindsToString(end)}'?", end);
 
             return e;
+        }
+
+        private void CollectAsExpression(ref INode e)
+        {
+            if (MatchAdvance(TokenKind.KeyAs, out var token))
+                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
         private MugType ExpectVariableType()
@@ -855,7 +869,7 @@ namespace Mug.Models.Parser
         {
             statement = null;
 
-            if (isFirstCondition && MatchAdvance(TokenKind.KeyMatch, out var matchtoken))
+            if (isFirstCondition && MatchAdvance(TokenKind.KeySwitch, out var matchtoken))
                 return CollectMatchExpression(out statement, matchtoken.Position);
 
             if (!MatchAdvance(TokenKind.KeyIf, out Token key) &&
@@ -1260,15 +1274,15 @@ namespace Mug.Models.Parser
             };
         }
 
-        private MugType ExpectPrimitiveType()
+        private MugType ExpectPrimitiveType(bool allowErr)
         {
-            if (!MatchPrimitiveType(out var type))
+            if (!MatchPrimitiveType(out var type, allowErr))
             {
                 Report("Expected primitive type");
                 return MugType.Automatic(type.Position);
             }
 
-            return MugType.FromToken(type);
+            return MugType.FromToken(type, true);
         }
 
         private void Report(string error)
@@ -1283,15 +1297,21 @@ namespace Mug.Models.Parser
 
         private bool MatchSpecificIdentifier(string value, bool linesensitive = false)
         {
-            return MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
+            if (MatchAdvance(TokenKind.Identifier, linesensitive))
+            {
+                var match = Back.Value == value;
+                if (!match)
+                    _currentIndex--;
+
+                return match;
+            }
+            else
+                return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
         }
 
         private MugType ExpectEnumBaseType()
         {
-            if (MatchSpecificIdentifier("err"))
-                return new MugType(Back.Position, TypeKind.Err);
-
-            return ExpectPrimitiveType();
+            return ExpectPrimitiveType(true);
         }
 
         private bool EnumDefinition(out INode node)

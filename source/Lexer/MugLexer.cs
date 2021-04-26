@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualBasic;
-using Mug.Compilation;
+﻿using Mug.Compilation;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +7,7 @@ using System.Text;
 
 namespace Mug.Models.Lexer
 {
-    public class MugLexer
+  public class MugLexer
     {
         public MugDiagnostic DiagnosticBag { get; } = new();
         public List<Token> TokenCollection { get; set; }
@@ -104,7 +103,7 @@ namespace Mug.Models.Lexer
             "var" => AddKeyword(TokenKind.KeyVar, s),
             "const" => AddKeyword(TokenKind.KeyConst, s),
             "catch" => AddKeyword(TokenKind.KeyCatch, s),
-            "match" => AddKeyword(TokenKind.KeyMatch, s),
+            "switch" => AddKeyword(TokenKind.KeySwitch, s),
             _ => false
         };
 
@@ -130,29 +129,7 @@ namespace Mug.Models.Lexer
         /// <summary>
         /// recognizes a single symbol or launches compilation-error
         /// </summary>
-        private TokenKind GetSingle(char c) => c switch
-        {
-            '(' => TokenKind.OpenPar,
-            ')' => TokenKind.ClosePar,
-            '[' => TokenKind.OpenBracket,
-            ']' => TokenKind.CloseBracket,
-            '{' => TokenKind.OpenBrace,
-            '}' => TokenKind.CloseBrace,
-            '<' => TokenKind.BooleanLess,
-            '>' => TokenKind.BooleanGreater,
-            '=' => TokenKind.Equal,
-            '!' => TokenKind.Negation,
-            '&' => TokenKind.BooleanAND,
-            '|' => TokenKind.BooleanOR,
-            '+' => TokenKind.Plus,
-            '-' => TokenKind.Minus,
-            '*' => TokenKind.Star,
-            '/' => TokenKind.Slash,
-            ',' => TokenKind.Comma,
-            ':' => TokenKind.Colon,
-            '.' => TokenKind.Dot,
-            _ => TokenKind.Bad
-        };
+        private static TokenKind GetSingle(char c) => (TokenKind)c;
 
         private void AddToken(TokenKind kind, string value)
         {

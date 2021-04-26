@@ -1,9 +1,8 @@
 ﻿using Mug.Compilation;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public class ArraySelectElemNode : INode
+  public class ArraySelectElemNode : INode
     {
         public string NodeKind => "ArraySelectElemNode";
         public INode Left { get; set; }

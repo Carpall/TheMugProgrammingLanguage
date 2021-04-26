@@ -2,11 +2,10 @@
 using Mug.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System;
 
 namespace Mug.Models.Lexer
 {
-    public struct Token : INode
+  public struct Token : INode
     {
         public string NodeKind => "Literal";
         [JsonConverter(typeof(StringEnumConverter))]

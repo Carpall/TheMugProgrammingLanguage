@@ -7,17 +7,16 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Mug.Compilation
 {
-    public class CompilationUnit
+  public class CompilationUnit
     {
         public static readonly string[] AllowedExtensions = new[] { ".mug" };
 
         public bool FailedOpeningPath { get; } = false;
         public IRGenerator IRGenerator;
-        private string[] _paths;
+        private readonly string[] _paths;
 
         private static string ClangFilename
         {

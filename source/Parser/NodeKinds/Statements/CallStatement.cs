@@ -1,11 +1,10 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class CallStatement : INode
+  public class CallStatement : INode
     {
         public string NodeKind => "Call";
         public NodeBuilder Parameters { get; set; } = new();

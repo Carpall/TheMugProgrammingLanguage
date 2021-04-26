@@ -6,7 +6,7 @@ using System.IO;
 
 namespace Mug.Compilation
 {
-    public static class CompilationErrors
+  public static class CompilationErrors
     {
         /// <summary>
         /// general compilation-error that have no position in the text to report,

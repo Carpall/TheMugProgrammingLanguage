@@ -1,17 +1,13 @@
-﻿using LLVMSharp;
-using LLVMSharp.Interop;
+﻿using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Models.Generator;
-using Mug.Models.Lexer;
-using Mug.Models.Parser.NodeKinds;
 using Mug.Models.Parser.NodeKinds.Statements;
 using Mug.TypeSystem;
 using System;
-using System.Collections.Generic;
 
 namespace Mug.MugValueSystem
 {
-    public struct MugValueType
+  public struct MugValueType
     {
         private object BaseType { get; set; }
         public MugValueTypeKind TypeKind { get; set; }
@@ -46,14 +42,11 @@ namespace Mug.MugValueSystem
                 MugValueTypeKind.Reference => LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0),
                 MugValueTypeKind.Struct => GetStructure().LLVMValue,
                 MugValueTypeKind.Enum => GetEnumInfo().basetype.GetLLVMType(generator),
-                MugValueTypeKind.Array => LLVMTypeRef.CreatePointer(
-                    LLVMTypeRef.CreateStruct(new[]
-                    {
-                        LLVMTypeRef.Int64,
-                        LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0)
-                    },
-                    false),
-                    0),
+                MugValueTypeKind.Array => LLVMTypeRef.CreateStruct(new[]
+                {
+                    LLVMTypeRef.Int64,
+                    LLVMTypeRef.CreatePointer(((MugValueType)BaseType).GetLLVMType(generator), 0)
+                }, false),
                 MugValueTypeKind.EnumError => GetEnumError().LLVMValue,
                 MugValueTypeKind.Variant => LLVMTypeRef.CreateStruct(new[]
                 {
@@ -76,13 +69,13 @@ namespace Mug.MugValueSystem
                 MugValueTypeKind.Float128 => 16,
                 MugValueTypeKind.Void => 0,
                 MugValueTypeKind.Char => 1,
-                MugValueTypeKind.String => sizeofpointer,
                 MugValueTypeKind.Unknown => sizeofpointer,
                 MugValueTypeKind.Struct => GetStructure().Size(sizeofpointer, generator),
                 MugValueTypeKind.Pointer or
                 MugValueTypeKind.Reference => sizeofpointer,
                 MugValueTypeKind.Enum => GetEnumInfo().basetype.Size(sizeofpointer, generator),
-                MugValueTypeKind.Array => sizeofpointer,
+                MugValueTypeKind.String or
+                MugValueTypeKind.Array => 8 + sizeofpointer,
                 MugValueTypeKind.Variant => generator.GetBiggestTypeOFVariant(GetVariant()).Size(sizeofpointer, generator)
             };
         }
@@ -97,7 +90,12 @@ namespace Mug.MugValueSystem
             return new MugValueType() { TypeKind = MugValueTypeKind.Pointer, BaseType = type };
         }
 
-        public static MugValueType Struct(string name, MugValueType[] body, string[] structure, ModulePosition[] positions, IRGenerator generator)
+        public static MugValueType Struct(
+            string name,
+            MugValueType[] body,
+            string[] structure,
+            ModulePosition[] positions,
+            IRGenerator generator)
         {
             var llvmstructure = generator.Module.Context.CreateNamedStruct(name);
             unsafe
@@ -151,7 +149,8 @@ namespace Mug.MugValueSystem
         public static MugValueType Int64 => From(LLVMTypeRef.Int64, MugValueTypeKind.Int64);
         public static MugValueType Void => From(LLVMTypeRef.Void, MugValueTypeKind.Void);
         public static MugValueType Char => From(LLVMTypeRef.Int8, MugValueTypeKind.Char);
-        public static MugValueType String => From(LLVMTypeRef.CreatePointer(IRGenerator.CurrentInstance.Module.GetTypeByName("struct.str"), 0), MugValueTypeKind.String);
+        public static MugValueType String => From(
+            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), MugValueTypeKind.String);
         public static MugValueType CString => MugValueType.Pointer(MugValueType.Char);
         public static MugValueType Unknown => From(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), MugValueTypeKind.Unknown);
         public static MugValueType Float32 => From(LLVMTypeRef.Float, MugValueTypeKind.Float32);

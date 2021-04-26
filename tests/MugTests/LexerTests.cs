@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace MugTests
 {
-    public class LexerTests
+  public class LexerTests
     {
         // Well constructed code strings
         private const string OPERATION01 = "1 + 2";

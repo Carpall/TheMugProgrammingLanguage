@@ -1,10 +1,9 @@
 ﻿using Mug.Compilation;
 using Newtonsoft.Json;
-using System;
 
 namespace Mug.Models.Parser
 {
-    public interface INode
+  public interface INode
     {
         public string NodeKind { get; }
         [JsonIgnore]

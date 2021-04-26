@@ -1,13 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public struct MatchNode : INode
+  public struct MatchNode : INode
     {
         public string NodeKind => "MatchNode";
         public INode Expression { get; set; }

@@ -1,7 +1,4 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.NodeKinds;
 using System;
 
 try
@@ -12,7 +9,7 @@ try
     const string test = @"
 
 func main() {
-  
+  var x = (2 as i64 + 2 as i32)
 }
 
 ";
@@ -20,8 +17,8 @@ func main() {
     var unit = new CompilationUnit(@"test.mug", test, true);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    // Console.WriteLine(unit.GenerateAST().Dump());
-    unit.Generate(true, true);
+    Console.WriteLine(unit.GenerateAST().Dump());
+    // unit.Generate(true, true);
 
 #else
 

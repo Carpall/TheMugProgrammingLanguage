@@ -1,10 +1,9 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class VariableStatement : INode
+  public class VariableStatement : INode
     {
         public string NodeKind => "Var";
         public string Name { get; set; }

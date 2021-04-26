@@ -1,9 +1,8 @@
 ﻿using Mug.Compilation;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Directives
 {
-    public enum ImportMode
+  public enum ImportMode
     {
         FromPackages,
         FromLocal

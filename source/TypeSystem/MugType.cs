@@ -1,5 +1,4 @@
-﻿using LLVMSharp.Interop;
-using Mug.Compilation;
+﻿using Mug.Compilation;
 using Mug.Compilation.Symbols;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
@@ -9,11 +8,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 namespace Mug.TypeSystem
 {
-    public class MugType : INode
+  public class MugType : INode
     {
         public string NodeKind => "Type";
         [JsonConverter(typeof(StringEnumConverter))]
@@ -34,30 +32,23 @@ namespace Mug.TypeSystem
         /// <summary>
         /// converts a keyword token into a type
         /// </summary>
-        public static MugType FromToken(Token t)
+        public static MugType FromToken(Token t, bool isInEnum = false)
         {
-            return t.Value switch
+            return new MugType(t.Position, t.Value switch
             {
-                "str" => new MugType(t.Position, TypeKind.String),
-                "chr" => new MugType(t.Position, TypeKind.Char),
-                "bool" => new MugType(t.Position, TypeKind.Bool),
-                "i32" => new MugType(t.Position, TypeKind.Int32),
-                "i64" => new MugType(t.Position, TypeKind.Int64),
-                "f32" => new MugType(t.Position, TypeKind.Float32),
-                "f64" => new MugType(t.Position, TypeKind.Float64),
-                "f128" => new MugType(t.Position, TypeKind.Float128),
-                "u8" => new MugType(t.Position, TypeKind.UInt8),
-                "void" => new MugType(t.Position, TypeKind.Void),
-                "unknown" => new MugType(t.Position, TypeKind.Unknown),
-                _ => new MugType(t.Position, TypeKind.DefinedType, t.Value)
-            };
-        }
-
-        private static MugType Error(string kind)
-        {
-            // internal error
-            CompilationErrors.Throw($"´{kind}´ is not a type");
-            throw new();
+                "str" => TypeKind.String,
+                "chr" => TypeKind.Char,
+                "bool" => TypeKind.Bool,
+                "i32" => TypeKind.Int32,
+                "i64" => TypeKind.Int64,
+                "f32" => TypeKind.Float32,
+                "f64" => TypeKind.Float64,
+                "f128" => TypeKind.Float128,
+                "u8" => TypeKind.UInt8,
+                "void" => TypeKind.Void,
+                "unknown" => TypeKind.Unknown,
+                _ => isInEnum && t.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
+            }, t.Value);
         }
 
         /// <summary>

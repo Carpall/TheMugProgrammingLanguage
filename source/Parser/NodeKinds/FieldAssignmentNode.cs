@@ -3,7 +3,7 @@ using System;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public class FieldAssignmentNode : IStatement
+  public class FieldAssignmentNode : IStatement
     {
         public string NodeKind => "FieldAssignment";
         public String Name { get; set; }

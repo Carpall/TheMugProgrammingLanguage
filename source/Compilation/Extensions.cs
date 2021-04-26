@@ -1,13 +1,12 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Mug.Compilation
 {
-    internal unsafe struct MarshaledString : IDisposable
+  internal unsafe struct MarshaledString : IDisposable
     {
         public MarshaledString(ReadOnlySpan<char> input)
         {
@@ -58,7 +57,7 @@ namespace Mug.Compilation
         }
     }
 
-    static class Extensions
+  internal static class Extensions
     {
         public static string GetDescription(this Enum instance)
         {

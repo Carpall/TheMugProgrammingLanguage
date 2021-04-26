@@ -1,12 +1,9 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using System;
+﻿using Mug.Models.Lexer;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Mug.Compilation
 {
-    public class MugDiagnostic
+  public class MugDiagnostic
     {
         private readonly List<MugError> _diagnostic = new();
 

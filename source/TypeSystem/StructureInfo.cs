@@ -2,13 +2,10 @@
 using Mug.Compilation;
 using Mug.Models.Generator;
 using Mug.MugValueSystem;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Mug.TypeSystem
 {
-    public class StructureInfo
+  public class StructureInfo
     {
         public string Name { get; set; }
         public string[] FieldNames { get; set; }

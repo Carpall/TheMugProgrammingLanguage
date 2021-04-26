@@ -1,11 +1,8 @@
 ﻿using Mug.MugValueSystem;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Mug.Compilation.Symbols
 {
-    public struct TypeSymbol
+  public struct TypeSymbol
     {
         public MugValueType[] GenericParameters { get; }
         public MugValue Value { get; }

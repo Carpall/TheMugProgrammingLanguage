@@ -1,18 +1,15 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Compilation.Symbols;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
 using Mug.Models.Parser.NodeKinds.Statements;
 using Mug.MugValueSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace Mug.Models.Generator.Emitter
 {
-    internal class MugEmitter
+  internal class MugEmitter
     {
         public unsafe LLVMBuilderRef Builder { get; internal set; } = LLVM.CreateBuilder();
 
@@ -305,7 +302,10 @@ namespace Mug.Models.Generator.Emitter
             Builder.BuildStore(llvmparameter, Memory[name].LLVMValue);
         }
 
-        public void StoreVariable(MugValue allocation, ModulePosition position, ModulePosition bodyPosition)
+        public void StoreVariable(
+            MugValue allocation,
+            ModulePosition position,
+            ModulePosition bodyPosition)
         {
             // check it is a variable and not a constant
             if (allocation.IsConst)

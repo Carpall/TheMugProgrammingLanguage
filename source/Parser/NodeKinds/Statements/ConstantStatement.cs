@@ -4,7 +4,7 @@ using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public struct ConstantStatement : INode
+  public struct ConstantStatement : INode
     {
         public string NodeKind => "Const";
         public String Name { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace Mug.TypeSystem
 {
-    public enum TypeKind
+  public enum TypeKind
     {
         // implicit type specification in var, const declarations
         Auto,

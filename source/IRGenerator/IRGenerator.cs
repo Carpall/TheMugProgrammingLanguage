@@ -1,5 +1,4 @@
-﻿using LLVMSharp;
-using LLVMSharp.Interop;
+﻿using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Compilation.Symbols;
 using Mug.Models.Generator.Emitter;
@@ -14,12 +13,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Mug.Models.Generator
 {
     public class IRGenerator
     {
+        // to avoid
         internal static IRGenerator CurrentInstance = null;
 
         public LLVMModuleRef Module { get; set; }
@@ -48,7 +47,7 @@ namespace Mug.Models.Generator
             }
         }
 
-        IRGenerator(MugParser parser, string moduleName, bool isMainModule)
+    private IRGenerator(MugParser parser, string moduleName, bool isMainModule)
         {
             Parser = parser;
             Module = LLVMModuleRef.CreateWithName(moduleName);
@@ -477,7 +476,7 @@ namespace Mug.Models.Generator
                 prototype.Position, out _);
         }
 
-        private void IncludeCHeader(string path, string clangArgs)
+        private void IncludeCHeader(string path, string clangArgs = "")
         {
             var bc = TempFile("bc");
 
@@ -704,9 +703,9 @@ namespace Mug.Models.Generator
         private static string RequiredFilename(string name)
         {
 #if DEBUG
-            return Path.ChangeExtension(Path.Combine(@"..\..\Release\net5.0\includes\requirements", name), "bc");
+            return Path.ChangeExtension(Path.Combine(@"..\..\Release\net5.0\includes\requirements", name), "c");
 #else
-            return Path.ChangeExtension(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "includes\\requirements", name), "bc");
+            return Path.ChangeExtension(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "includes/requirements", name), "c");
 #endif
         }
 
@@ -888,7 +887,8 @@ namespace Mug.Models.Generator
 
         private void ImportUtilities()
         {
-            ReadModule(RequiredFilename(BuiltInsFunctionImpls));
+            IncludeCHeader(RequiredFilename(BuiltInsFunctionImpls));
+            Module.Dump();
         }
 
         private void SetUp()

@@ -1,12 +1,11 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public struct ParameterNode : INode
+  public struct ParameterNode : INode
     {
         public string NodeKind => "Parameter";
         public MugType Type { get; }

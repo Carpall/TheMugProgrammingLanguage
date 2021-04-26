@@ -1,10 +1,9 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Directives
 {
-    public class UseDirective : INode
+  public class UseDirective : INode
     {
         public string NodeKind => "UseDirective";
         public INode Body { get; set; }

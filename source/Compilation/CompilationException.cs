@@ -1,10 +1,8 @@
-﻿using Mug.Models.Lexer;
-using System;
-using System.Collections.Generic;
+﻿using System;
 
 namespace Mug.Compilation
 {
-    public class CompilationException : Exception
+  public class CompilationException : Exception
     {
         public MugDiagnostic Diagnostic;
         public bool IsGlobalError

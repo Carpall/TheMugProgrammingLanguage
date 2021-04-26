@@ -6,11 +6,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Mug.Compilation
 {
-    public enum CompilationMode
+  public enum CompilationMode
     {
         Release = 3,
         Debug = 0

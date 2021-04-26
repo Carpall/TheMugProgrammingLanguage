@@ -3,11 +3,10 @@ using Mug.Models.Lexer;
 using Mug.TypeSystem;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public class BooleanExpressionNode : INode
+  public class BooleanExpressionNode : INode
     {
         public string NodeKind => "BooleanBinaryExpression";
         public INode Left { get; set; }

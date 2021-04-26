@@ -1,10 +1,8 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public struct ForLoopStatement : INode
+  public struct ForLoopStatement : INode
     {
         public string NodeKind => "ForLoop";
         public VariableStatement LeftExpression { get; set; }

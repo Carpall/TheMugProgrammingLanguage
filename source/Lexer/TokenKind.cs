@@ -2,7 +2,7 @@
 
 namespace Mug.Models.Lexer
 {
-    public enum TokenKind
+  public enum TokenKind
     {
         [Description("bad")]
         Bad,
@@ -23,31 +23,31 @@ namespace Mug.Models.Lexer
         [Description("const")]
         KeyConst,
         [Description("(")]
-        OpenPar,
+        OpenPar = '(',
         [Description(")")]
-        ClosePar,
+        ClosePar = ')',
         [Description(":")]
-        Colon,
+        Colon = ':',
         [Description("{")]
-        OpenBrace,
+        OpenBrace = '{',
         [Description("}")]
-        CloseBrace,
+        CloseBrace = '}',
         [Description("[")]
-        OpenBracket,
+        OpenBracket = '[',
         [Description("]")]
-        CloseBracket,
+        CloseBracket = ']',
         [Description("const float num")]
         ConstantFloatDigit,
         [Description(".")]
-        Dot,
+        Dot = '.',
         [Description(",")]
-        Comma,
+        Comma = ',',
         [Description("==")]
-        BooleanEQ,
+        BooleanEQ = -1,
         [Description("=")]
-        Equal,
+        Equal = '=',
         [Description("/")]
-        Slash,
+        Slash = '/',
         [Description("!=")]
         BooleanNEQ,
         [Description("+=")]
@@ -55,11 +55,11 @@ namespace Mug.Models.Lexer
         [Description("-=")]
         SubAssignment,
         [Description("+")]
-        Plus,
+        Plus = '+',
         [Description("-")]
-        Minus,
+        Minus = '-',
         [Description("*")]
-        Star,
+        Star = '*',
         [Description("return")]
         KeyReturn,
         [Description("const bool")]
@@ -71,15 +71,15 @@ namespace Mug.Models.Lexer
         [Description("else")]
         KeyElse,
         [Description("<")]
-        BooleanLess,
+        BooleanLess = '<',
         [Description(">")]
-        BooleanGreater,
+        BooleanGreater = '>',
         [Description("<=")]
         BooleanLEQ,
         [Description(">=")]
         BooleanGEQ,
         [Description("!")]
-        Negation,
+        Negation = '!',
         [Description("while")]
         KeyWhile,
         [Description("to")]
@@ -115,11 +115,9 @@ namespace Mug.Models.Lexer
         [Description("--")]
         OperatorDecrement,
         [Description("|")]
-        BooleanOR,
+        BooleanOR = '|',
         [Description("&")]
-        BooleanAND,
-        [Description("ptr")]
-        KeyTPtr,
+        BooleanAND = '&',
         [Description("priv")]
         KeyPriv,
         [Description("enum")]
@@ -128,7 +126,7 @@ namespace Mug.Models.Lexer
         KeyCatch,
         [Description("is")]
         KeyIs,
-        [Description("match")]
-        KeyMatch
+        [Description("switch")]
+        KeySwitch
     }
 }

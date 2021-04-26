@@ -1,6 +1,6 @@
 ﻿namespace Mug.MugValueSystem
 {
-    public enum MugValueTypeKind
+  public enum MugValueTypeKind
     {
         Bool,
         Int8,

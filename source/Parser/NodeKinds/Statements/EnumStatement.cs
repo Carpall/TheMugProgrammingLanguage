@@ -3,12 +3,11 @@ using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.MugValueSystem;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class EnumStatement : INode
+  public class EnumStatement : INode
     {
         public string NodeKind => "Enum";
         public Pragmas Pragmas { get; set; }

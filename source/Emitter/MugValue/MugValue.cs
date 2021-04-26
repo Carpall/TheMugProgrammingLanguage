@@ -1,11 +1,9 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Models.Lexer;
-using Mug.Models.Parser.NodeKinds.Statements;
 using System;
 
 namespace Mug.MugValueSystem
 {
-    public struct MugValue
+  public struct MugValue
     {
         public MugValueType Type { get; set; }
         public LLVMValueRef LLVMValue { get; set; }

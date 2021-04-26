@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Mug.Models.Parser
 {
-    public class Pragmas
+  public class Pragmas
     {
         private readonly Dictionary<string, Token> _table = new()
         {

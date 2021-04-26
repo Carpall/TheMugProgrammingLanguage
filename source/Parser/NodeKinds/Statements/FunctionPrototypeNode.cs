@@ -1,12 +1,11 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class FunctionPrototypeNode : INode
+  public class FunctionPrototypeNode : INode
     {
         public string NodeKind => "FunctionPrototype";
         public Pragmas Pragmas { get; set; }

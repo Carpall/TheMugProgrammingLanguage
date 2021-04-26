@@ -1,5 +1,4 @@
-﻿using LLVMSharp;
-using LLVMSharp.Interop;
+﻿using LLVMSharp.Interop;
 using Mug.Compilation;
 using Mug.Compilation.Symbols;
 using Mug.Models.Generator.Emitter;
@@ -13,8 +12,6 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Mug.Models.Generator
 {
@@ -60,7 +57,8 @@ namespace Mug.Models.Generator
         {
             SetToEmitterWhenDefault(ref builder);
 
-            return builder.BuildCall(GetUtilFunction("create_string"), new[] { value, size }, "^cll_create_str");
+            var func = GetUtilFunction("create_string");
+            return builder.BuildCall(func, new[] { value, size }, "^cll_create_str");
         }
 
         private LLVMValueRef CreateConstString(string value, bool cstring = true)
@@ -320,16 +318,19 @@ namespace Mug.Models.Generator
             return true;
         }
 
-        private static bool IsABitcast(MugValueType expressionType, MugValueType castType)
+        private static bool CheckBoth(MugValueType expressionType, MugValueType castType, MugValueType ft, MugValueType st)
         {
             return
-                (expressionType.TypeKind == MugValueTypeKind.String && castType.Equals(MugValueType.Array(MugValueType.Char))) ||
-                (castType.TypeKind == MugValueTypeKind.String && expressionType.Equals(MugValueType.Array(MugValueType.Char)))   ||
-                (castType.TypeKind == MugValueTypeKind.Reference && expressionType.Equals(MugValueType.Pointer(castType.PointerBaseElementType))) ||
-                (expressionType.TypeKind == MugValueTypeKind.Reference && castType.Equals(MugValueType.Pointer(expressionType.PointerBaseElementType)));
+                expressionType.TypeKind == ft.TypeKind && castType.Equals(st) ||
+                castType.TypeKind == ft.TypeKind && expressionType.Equals(st);
         }
 
-        LLVMValueRef GepOF(LLVMValueRef tmp, int index, LLVMBuilderRef builder = default)
+        private static bool IsABitcast(MugValueType expressionType, MugValueType castType)
+        {
+            return CheckBoth(expressionType, castType, MugValueType.String, MugValueType.Array(MugValueType.Char));
+        }
+
+    private LLVMValueRef GepOF(LLVMValueRef tmp, int index, LLVMBuilderRef builder = default)
         {
             SetToEmitterWhenDefault(ref builder);
 
@@ -391,6 +392,11 @@ namespace Mug.Models.Generator
             {
                 var value = _emitter.Pop();
                 value.Type = castType;
+
+                /*var llvmCastType = castType.GetLLVMType(_generator);
+                if (!expressionType.GetLLVMType(_generator).Equals(llvmCastType))
+                    value.LLVMValue = _emitter.Builder.BuildBitCast(value.LLVMValue, llvmCastType);*/
+
                 _emitter.Load(value);
             }
             else if (castType.TypeKind == MugValueTypeKind.Unknown || expressionType.TypeKind == MugValueTypeKind.Unknown)
@@ -410,7 +416,7 @@ namespace Mug.Models.Generator
                 var index = variant.Body.FindIndex(t => t.ToMugValueType(_generator).Equals(expressionType));
 
                 if (index == -1)
-                    return Report(position, $"Variant type '{variant.Name}' does not include '{expressionType}', the boxing is impossible");
+                    return Report(position, $"Variant type '{variant.Name}' does not include '{expressionType}'");
 
                 _emitter.Load(
                     MugValue.Struct(
@@ -721,12 +727,12 @@ namespace Mug.Models.Generator
 
             var stdout = _emitter.Builder.BuildCall(open, new[] { int64_1, CreateConstString("w") });
             var stdin = _emitter.Builder.BuildCall(open, new[] { int64_0, CreateConstString("r") });
-            var args = CreateHeapArray(MugValueType.Array(MugValueType.CString), _llvmfunction.GetParam(0), false); // called only when main, so params will ever be argc and argv
+            var args = CreateHeapArray(MugValueType.Array(MugValueType.CString), _llvmfunction.GetParam(0), false, load: false); // called only when main, so params will ever be argc and argv
             _emitter.Builder.BuildStore(_llvmfunction.GetParam(1), GepOF(args, 1));
 
             _emitter.Builder.BuildStore(stdout, _generator.Module.GetNamedGlobal("@stdout"));
             _emitter.Builder.BuildStore(stdin, _generator.Module.GetNamedGlobal("@stdin"));
-            _emitter.Builder.BuildStore(args, _generator.Module.GetNamedGlobal("@args"));
+            _emitter.Builder.BuildStore(_emitter.Builder.BuildLoad(args), _generator.Module.GetNamedGlobal("@args"));
         }
 
         internal void EndGlobals()
@@ -863,9 +869,12 @@ namespace Mug.Models.Generator
 
         private bool CompTime_fmt(INode[] parameters, ModulePosition position)
         {
-            if (!FormatString(ref parameters, out var fmt) || parameters.Length == 0 || !EmitExprAllocateArray(GetArrayFromVarArgs(parameters)))
+            if (!FormatString(ref parameters, out var fmt) ||
+                parameters.Length == 0 ||
+                !EmitExprAllocateArray(GetArrayFromVarArgs(parameters)))
                 return false;
 
+            _emitter.MakeTempAllocation();
             var args = _emitter.Pop();
 
             unsafe
@@ -945,7 +954,13 @@ namespace Mug.Models.Generator
 
         private void LoadCStr(MugValue str)
         {
-            _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(GepOF(str.LLVMValue, 1)), MugValueType.CString));
+            var func = GetUtilFunction("clone_str_to_cstr");
+
+            _emitter.Load(
+                MugValue.From(
+                    _emitter.Builder.BuildCall(func, new[] { str.LLVMValue }),
+                    MugValueType.CString)
+                );
         }
 
         private void LoadCArr(MugValue arr)
@@ -1461,6 +1476,12 @@ namespace Mug.Models.Generator
 
             var indexed = _emitter.Pop();
 
+            if (!buildload && indexed.Type.TypeKind == MugValueTypeKind.String)
+                return Report(a.Position, "'str' is immutable");
+
+            if (!buildload && (indexed.IsConst || indexed.IsConstant))
+                return Report(a.Position, "Left expression cannot be a constant in indexing expressions");
+
             // loading the index expression
             if (!EvaluateExpression(a.IndexExpression))
                 return false;
@@ -1477,29 +1498,31 @@ namespace Mug.Models.Generator
             else
             {
                 var parameters = new[] { indexed, index };
-                _emitter.CallOperator(OperatorFunctionSymbol("[]", a.Position, ref parameters), a.Position, true, parameters);
+                return _emitter.CallOperator(OperatorFunctionSymbol("[]", a.Position, ref parameters), a.Position, true, parameters);
             }
 
             return true;
         }
 
-        private LLVMValueRef CreateHeapArray(MugValueType type, LLVMValueRef size, bool init = true, LLVMBuilderRef builder = default)
+        private LLVMValueRef CreateHeapArray(
+            MugValueType type,
+            LLVMValueRef size,
+            bool init = true, bool load = true,
+            LLVMBuilderRef builder = default)
         {
             SetToEmitterWhenDefault(ref builder);
 
             var allocation = _emitter.Builder.BuildAlloca(type.GetLLVMType(_generator));
-            var malloc = _emitter.Builder.BuildMalloc(type.GetLLVMType(_generator).ElementType);
-            _emitter.Builder.BuildStore(malloc, allocation);
-            _emitter.Builder.BuildStore(size, GepOF(_emitter.Builder.BuildLoad(allocation), 0));
+            _emitter.Builder.BuildStore(size, GepOF(allocation, 0));
 
             if (init)
             {
                 var arr = _emitter.Builder.BuildArrayAlloca(type.ArrayBaseElementType.GetLLVMType(_generator), size);
 
-                _emitter.Builder.BuildStore(arr, GepOF(_emitter.Builder.BuildLoad(allocation), 1));
+                _emitter.Builder.BuildStore(arr, GepOF(allocation, 1));
             }
 
-            return _emitter.Builder.BuildLoad(allocation);
+            return load ? _emitter.Builder.BuildLoad(allocation) : allocation;
         }
 
         private void StoreElementArray(LLVMValueRef arrayload, int i)
@@ -1524,7 +1547,7 @@ namespace Mug.Models.Generator
                 return false;
 
             _emitter.CastInt(MugValueType.Int64);
-            var allocation = CreateHeapArray(arraytype, _emitter.Pop().LLVMValue);
+            var allocation = CreateHeapArray(arraytype, _emitter.Pop().LLVMValue, load: false);
 
             var i = 0;
 
@@ -1538,12 +1561,11 @@ namespace Mug.Models.Generator
                 if (!_emitter.PeekType().Equals(arraytype.ArrayBaseElementType))
                     Report(elem.Position, IRGenerator.ExpectTypeMessage(arraytype.ArrayBaseElementType, _emitter.PeekType()));
 
-                StoreElementArray(allocation, i);
-
-                i++;
+                StoreElementArray(allocation, i++);
             }
 
-            _emitter.Load(MugValue.From(allocation, arraytype));
+
+            _emitter.Load(MugValue.From(_emitter.Builder.BuildLoad(allocation), arraytype, isconstant: true));
             return true;
         }
 
@@ -1723,8 +1745,7 @@ namespace Mug.Models.Generator
                 case ArraySelectElemNode a:
                     return EmitExprArrayElemSelect(a);
                 case ArrayAllocationNode aa:
-                    EmitExprAllocateArray(aa);
-                    break;
+                    return EmitExprAllocateArray(aa);
                 case TypeAllocationNode ta:
                     return EmitExprAllocateStruct(ta);
                 case MemberNode m:
@@ -2221,7 +2242,7 @@ namespace Mug.Models.Generator
             }
             else if (leftexpression is ArraySelectElemNode indexing)
             {
-                if (!EmitExprArrayElemSelect(indexing, false))
+                if (!EmitExprArrayElemSelect(indexing, !isfirst))
                     Stop();
 
                 result = _emitter.Pop();

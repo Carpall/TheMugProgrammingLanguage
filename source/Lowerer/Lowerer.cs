@@ -3,14 +3,11 @@ using Mug.Models.Lexer;
 using Mug.Models.Parser;
 using Mug.Models.Parser.NodeKinds;
 using Mug.Models.Parser.NodeKinds.Statements;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Mug.Models.Lowerering
 {
-    public static class Lowerer
+  public static class Lowerer
     {
         private static INode AddTerm(INode expression, MatchNode matchnode)
         {

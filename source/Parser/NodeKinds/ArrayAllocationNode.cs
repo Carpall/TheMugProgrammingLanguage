@@ -1,11 +1,10 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.NodeKinds
 {
-    public class ArrayAllocationNode : INode
+  public class ArrayAllocationNode : INode
     {
         public string NodeKind => "ArrayAllocationNode";
         public MugType Type { get; set; }

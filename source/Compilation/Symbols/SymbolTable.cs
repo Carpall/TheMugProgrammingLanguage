@@ -1,18 +1,14 @@
-﻿using LLVMSharp;
-using LLVMSharp.Interop;
+﻿using LLVMSharp.Interop;
 using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser.NodeKinds.Statements;
 using Mug.MugValueSystem;
-using Mug.TypeSystem;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Mug.Compilation.Symbols
 {
-    public class SymbolTable
+  public class SymbolTable
     {
         private readonly IRGenerator _generator;
 
@@ -288,26 +284,38 @@ namespace Mug.Compilation.Symbols
 
         public void MergeDeclaredFunctionSymbols(List<FunctionNode> functions)
         {
-            foreach (var function in functions)
+            for (int i = 0; i < functions.Count; i++)
+            {
+                var function = functions[i];
                 DeclaredFunctions.Add(function);
+            }
         }
 
         public void MergeDeclaredTypeSymbols(List<TypeStatement> types)
         {
-            foreach (var type in types)
+            for (int i = 0; i < types.Count; i++)
+            {
+                var type = types[i];
                 DeclaredTypes.Add(type);
+            }
         }
 
         public void MergeDeclaredGenericFunctionSymbols(List<FunctionNode> genericFunctions)
         {
-            foreach (var function in genericFunctions)
+            for (int i = 0; i < genericFunctions.Count; i++)
+            {
+                var function = genericFunctions[i];
                 DeclareGenericFunction(function);
+            }
         }
 
         public void MergeDeclaredGenericTypesSymbols(List<TypeStatement> genericTypes)
         {
-            foreach (var type in genericTypes)
+            for (int i = 0; i < genericTypes.Count; i++)
+            {
+                var type = genericTypes[i];
                 DeclareGenericType(type);
+            }
         }
 
         public void MergeDeclaredAsOperatorSymbols(List<FunctionSymbol> asOperators)

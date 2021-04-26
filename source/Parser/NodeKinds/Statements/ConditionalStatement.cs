@@ -2,11 +2,10 @@
 using Mug.Models.Lexer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System;
 
 namespace Mug.Models.Parser.NodeKinds.Statements
 {
-    public class ConditionalStatement : INode
+  public class ConditionalStatement : INode
     {
         public string NodeKind => "Condition";
         [JsonConverter(typeof(StringEnumConverter))]
