@@ -11,7 +11,6 @@ namespace Mug.Symbols
 {
     public class StructSymbol : ISymbol
     {
-        public string Description => "type";
         internal TypeStatement Type { get; }
         public ModulePosition Position => Type.Position;
 
@@ -20,9 +19,12 @@ namespace Mug.Symbols
             Type = type;
         }
 
-        public override string ToString()
+        public string Dump(bool dumpmodel)
         {
             var result = new StringBuilder($"type {Type.Name}");
+
+            if (!dumpmodel)
+                return result.ToString();
 
             if (Type.Generics.Count > 0)
             {
@@ -41,8 +43,13 @@ namespace Mug.Symbols
             foreach (var field in Type.Body)
                 result.AppendLine($"  {field.Name}: {field.Type}");
 
-            result.Append('}');
+            result.AppendLine("}");
             return result.ToString();
+        }
+
+        public override string ToString()
+        {
+            return Dump(false);
         }
     }
 }

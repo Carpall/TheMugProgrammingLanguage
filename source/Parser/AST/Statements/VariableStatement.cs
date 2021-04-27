@@ -3,11 +3,11 @@ using Mug.TypeSystem;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public class VariableStatement : INode
+    public class VariableStatement : INode
     {
         public string NodeKind => "Var";
         public string Name { get; set; }
-        public IType Type { get; set; }
+        public MugType Type { get; set; }
         public bool IsAssigned
         {
             get

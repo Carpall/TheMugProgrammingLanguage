@@ -9,7 +9,7 @@ namespace Mug.Models.Parser.AST.Statements
     {
         public string NodeKind => "Enum";
         public Pragmas Pragmas { get; set; }
-        public UnsolvedType BaseType { get; set; }
+        public MugType BaseType { get; set; }
         public string Name { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         public TokenKind Modifier { get; set; }

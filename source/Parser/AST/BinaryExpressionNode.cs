@@ -5,7 +5,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Mug.Models.Parser.AST
 {
-  public class BinaryExpressionNode : INode
+    public class BinaryExpressionNode : INode
     {
         public string NodeKind => "BinaryExpression";
         public INode Left { get; set; }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -11,5 +12,10 @@ namespace Mug.Generator.IR
     {
         public MIRFunction[] Functions { get; }
         public int ByteSize => Marshal.SizeOf(this);
+
+        public string Dump()
+        {
+            return JsonConvert.SerializeObject(this, Formatting.Indented);
+        }
     }
 }

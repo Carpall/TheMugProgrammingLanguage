@@ -105,7 +105,7 @@ namespace Mug.Models.Lexer
         [Description("use")]
         KeyUse = -32,
         [Description("import")]
-        KeyImport = -32,
+        KeyImport = -90,
         [Description("*=")]
         MulAssignment = -33,
         [Description("/=")]

@@ -4,10 +4,10 @@ using System.Collections.Generic;
 
 namespace Mug.Models.Parser.AST
 {
-  public class ArrayAllocationNode : INode
+    public class ArrayAllocationNode : INode
     {
         public string NodeKind => "ArrayAllocationNode";
-        public IType Type { get; set; }
+        public MugType Type { get; set; }
         public INode Size { get; set; }
         public bool SizeIsImplicit { get; set; }
         public List<INode> Body { get; set; } = new();

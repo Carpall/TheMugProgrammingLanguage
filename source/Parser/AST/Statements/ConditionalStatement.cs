@@ -5,7 +5,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public class ConditionalStatement : INode
+    public class ConditionalStatement : INode
     {
         public string NodeKind => "Condition";
         [JsonConverter(typeof(StringEnumConverter))]

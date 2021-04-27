@@ -3,7 +3,7 @@ using Mug.Models.Lexer;
 
 namespace Mug.Models.Parser.AST
 {
-  public class MemberNode : INode
+    public class MemberNode : INode
     {
         public string NodeKind => "Member";
         public INode Base { get; set; }

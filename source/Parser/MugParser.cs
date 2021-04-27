@@ -126,31 +126,41 @@ namespace Mug.Models.Parser
 
         private bool MatchAdvance(TokenKind kind, bool linesensitive = false)
         {
-            var expect = Match(kind, linesensitive);
+            var match = Match(kind, linesensitive);
 
-            if (expect)
+            if (match)
                 CurrentIndex++;
 
-            return expect;
+            return match;
         }
 
-        private UnsolvedType ExpectType(bool allowEnumError = false)
+        private MugType ExpectType(bool allowEnumError = false)
         {
             if (MatchAdvance(TokenKind.BooleanAND, out var token))
-                return new UnsolvedType(
-                    token.Position, TypeKind.Reference, ExpectType(false));
+                return UnsolvedType.Create(
+                    Tower,
+                    token.Position,
+                    TypeKind.Reference,
+                    ExpectType(false));
+
             if (MatchAdvance(TokenKind.OpenBracket, out token))
             {
                 var type = ExpectType();
                 Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
-                return new UnsolvedType(
-                    new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End), TypeKind.Array, type);
+                return UnsolvedType.Create(
+                    Tower,
+                    new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End),
+                    TypeKind.Array,
+                    type);
             }
             else if (MatchAdvance(TokenKind.Star, out token))
             {
                 var type = ExpectType();
-                return new UnsolvedType(
-                    new(token.Position.Lexer, token.Position.Position.Start..type.Position.Position.End), TypeKind.Pointer, type);
+                return UnsolvedType.Create(
+                    Tower,
+                    new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Value.Position.Position.End),
+                    TypeKind.Pointer,
+                    type);
             }
 
             var find = ExpectBaseType();
@@ -158,13 +168,13 @@ namespace Mug.Models.Parser
             // struct generics
             if (MatchAdvance(TokenKind.BooleanLess))
             {
-                if (find.Kind != TypeKind.DefinedType)
+                if (find.UnsolvedType.Value.Kind != TypeKind.DefinedType)
                 {
                     CurrentIndex -= 2;
                     ParseError($"Generic parameters cannot be passed to type '{find}'");
                 }
 
-                var genericTypes = new List<IType>();
+                var genericTypes = new List<MugType>();
 
                 do
                     genericTypes.Add(ExpectType());
@@ -172,21 +182,23 @@ namespace Mug.Models.Parser
 
                 Expect("", TokenKind.BooleanGreater);
 
-                find = new UnsolvedType(
-                    new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End),
-                    TypeKind.GenericDefinedType, (find, genericTypes));
+                find = UnsolvedType.Create(
+                    Tower,
+                    new(find.UnsolvedType.Value.Position.Lexer, find.UnsolvedType.Value.Position.Position.Start..Back.Position.Position.End),
+                    TypeKind.GenericDefinedType,
+                    (find, genericTypes));
             }
 
             if (allowEnumError && MatchAdvance(TokenKind.Negation))
-                find = new UnsolvedType(Back.Position, TypeKind.EnumError, (find, ExpectType()));
+                find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
 
             return find;
         }
 
-        private bool MatchType(out UnsolvedType type)
+        private bool MatchType(out MugType type)
         {
             type = null;
-            UnsolvedType t = null;
+            MugType t = null;
 
             if (!Match(TokenKind.OpenBracket) && !Match(TokenKind.Star) && !MatchBaseType(out t))
                 return false;
@@ -238,7 +250,7 @@ namespace Mug.Models.Parser
             return new ParameterNode(type, name.Value, defaultvalue, name.Position);
         }
 
-        private UnsolvedType ExpectBaseType()
+        private MugType ExpectBaseType()
         {
             if (!MatchBaseType(out var type))
                 ParseError("Expected a type, but found '" + Current.Value + "'");
@@ -246,14 +258,14 @@ namespace Mug.Models.Parser
             return type;
         }
 
-        private bool MatchBaseType(out UnsolvedType type)
+        private bool MatchBaseType(out MugType type)
         {
             type = null;
             
             if (!MatchPrimitiveType(out var token) && !MatchAdvance(TokenKind.Identifier, out token))
                 return false;
 
-            type = UnsolvedType.FromToken(token);
+            type = UnsolvedType.FromToken(Tower, token);
 
             return true;
         }
@@ -362,7 +374,7 @@ namespace Mug.Models.Parser
                 Report(Back.Position, "Expected parameter's expression");
         }
 
-        private List<IType> CollectGenericParameters(ref bool builtin)
+        private List<MugType> CollectGenericParameters(ref bool builtin)
         {
             var oldindex = CurrentIndex;
 
@@ -373,7 +385,7 @@ namespace Mug.Models.Parser
 
                 if (MatchType(out var type))
                 {
-                    var generics = new List<IType>() { type };
+                    var generics = new List<MugType>() { type };
 
                     while (MatchAdvance(TokenKind.Comma))
                         generics.Add(ExpectType());
@@ -387,7 +399,7 @@ namespace Mug.Models.Parser
             }
 
             CurrentIndex = oldindex;
-            return new List<IType>();
+            return new List<MugType>();
         }
 
         private bool CollectBuiltInSymbol()
@@ -734,7 +746,7 @@ namespace Mug.Models.Parser
 
             while (allowBoolOP && MatchBooleanOperator(out var boolOP))
             {
-                var boolean = new BooleanExpressionNode()
+                var boolean = new BooleanBinaryExpressionNode()
                 {
                     Operator = boolOP.Kind,
                     Left = e,
@@ -754,7 +766,7 @@ namespace Mug.Models.Parser
             }
 
             while (allowLogicOP && MatchAndOrOperator())
-                e = new BooleanExpressionNode()
+                e = new BooleanBinaryExpressionNode()
                 {
                     Operator = Back.Kind,
                     Left = e,
@@ -783,9 +795,9 @@ namespace Mug.Models.Parser
                 e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
-        private UnsolvedType ExpectVariableType()
+        private MugType ExpectVariableType()
         {
-            return MatchAdvance(TokenKind.Colon) ? ExpectType() : UnsolvedType.Automatic(Back.Position);
+            return MatchAdvance(TokenKind.Colon) ? ExpectType() : UnsolvedType.Automatic(Tower, Back.Position);
         }
 
         private bool VariableDefinition(out INode statement)
@@ -861,7 +873,7 @@ namespace Mug.Models.Parser
 
         private bool CollectMatchExpression(out INode statement, ModulePosition position)
         {
-            var matchexpr = new MatchExpression() { Position = position, Expression = ExpectExpression(end: TokenKind.OpenBrace) };
+            var matchexpr = new SwitchExpression() { Position = position, Expression = ExpectExpression(end: TokenKind.OpenBrace) };
 
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
@@ -875,7 +887,7 @@ namespace Mug.Models.Parser
                     CurrentIndex--;
                 }
 
-                matchexpr.Body.Add(new MatchNode()
+                matchexpr.Body.Add(new SwitchNode()
                 {
                     Expression = expression,
                     Body = ExpectBlock(),
@@ -940,7 +952,7 @@ namespace Mug.Models.Parser
             }
             else
             {
-                result.Type = UnsolvedType.Automatic(name.Position);
+                result.Type = UnsolvedType.Automatic(Tower, name.Position);
                 Expect("Type notation or body needed", TokenKind.Equal);
                 result.Body = ExpectExpression(end: TokenKind.Comma);
             }
@@ -1018,7 +1030,7 @@ namespace Mug.Models.Parser
             var block = new BlockNode();
 
             while (!Match(TokenKind.CloseBrace))
-                block.Add(ExpectStatement());
+                block.Statements.Add(ExpectStatement());
 
             Expect("", TokenKind.CloseBrace);
 
@@ -1092,12 +1104,12 @@ namespace Mug.Models.Parser
 
             var parameters = ExpectParameterListDeclaration(); // func name<(..)>
 
-            IType type;
+            MugType type;
 
             if (MatchAdvance(TokenKind.Colon))
                 type = ExpectType(true);
             else
-                type = new UnsolvedType(name.Position, TypeKind.Void);
+                type = UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
 
             if (Match(TokenKind.OpenBrace)) // function definition
             {
@@ -1296,15 +1308,15 @@ namespace Mug.Models.Parser
             };
         }
 
-        private UnsolvedType ExpectPrimitiveType(bool allowErr)
+        private MugType ExpectPrimitiveType(bool allowErr)
         {
             if (!MatchPrimitiveType(out var type, allowErr))
             {
                 Report("Expected primitive type");
-                return UnsolvedType.Automatic(type.Position);
+                return UnsolvedType.Automatic(Tower, type.Position);
             }
 
-            return UnsolvedType.FromToken(type, true);
+            return UnsolvedType.FromToken(Tower, type, true);
         }
 
         private void Report(string error)
@@ -1331,7 +1343,7 @@ namespace Mug.Models.Parser
                 return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
         }
 
-        private UnsolvedType ExpectEnumBaseType()
+        private MugType ExpectEnumBaseType()
         {
             return ExpectPrimitiveType(true);
         }
@@ -1369,7 +1381,7 @@ namespace Mug.Models.Parser
                 if (statement.Body.Count > 0)
                     _ = int.TryParse(statement.Body.Last().Value.Value, out value);
 
-                var member = ExpectMemberDefinition(statement.BaseType.IsInt() || statement.BaseType.Kind == TypeKind.Err, value);
+                var member = ExpectMemberDefinition(statement.BaseType.UnsolvedType.Value.IsInt() || statement.BaseType.UnsolvedType.Value.Kind == TypeKind.Err, value);
                 if (member is null)
                     return false;
 
@@ -1440,7 +1452,10 @@ namespace Mug.Models.Parser
                             if (!VariableDefinition(out statement))
                                 // import "", import path, use x as y
                                 if (!DirectiveDefinition(out statement))
+                                {
+                                    Report("Token out of context");
                                     CurrentIndex++; // skipping the bad token
+                                }
                         }
                     }
 

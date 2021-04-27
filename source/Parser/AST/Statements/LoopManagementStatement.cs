@@ -3,7 +3,7 @@ using Mug.Models.Lexer;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public class LoopManagementStatement : INode
+    public class LoopManagementStatement : INode
     {
         public string NodeKind => "LoopManagement";
         public Token Management { get; set; }

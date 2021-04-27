@@ -11,7 +11,7 @@ namespace Mug.Models.Parser
         {
             ["inline"    ] = Token.NewInfo(TokenKind.ConstantBoolean, "false"),
             ["header"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
-            ["dynamiclib"] = Token.NewInfo(TokenKind.ConstantString, ""      ),
+            ["dynlib"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["export"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["extern"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["code"      ] = Token.NewInfo(TokenKind.ConstantString, ""      ),

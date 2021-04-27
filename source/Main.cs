@@ -10,7 +10,10 @@ try
 
     const string test = @"
 
-func main<T>(a: i32, a: i32) {
+type A { name: i32 }
+
+func main(): i32!void {
+  call()
 }
 
 ";
@@ -20,8 +23,7 @@ func main<T>(a: i32, a: i32) {
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());
     // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
-    unit.GenerateTAST();
-    Console.WriteLine(unit.Tower.Symbols.Dump());
+    Console.WriteLine(unit.GenerateMIR().Dump());
 
 #else
 

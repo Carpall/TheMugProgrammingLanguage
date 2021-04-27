@@ -18,11 +18,12 @@ namespace Mug.Symbols
             if (!_symbols.TryGetValue(name, out var symbol))
                 Tower.Report(position, $"'{name}' is not declared");
             else if (symbol is not T)
-                Tower.Report(position, $"Symbol '{name}' is not a {nameof(T)}");
+                Tower.Report(position, $"'{name}' is not valid here");
             else
                 return (T)symbol;
 
             return default;
+
         }
 
         public void SetSymbol(string name, ISymbol symbol)
@@ -31,12 +32,17 @@ namespace Mug.Symbols
                 Tower.Report(symbol.Position, $"'{name}' is already declared");
         }
 
+        internal Dictionary<string, ISymbol> GetCache()
+        {
+            return _symbols;
+        }
+
         public string Dump()
         {
             var result = new StringBuilder();
 
             foreach (var symbol in _symbols)
-                result.AppendLine(symbol.Value.ToString());
+                result.AppendLine(symbol.Value.Dump(true));
 
             return result.ToString();
         }

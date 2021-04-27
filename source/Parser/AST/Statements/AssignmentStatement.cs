@@ -3,7 +3,7 @@ using Mug.Models.Lexer;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public class AssignmentStatement : IStatement
+    public class AssignmentStatement : IStatement
     {
         public string NodeKind => "Assignment";
         public TokenKind Operator { get; set; }

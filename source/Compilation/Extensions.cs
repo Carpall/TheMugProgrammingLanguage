@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Mug.Compilation
 {
-  internal unsafe struct MarshaledString : IDisposable
+    internal unsafe struct MarshaledString : IDisposable
     {
         public MarshaledString(ReadOnlySpan<char> input)
         {
@@ -57,7 +57,7 @@ namespace Mug.Compilation
         }
     }
 
-  internal static class Extensions
+    internal static class Extensions
     {
         public static string GetDescription(this Enum instance)
         {

@@ -4,19 +4,16 @@ using System;
 
 namespace Mug.Generator
 {
-    public class MIRGenerator
+    public class MIRGenerator : MugComponent
     {
-        private CompilationTower Tower { get; }
 
-        public MIRGenerator(CompilationTower tower)
+        public MIRGenerator(CompilationTower tower) : base(tower)
         {
-            Tower = tower;
         }
 
         public MIR Generator()
         {
-            CompilationTower.Todo("fix mir generator");
-            return new();
+            
         }
     }
 }

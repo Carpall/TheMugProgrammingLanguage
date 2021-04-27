@@ -9,7 +9,8 @@ namespace Mug.Symbols
 {
     public interface ISymbol
     {
-        public string Description { get; }
         public ModulePosition Position { get; }
+
+        public abstract string Dump(bool dumpmodel);
     }
 }

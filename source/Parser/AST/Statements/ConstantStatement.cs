@@ -4,11 +4,11 @@ using System;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public struct ConstantStatement : INode
+    public struct ConstantStatement : INode
     {
         public string NodeKind => "Const";
         public String Name { get; set; }
-        public IType Type { get; set; }
+        public MugType Type { get; set; }
         public INode Body { get; set; }
         public ModulePosition Position { get; set; }
     }

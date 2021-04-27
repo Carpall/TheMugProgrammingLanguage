@@ -5,11 +5,9 @@ using Mug.Models.Parser;
 using Mug.Models.Parser.AST;
 using Mug.Symbols;
 using Mug.TypeResolution;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Mug.Compilation
 {
@@ -22,6 +20,7 @@ namespace Mug.Compilation
         public TypeInstaller TypeInstaller { get; }
         public MIRGenerator Generator { get; }
         public SymbolTable Symbols { get; }
+        public List<MugType> Types { get; }
         public string ModuleName { get; internal set; }
         public LLVMModuleRef LLVMModule { get; internal set; }
 
@@ -36,6 +35,7 @@ namespace Mug.Compilation
             TypeInstaller = new(this);
             Generator = new(this);
             Symbols = new(this);
+            Types = new();
         }
 
         public static void Throw(string error)

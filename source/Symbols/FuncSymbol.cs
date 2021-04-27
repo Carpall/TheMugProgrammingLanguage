@@ -11,7 +11,6 @@ namespace Mug.Symbols
 {
     public class FuncSymbol : ISymbol
     {
-        public string Description => "func";
         internal FunctionStatement Func { get; }
         public ModulePosition Position => Func.Position;
 
@@ -20,9 +19,12 @@ namespace Mug.Symbols
             Func = func;
         }
 
-        public override string ToString()
+        public string Dump(bool dumpmodel)
         {
             var result = new StringBuilder($"func {Func.Name}");
+
+            if (!dumpmodel)
+                return result.ToString();
 
             if (Func.Generics.Count > 0)
             {
@@ -41,7 +43,7 @@ namespace Mug.Symbols
             for (int i = 0; i < Func.ParameterList.Length; i++)
             {
                 var parameter = Func.ParameterList.Parameters[i];
-                
+
                 if (i > 0)
                     result.Append(", ");
                 result.Append($"{parameter.Name}: {parameter.Type}");
@@ -50,6 +52,11 @@ namespace Mug.Symbols
             result.Append("): ");
             result.AppendLine(Func.ReturnType.ToString());
             return result.ToString();
+        }
+
+        public override string ToString()
+        {
+            return Dump(false);
         }
     }
 }

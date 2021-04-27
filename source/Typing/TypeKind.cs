@@ -2,7 +2,7 @@
 {
     public enum TypeKind
     {
-        // implicit type specification in var, const declarations
+        Undefined,
         Auto,
         Pointer,
         String,

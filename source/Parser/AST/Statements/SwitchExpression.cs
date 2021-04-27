@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace Mug.Models.Parser.AST.Statements
 {
-  public struct MatchNode : INode
+    public struct SwitchNode : INode
     {
-        public string NodeKind => "MatchNode";
+        public string NodeKind => "SwitchNode";
         public INode Expression { get; set; }
         public BlockNode Body { get; set; }
         public bool IsElseNode
@@ -18,11 +18,11 @@ namespace Mug.Models.Parser.AST.Statements
         public ModulePosition Position { get; set; }
     }
 
-    public class MatchExpression : INode
+    public class SwitchExpression : INode
     {
-        public string NodeKind => "Match";
+        public string NodeKind => "Switch";
         public INode Expression { get; set; }
-        public List<MatchNode> Body { get; set; } = new();
+        public List<SwitchNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
     }
 }

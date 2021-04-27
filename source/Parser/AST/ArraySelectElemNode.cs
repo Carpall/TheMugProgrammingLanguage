@@ -2,7 +2,7 @@
 
 namespace Mug.Models.Parser.AST
 {
-  public class ArraySelectElemNode : INode
+    public class ArraySelectElemNode : INode
     {
         public string NodeKind => "ArraySelectElemNode";
         public INode Left { get; set; }

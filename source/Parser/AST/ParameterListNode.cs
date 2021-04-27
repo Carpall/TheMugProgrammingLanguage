@@ -5,15 +5,15 @@ using System.Collections.Generic;
 
 namespace Mug.Models.Parser.AST
 {
-  public struct ParameterNode : INode
+    public struct ParameterNode : INode
     {
         public string NodeKind => "Parameter";
-        public IType Type { get; }
+        public MugType Type { get; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(IType type, string name, Token defaultConstValue, ModulePosition position)
+        public ParameterNode(MugType type, string name, Token defaultConstValue, ModulePosition position)
         {
             Type = type;
             Name = name;
@@ -21,6 +21,7 @@ namespace Mug.Models.Parser.AST
             DefaultConstantValue = defaultConstValue;
         }
     }
+
     public class ParameterListNode : INode
     {
         public string NodeKind => "ParameterList";

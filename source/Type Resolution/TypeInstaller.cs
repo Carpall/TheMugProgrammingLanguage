@@ -86,6 +86,7 @@ namespace Mug.TypeResolution
                     DeclareFunction(statement);
                     break;
                 default:
+                    CompilationTower.Todo($"implement {global} in recognize global statement");
                     break;
             }
         }
