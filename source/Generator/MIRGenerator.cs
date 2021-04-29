@@ -128,10 +128,38 @@ namespace Mug.Models.Generator
                 case VariableStatement statement:
                     GenerateVarStatement(statement);
                     break;
+                case AssignmentStatement statement:
+                    GenerateAssignmentStatement(statement);
+                    break;
                 default:
                     CompilationTower.Todo($"implement {opaque} in MIRGenerator.RecognizeStatement");
                     break;
             }
+        }
+
+        private void GenerateAssignmentStatement(AssignmentStatement statement)
+        {
+            /*ContextTypesPushPlaceholder();
+
+            var variable = EvaluateExpression(statement.Name);
+
+            ContextTypes.Pop();
+
+            if (FunctionBuilder.LastInstruction().ParameterValue.Kind != MIRValueKind.StaticMemoryAddress)
+                Tower.Report(statement.Name.Position, $"Invalid left side of assignment");
+
+            ContextTypes.Push(variable);
+
+            var expressiontype = EvaluateExpression(statement.Body);
+
+            CheckTypes(variable, expressiontype, statement.Body.Position);
+
+            ContextTypes.Pop();*/
+        }
+
+        private void ContextTypesPushPlaceholder()
+        {
+            ContextTypes.Push(MugType.Solved(SolvedType.Primitive(TypeKind.Void)));
         }
 
         private void GenerateVarStatement(VariableStatement statement)
@@ -173,16 +201,36 @@ namespace Mug.Models.Generator
             {
                 case Token expression:
                     type = expression.Kind == TokenKind.Identifier ?
-                        EvaluateIdentifier(expression.Value) :
+                        EvaluateIdentifier(expression.Value, expression.Position) :
                         EvaluateConstant(expression);
                     break;
                 case TypeAllocationNode expression:
                     type = EvaluateTypeAllocationNode(expression);
                     break;
+                case MemberNode expression:
+                    type = EvaluateMemberNode(expression);
+                    break;
                 default:
                     CompilationTower.Todo($"implement {body} in MIRGenerator.EvaluateExpression");
                     break;
             }
+
+            return type;
+        }
+
+        private MugType EvaluateMemberNode(MemberNode expression)
+        {
+            var basetype = EvaluateExpression(expression.Base);
+            if (!basetype.SolvedType.Value.IsNewOperatorAllocable())
+                Tower.Report(expression.Base.Position, $"Type '{basetype}' is not accessible via operator '.'");
+
+            var structure = basetype.SolvedType.Value.GetStruct();
+
+            var type = GetFieldType(expression.Member.Value, structure.Type.Body, out var index);
+            if (type is null)
+                Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
+            else
+                FunctionBuilder.EmitLoadField(MIRValue.StaticMemoryAddress(index, LowerType(type)));
 
             return type;
         }
@@ -226,7 +274,7 @@ namespace Mug.Models.Generator
 
                 FunctionBuilder.EmitDupplicate();
                 CheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-                FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex));
+                FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex, LowerType(fieldtype)));
 
                 ContextTypes.Pop();
             }
@@ -246,9 +294,17 @@ namespace Mug.Models.Generator
             return null;
         }
 
-        private MugType EvaluateIdentifier(string value)
+        private MugType EvaluateIdentifier(string value, ModulePosition position)
         {
-            return VirtualMemory.TryGetValue(value, out var allocation) ? allocation.Type : MugType.Solved(SolvedType.Primitive(TypeKind.Void));
+            if (!VirtualMemory.TryGetValue(value, out var allocation))
+            {
+                allocation = new AllocationData(0, MugType.Solved(SolvedType.Primitive(TypeKind.Void)));
+                Tower.Report(position, $"Variable '{value}' is not declared");
+            }
+            else
+                FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
+
+            return allocation.Type;
         }
 
         private MugType EvaluateConstant(Token expression)
@@ -285,9 +341,11 @@ namespace Mug.Models.Generator
             if (!VirtualMemory.TryAdd(name, new(localindex, type)))
                 Tower.Report(position, $"Variable '{name}' is already declared");
 
-            FunctionBuilder.DeclareAllocation(LowerType(type));
+            var mirtype = LowerType(type);
 
-            return MIRValue.StaticMemoryAddress(localindex);
+            FunctionBuilder.DeclareAllocation(mirtype);
+
+            return MIRValue.StaticMemoryAddress(localindex, mirtype);
         }
 
         private void GenerateFunction(FunctionStatement func)

@@ -15,10 +15,12 @@ namespace Mug.Models.Generator.IR
         Constant,
         StaticMemoryAddress,
         Load,
-        Store,
+        StoreLocal,
         StoreField,
         Dupplicate,
-        LoadZeroinitialized
+        LoadZeroinitialized,
+        LoadField,
+        LoadLocal
     }
 
     public struct MIRValue
@@ -39,12 +41,17 @@ namespace Mug.Models.Generator.IR
             return new(MIRValueKind.Constant, type, value);
         }
 
-        internal static MIRValue StaticMemoryAddress(int localAddress)
+        internal static MIRValue StaticMemoryAddress(int address, MIRType type)
         {
-            return new MIRValue(MIRValueKind.StaticMemoryAddress, new(MIRTypeKind.UInt8), localAddress);
+            return new MIRValue(MIRValueKind.StaticMemoryAddress, type, address);
         }
 
         internal ulong ConstantIntValue => (ulong)Value;
         internal MIRValue ParameterValue => (MIRValue)Value;
+
+        public override string ToString()
+        {
+            return $"{Kind} => ({Value ?? "_"}{(Type.HasValue ? $" {Type}" : "")})";
+        }
     }
 }

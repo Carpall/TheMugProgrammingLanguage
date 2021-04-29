@@ -3,6 +3,7 @@ using Mug.Models.Lexer;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Mug.Models.Generator.IR.Builder
 {
@@ -53,7 +54,7 @@ namespace Mug.Models.Generator.IR.Builder
 
         public void EmitStoreLocal(MIRValue localaddress)
         {
-            EmitInstruction(MIRValueKind.Store, localaddress);
+            EmitInstruction(MIRValueKind.StoreLocal, localaddress);
         }
 
         public void EmitLoadZeroinitializedStruct(MIRType type)
@@ -69,6 +70,21 @@ namespace Mug.Models.Generator.IR.Builder
         public void EmitStoreField(MIRValue fieldaddress)
         {
             EmitInstruction(MIRValueKind.StoreField, fieldaddress);
+        }
+
+        public void EmitLoadLocal(MIRValue staticMemoryAddress)
+        {
+            EmitInstruction(MIRValueKind.LoadLocal, staticMemoryAddress);
+        }
+
+        public MIRValue LastInstruction()
+        {
+            return _body.Last();
+        }
+
+        public void EmitLoadField(MIRValue fieldaddress)
+        {
+            EmitInstruction(MIRValueKind.LoadField, fieldaddress);
         }
     }
 }

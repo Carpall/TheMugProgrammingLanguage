@@ -14,11 +14,12 @@ try
 
     const string test = @"
 
-type B { b: i32 }
-type A { a: B }
+type A { a: i32 }
 
 func main() {
-  var x = new A { }
+  // var a = 10
+  // a = 10
+  var a = new A { a: 10 }
 }
 
 ";

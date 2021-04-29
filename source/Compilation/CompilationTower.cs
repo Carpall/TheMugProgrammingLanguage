@@ -64,10 +64,9 @@ namespace Mug.Compilation
             throw new CompilationException(error, Diagnostic);
         }
 
-        public bool Report(ModulePosition position, string error)
+        public void Report(ModulePosition position, string error)
         {
             Diagnostic.Report(position, error);
-            return false;
         }
 
         public void Report(MugLexer lexer, int position, string error)

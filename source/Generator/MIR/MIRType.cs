@@ -24,7 +24,8 @@ namespace Mug.Models.Generator.IR
         Float64,
         Float128,
         Pointer,
-        Struct
+        Struct,
+        StaticMemoryAdress
     }
 
     public interface IMIRTypeBase
@@ -52,6 +53,11 @@ namespace Mug.Models.Generator.IR
         internal MIRStruct(MIRType[] body)
         {
             Body = body;
+        }
+
+        public override string ToString()
+        {
+            return $"{{ {string.Join(", ", Body)} }}";
         }
     }
 
@@ -81,6 +87,11 @@ namespace Mug.Models.Generator.IR
         {
             Kind = kind;
             Base = basetype;
+        }
+
+        public override string ToString()
+        {
+            return $"{Kind}{(Base is not null ? $" -> {Base}" : "")}";
         }
     }
 }

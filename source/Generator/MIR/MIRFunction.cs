@@ -23,5 +23,15 @@ namespace Mug.Models.Generator.IR
             Body = body;
             Allocations = allocations;
         }
+
+        public override string ToString()
+        {
+            return $@".fn {Name}({string.Join(", ", ParameterTypes)}) {ReturnType}:
+  .locals:
+    {string.Join("\n    ", Allocations)}
+  
+  {string.Join("\n  ", Body)}
+";
+        }
     }
 }

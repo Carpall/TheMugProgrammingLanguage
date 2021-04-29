@@ -17,9 +17,14 @@ namespace Mug.Models.Generator.IR
             Functions = functions;
         }
 
-        public string Dump()
+        public string DumpJSON()
         {
             return JsonConvert.SerializeObject(this, Formatting.Indented);
+        }
+
+        public string Dump()
+        {
+            return $"{string.Join("\n", Functions)}";
         }
     }
 }
