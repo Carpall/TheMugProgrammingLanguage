@@ -6,12 +6,16 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Generator.IR
+namespace Mug.Models.Generator.IR
 {
     public struct MIR
     {
         public MIRFunction[] Functions { get; }
-        public int ByteSize => Marshal.SizeOf(this);
+
+        public MIR(MIRFunction[] functions)
+        {
+            Functions = functions;
+        }
 
         public string Dump()
         {

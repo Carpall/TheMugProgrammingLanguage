@@ -1,5 +1,9 @@
-﻿namespace Mug.TypeSystem
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
+namespace Mug.TypeSystem
 {
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum TypeKind
     {
         Undefined,

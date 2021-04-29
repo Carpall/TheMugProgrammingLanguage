@@ -12,19 +12,18 @@ namespace Mug.TypeSystem
 {
     public struct SolvedType
     {
-        [JsonConverter(typeof(StringEnumConverter))]
         public TypeKind Kind;
-        private object _base;
-        public string PrettyBaseReppresentation => _base is not null ? _base.ToString() : "";
+        internal object Base;
+        public string BaseReppresentation => Base is not null ? Base.ToString() : "";
 
         public static SolvedType Struct(StructSymbol symbol)
         {
-            return new SolvedType { Kind = TypeKind.DefinedType, _base = symbol };
+            return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
         }
 
         public static SolvedType WithBase(TypeKind kind, SolvedType baseElementType)
         {
-            return new SolvedType { Kind = kind, _base = baseElementType };
+            return new SolvedType { Kind = kind, Base = baseElementType };
         }
 
         public static SolvedType Primitive(TypeKind kind)
@@ -34,13 +33,13 @@ namespace Mug.TypeSystem
 
         public static SolvedType EnumError(SolvedType errorType, SolvedType successType)
         {
-            return new SolvedType { Kind = TypeKind.EnumError, _base = (errorType, successType) };
+            return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
         }
 
         public StructSymbol GetStruct()
         {
             Debug.Assert(IsStruct());
-            return _base as StructSymbol;
+            return Base as StructSymbol;
         }
 
         public bool IsStruct()
@@ -51,7 +50,7 @@ namespace Mug.TypeSystem
         public SolvedType GetArrayBaseElementType()
         {
             Debug.Assert(IsArray());
-            return (SolvedType)_base;
+            return (SolvedType)Base;
         }
 
         public bool IsArray()
@@ -61,15 +60,32 @@ namespace Mug.TypeSystem
 
         public (SolvedType ErrorType, SolvedType SuccessType) GetEnumError()
         {
-            return ((SolvedType, SolvedType))_base;
+            return ((SolvedType, SolvedType))Base;
         }
 
         public override string ToString()
         {
             return UnsolvedType.TypeKindToString(
                 Kind,
-                _base is not null ? _base is ISymbol symbol ? symbol.Dump(false) : _base.ToString() : "",
+                Base is not null ? Base is ISymbol symbol ? symbol.Dump(false) : Base.ToString() : "",
                 Kind == TypeKind.EnumError ? (GetEnumError().ToString(), GetEnumError().ToString()) : new());
+        }
+
+        public bool IsInt()
+        {
+            return
+                Kind == TypeKind.Int32 ||
+                Kind == TypeKind.Int64 ||
+                Kind == TypeKind.UInt8 ||
+                Kind == TypeKind.UInt32 ||
+                Kind == TypeKind.UInt64;
+        }
+
+        public bool IsNewOperatorAllocable()
+        {
+            return
+                Kind == TypeKind.GenericDefinedType ||
+                Kind == TypeKind.DefinedType;
         }
     }
 }

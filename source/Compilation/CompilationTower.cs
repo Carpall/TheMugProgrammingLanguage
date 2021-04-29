@@ -1,5 +1,5 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Generator;
+using Mug.Models.Generator;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
 using Mug.Models.Parser.AST;
@@ -8,6 +8,7 @@ using Mug.TypeResolution;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mug.Compilation
 {
@@ -38,21 +39,25 @@ namespace Mug.Compilation
             Types = new();
         }
 
+        [DoesNotReturn()]
         public static void Throw(string error)
         {
             throw new CompilationException(error);
         }
 
+        [DoesNotReturn()]
         public void Throw(MugLexer lexer, int pos, string error)
         {
             Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
         }
 
+        [DoesNotReturn()]
         public void Throw(Token token, string error)
         {
             Throw(token.Position, error);
         }
 
+        [DoesNotReturn()]
         public void Throw(ModulePosition position, string error)
         {
             Diagnostic.Report(new(position, error));

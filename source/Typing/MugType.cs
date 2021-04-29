@@ -32,5 +32,10 @@ namespace Mug.TypeSystem
             SolvedType = solvedtype;
             UnsolvedType = null;
         }
+
+        public override string ToString()
+        {
+            return UnsolvedType.HasValue ? UnsolvedType.Value.ToString() : SolvedType.Value.ToString();
+        }
     }
 }

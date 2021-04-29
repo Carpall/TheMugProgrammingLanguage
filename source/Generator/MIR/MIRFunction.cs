@@ -5,13 +5,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Generator.IR
+namespace Mug.Models.Generator.IR
 {
     public struct MIRFunction
     {
         public string Name { get; }
-        public SolvedType ReturnType { get; }
-        public SolvedType[] ParameterTypes { get; }
-        public IMirstruction[] Body { get; }
+        public MIRType ReturnType { get; }
+        public MIRType[] ParameterTypes { get; }
+        public MIRValue[] Body { get; }
+        public MIRType[] Allocations { get; }
+
+        public MIRFunction(string name, MIRType returntype, MIRType[] parametertypes, MIRValue[] body, MIRType[] allocations)
+        {
+            Name = name;
+            ReturnType = returntype;
+            ParameterTypes = parametertypes;
+            Body = body;
+            Allocations = allocations;
+        }
     }
 }

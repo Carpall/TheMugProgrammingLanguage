@@ -11,7 +11,6 @@ namespace Mug.Models.Parser.AST
         public string NodeKind => "BooleanBinaryExpression";
         public INode Left { get; set; }
         public INode Right { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
         public TokenKind Operator { get; set; }
         public MugType IsInstructionType { get; set; }
         public ModulePosition Position { get; set; }

@@ -8,12 +8,17 @@ try
 
 #if DEBUG
 
+    // todo: - check type recursion
+    //       - add function overloading
+    //       - add default values
+
     const string test = @"
 
-type A { name: i32 }
+type B { b: i32 }
+type A { a: B }
 
-func main(): i32!void {
-  call()
+func main() {
+  var x = new A { }
 }
 
 ";

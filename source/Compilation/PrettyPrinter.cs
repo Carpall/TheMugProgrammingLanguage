@@ -135,9 +135,7 @@ namespace Mug.Compilation
             if (modulename != "")
                 WriteModuleStyle(modulename, 0, 0);
 
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.Write("Error");
-            Console.ResetColor();
+            Console.Write("Error".Pastel(Color.OrangeRed));
             Console.WriteLine(": " + string.Join("", error));
         }
     }

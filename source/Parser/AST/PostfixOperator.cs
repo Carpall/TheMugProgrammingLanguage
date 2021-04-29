@@ -9,7 +9,6 @@ namespace Mug.Models.Parser.AST
     {
         public string NodeKind => "PostfixOperator";
         public INode Expression { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
         public TokenKind Postfix { get; set; }
         public ModulePosition Position { get; set; }
     }

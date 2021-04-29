@@ -11,7 +11,6 @@ namespace Mug.TypeSystem
     public struct UnsolvedType : INode
     {
         public string NodeKind => "UnsolvedType";
-        [JsonConverter(typeof(StringEnumConverter))]
         public TypeKind Kind { get; set; }
         public object BaseType { get; set; }
         public ModulePosition Position { get; set; }

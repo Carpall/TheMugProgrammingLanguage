@@ -1,5 +1,5 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Generator.IR;
+using Mug.Models.Generator.IR;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
 using Mug.Models.Parser.AST;
@@ -199,7 +199,7 @@ namespace Mug.Compilation
         public MIR GenerateMIR()
         {
             GenerateTAST();
-            return Tower.Generator.Generator();
+            return Tower.Generator.Generate();
         }
     }
 }

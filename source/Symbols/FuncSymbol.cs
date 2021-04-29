@@ -21,10 +21,10 @@ namespace Mug.Symbols
 
         public string Dump(bool dumpmodel)
         {
-            var result = new StringBuilder($"func {Func.Name}");
-
             if (!dumpmodel)
-                return result.ToString();
+                return Func.Name;
+
+            var result = new StringBuilder($"func {Func.Name}");
 
             if (Func.Generics.Count > 0)
             {
