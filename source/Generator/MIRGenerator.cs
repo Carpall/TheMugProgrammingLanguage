@@ -63,6 +63,7 @@ namespace Mug.Models.Generator
                 case TypeKind.Float32:
                 case TypeKind.Float64:
                 case TypeKind.Float128:
+                case TypeKind.Auto:
                     return new MIRType(TypeKindPrimitiveToMIRTypeKind(solved.Kind));
                 case TypeKind.DefinedType:
                     return new MIRType(MIRTypeKind.Struct, new MIRStruct(LowerStructType(solved.GetStruct())));
@@ -139,6 +140,7 @@ namespace Mug.Models.Generator
         {
             switch (opaque)
             {
+                case BadNode: break;
                 case VariableStatement statement:
                     GenerateVarStatement(statement, statement.IsConst);
                     break;
@@ -151,8 +153,8 @@ namespace Mug.Models.Generator
                 default:
                     if (!isLastNodeOfBlock)
                         Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
-                    else
-                        EvaluateExpressionInHiddenBuffer(opaque);
+                    
+                    EvaluateExpressionInHiddenBuffer(opaque);
                     break;
             }
         }
@@ -278,7 +280,7 @@ namespace Mug.Models.Generator
 
         private INode GetDefaultValueOf(MugType type)
         {
-            return null;
+            return new BadNode();
         }
 
         private void FixAndCheckTypes(MugType expected, MugType gottype, ModulePosition position)
@@ -310,10 +312,11 @@ namespace Mug.Models.Generator
 
         private MugType EvaluateExpression(INode body)
         {
-            MugType type = MugType.Undefined;
+            var type = ContextType;
 
             switch (body)
             {
+                case BadNode: break;
                 case Token expression:
                     type = expression.Kind == TokenKind.Identifier ?
                         EvaluateIdentifier(expression.Value, expression.Position) :
@@ -512,7 +515,7 @@ namespace Mug.Models.Generator
         {
             if (!VirtualMemory.TryGetValue(value, out var allocation))
             {
-                allocation = new AllocationData(0, MugType.Solved(SolvedType.Primitive(TypeKind.Void)), false);
+                allocation = new AllocationData(0, ContextType, false);
                 Tower.Report(position, $"Variable '{value}' is not declared");
             }
             else

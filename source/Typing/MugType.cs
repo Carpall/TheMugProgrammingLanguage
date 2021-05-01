@@ -18,7 +18,6 @@ namespace Mug.TypeSystem
             SolvedType = solvedtype;
         }
 
-        internal static MugType Undefined => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Undefined));
         internal static MugType Int32 => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Int32));
         internal static MugType Void => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Void));
 

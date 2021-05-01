@@ -79,6 +79,12 @@ namespace Mug.Compilation
             Diagnostic.CheckDiagnostic();
         }
 
+        public void CheckDiagnostic(int errorsNumber)
+        {
+            if (Diagnostic.Count > errorsNumber)
+                CheckDiagnostic();
+        }
+
         internal static void Todo(string todo)
         {
             Throw($"TODO: {todo}");

@@ -17,6 +17,7 @@ namespace Mug.Models.Parser
 
         private Pragmas _pragmas = null;
         private TokenKind _modifier = TokenKind.Bad;
+        private readonly BadNode _badNode = new();
 
         private void ParseError(string error)
         {
@@ -308,7 +309,7 @@ namespace Mug.Models.Parser
 
         private bool MatchInParExpression(out INode e)
         {
-            e = null;
+            e = _badNode;
 
             if (!MatchAdvance(TokenKind.OpenPar))
                 return false;
@@ -320,7 +321,7 @@ namespace Mug.Models.Parser
 
         private void CollectPossibleArrayAccessNode(ref INode e)
         {
-            if (e is null)
+            if (e is BadNode)
                 return;
 
             while (MatchAdvance(TokenKind.OpenBracket, out var token))
@@ -409,7 +410,7 @@ namespace Mug.Models.Parser
 
         private bool MatchCallStatement(out INode e, INode name)
         {
-            e = null;
+            e = _badNode;
 
             var builtin = CollectBuiltInSymbol();
 
@@ -435,7 +436,7 @@ namespace Mug.Models.Parser
                 IsBuiltIn = builtin,
                 Name = name,
                 Parameters = parameters,
-                Position = name is null ? name.Position : name.Position
+                Position = name is BadNode ? name.Position : name.Position
             };
 
             CollectCatchExpression(ref e);
@@ -496,12 +497,14 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.OperatorDecrement, out prefix);
         }
 
-        internal static bool HasElseBody(ConditionalStatement condition)
+        internal static bool HasElseBody(INode condition)
         {
-            while (condition is not null && condition.Expression is not null)
-                condition = condition.ElseNode;
+            while (condition is not BadNode && conditional().Expression is not BadNode)
+                condition = conditional().ElseNode;
 
-            return condition is not null && condition.Expression is null;
+            return condition is not BadNode && conditional().Expression is BadNode;
+
+            ConditionalStatement conditional() => condition as ConditionalStatement;
         }
 
         private bool MatchTerm(out INode e, bool allowNullExpression)
@@ -550,7 +553,7 @@ namespace Mug.Models.Parser
                     return true;
             }
 
-            if (!allowNullExpression && e is null)
+            if (!allowNullExpression && e is BadNode)
                 return false;
 
             CollectPossibleArrayAccessNode(ref e);
@@ -662,7 +665,7 @@ namespace Mug.Models.Parser
             if (MatchAdvance(TokenKind.OpenBracket))
             {
                 var type = ExpectType();
-                INode size = null;
+                INode size = _badNode;
 
                 if (MatchAdvance(TokenKind.Comma))
                 {
@@ -672,7 +675,7 @@ namespace Mug.Models.Parser
                 
                 Expect("Expected ']' and the array body", TokenKind.CloseBracket);
 
-                var array = new ArrayAllocationNode() { SizeIsImplicit = size == null, Size = size, Type = type };
+                var array = new ArrayAllocationNode() { SizeIsImplicit = size is BadNode, Size = size, Type = type };
                 Expect("Expected the array body, empty ('{}') if has to be instanced with type default values", TokenKind.OpenBrace);
 
                 if (!Match(TokenKind.CloseBrace))
@@ -738,7 +741,7 @@ namespace Mug.Models.Parser
                 } while (MatchFactor(out right, allowNullExpression));
             }
 
-            if (e is null && !allowNullExpression)
+            if (e is BadNode && !allowNullExpression)
             {
                 Report($"Expected expression, found '{Current.Value}'");
                 CurrentIndex++; // skipping bad token
@@ -802,14 +805,14 @@ namespace Mug.Models.Parser
 
         private bool VariableDefinition(out INode statement)
         {
-            statement = null;
+            statement = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyVar, out var token) && !MatchAdvance(TokenKind.KeyConst, out token))
                 return false;
 
             var name = Expect("Expected the variable name", TokenKind.Identifier);
             var type = ExpectVariableType();
-            INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : null;
+            INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : _badNode;
 
             statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type, IsConst = token.Kind == TokenKind.KeyConst };
 
@@ -823,7 +826,7 @@ namespace Mug.Models.Parser
 
         private bool ReturnDeclaration(out INode statement)
         {
-            statement = null;
+            statement = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyReturn))
                 return false;
@@ -833,7 +836,7 @@ namespace Mug.Models.Parser
             statement = new ReturnStatement()
             {
                 Position = pos,
-                Body = !NextIsOnSameLine() ? null : ExpectExpression(allowNullExpression: true)
+                Body = !NextIsOnSameLine() ? _badNode : ExpectExpression(allowNullExpression: true)
             };
 
             return true;
@@ -855,7 +858,7 @@ namespace Mug.Models.Parser
 
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
-                var expression = (INode)null;
+                var expression = (INode)_badNode;
                 var pos = Current.Position;
 
                 if (!MatchAdvance(TokenKind.KeyElse))
@@ -879,7 +882,7 @@ namespace Mug.Models.Parser
 
         private bool ConditionDefinition(out INode statement, bool isFirstCondition = true)
         {
-            statement = null;
+            statement = _badNode;
 
             if (isFirstCondition && MatchAdvance(TokenKind.KeySwitch, out var matchtoken))
                 return CollectMatchExpression(out statement, matchtoken.Position);
@@ -897,7 +900,7 @@ namespace Mug.Models.Parser
                 return false;
             }
 
-            INode expression = null;
+            INode expression = _badNode;
             if (key.Kind != TokenKind.KeyElse)
             {
                 expression = ExpectExpression(end: TokenKind.OpenBrace);
@@ -906,7 +909,7 @@ namespace Mug.Models.Parser
 
             var body = ExpectBlock();
 
-            INode elif = null;
+            INode elif = _badNode;
             if (key.Kind != TokenKind.KeyWhile && key.Kind != TokenKind.KeyElse && (Match(TokenKind.KeyElif) || Match(TokenKind.KeyElse)))
                 ConditionDefinition(out elif, false);
 
@@ -953,7 +956,7 @@ namespace Mug.Models.Parser
 
         private bool ForLoopDefinition(out INode statement)
         {
-            statement = null;
+            statement = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyFor, out Token key))
                 return false;
@@ -978,7 +981,7 @@ namespace Mug.Models.Parser
 
         private bool LoopManagerDefintion(out INode statement)
         {
-            statement = null;
+            statement = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyContinue) &&
                 !MatchAdvance(TokenKind.KeyBreak))
@@ -1007,7 +1010,11 @@ namespace Mug.Models.Parser
             var block = new BlockNode();
 
             while (!Match(TokenKind.CloseBrace))
-                block.Statements.Add(ExpectStatement());
+            {
+                var statement = ExpectStatement();
+                if (statement is not BadNode)
+                    block.Statements.Add(statement);
+            }
 
             Expect("", TokenKind.CloseBrace);
 
@@ -1064,7 +1071,7 @@ namespace Mug.Models.Parser
 
         private bool FunctionDefinition(out INode node)
         {
-            node = null;
+            node = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyFunc)) // <func>
                 return false;
@@ -1114,7 +1121,7 @@ namespace Mug.Models.Parser
 
         private bool MatchImportDirective(out INode directive)
         {
-            directive = null;
+            directive = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyImport, out var token)) // <import>
                 return false;
@@ -1137,7 +1144,7 @@ namespace Mug.Models.Parser
 
         private bool MatchUseDirective(out INode directive)
         {
-            directive = null;
+            directive = _badNode;
 
             if (!MatchAdvance(TokenKind.KeyUse, out var token)) // <use>
                 return false;
@@ -1188,7 +1195,7 @@ namespace Mug.Models.Parser
 
         private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
         {
-            node = null;
+            node = _badNode;
             var variant = new VariantStatement() { Pragmas = pragmas, Modifier = modifier, Name = name.Value, Position = name.Position };
 
             Expect("", TokenKind.OpenPar);
@@ -1221,7 +1228,7 @@ namespace Mug.Models.Parser
         /// </summary>
         private bool TypeDefinition(out INode node)
         {
-            node = null;
+            node = _badNode;
 
             // returns if does not match a type keyword
             if (!MatchAdvance(TokenKind.KeyType))
@@ -1327,7 +1334,7 @@ namespace Mug.Models.Parser
 
         private bool EnumDefinition(out INode node)
         {
-            node = null;
+            node = _badNode;
 
             // returns if does not match a type keyword
             if (!MatchAdvance(TokenKind.KeyEnum))
@@ -1432,6 +1439,7 @@ namespace Mug.Models.Parser
                                 {
                                     Report("Token out of context");
                                     CurrentIndex++; // skipping the bad token
+                                    continue;
                                 }
                         }
                     }
@@ -1458,7 +1466,7 @@ namespace Mug.Models.Parser
             Module.Members = ExpectNamespaceMembers();
             
             // breaking the compiler workflow if diagnostic is bad
-            Tower.CheckDiagnostic();
+            // Tower.CheckDiagnostic();
 
             return Module;
         }

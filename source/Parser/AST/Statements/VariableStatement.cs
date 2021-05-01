@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
+using System;
 
 namespace Mug.Models.Parser.AST.Statements
 {
@@ -12,7 +13,7 @@ namespace Mug.Models.Parser.AST.Statements
         {
             get
             {
-                return Body is not null;
+                return Body is not BadNode;
             }
         }
         public INode Body { get; set; }

@@ -16,12 +16,14 @@ try
     //       - add default values
     //       - add support for user defined operators (only for non-int based values)
     //       - merge all files passed
+    //       - add calls
 
     const string test = @"
 
 func add(a: u8, b: u8): u8 { a + b }
 
 func main() {
+  const add = add(1, 2)
 }
 
 ";

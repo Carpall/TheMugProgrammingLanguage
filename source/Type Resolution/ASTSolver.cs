@@ -51,11 +51,12 @@ namespace Mug.TypeResolution
 
         public NamespaceNode Solve()
         {
+            var errorsnumber = Tower.Diagnostic.Count;
             Tower.TypeInstaller.Declare();
 
             WalkTypes();
 
-            Tower.CheckDiagnostic();
+            Tower.CheckDiagnostic(errorsnumber);
             return Tower.AST;
         }
     }
