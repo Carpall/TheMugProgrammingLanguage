@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Mug.Models.Generator.IR.Builder
 {
-    internal class MIRModuleBuilder
+    public class MIRModuleBuilder
     {
         private readonly List<MIRFunction> _functions = new();
 

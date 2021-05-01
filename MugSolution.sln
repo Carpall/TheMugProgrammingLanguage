@@ -7,6 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mug", "source\Mug.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MugTests", "tests\MugTests\MugTests.csproj", "{9EC2CE01-CAAC-4A45-AB6F-89D6EBE25097}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EB65E52F-0250-4B07-A2EE-3F15EED165BA}"
+	ProjectSection(SolutionItems) = preProject
+		tests\main_test.mug = tests\main_test.mug
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

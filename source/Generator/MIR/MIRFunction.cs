@@ -24,6 +24,11 @@ namespace Mug.Models.Generator.IR
             Allocations = allocations;
         }
 
+        public string GetOverloadName()
+        {
+            return $"{ReturnType}__{Name}__{string.Join("_", ParameterTypes)}";
+        }
+
         public override string ToString()
         {
             var locals = new StringBuilder();

@@ -13,10 +13,9 @@ namespace Mug.Compilation
     public class CompilationUnit : MugComponent
     {
         public static readonly string[] AllowedExtensions = new[] { ".mug" };
-        internal const string MainFileName = "main.mug";
 
         public bool FailedOpeningPath { get; } = false;
-        private readonly string[] _paths;
+        public string[] Paths { get; }
 
         private static string ClangFilename
         {
@@ -29,41 +28,9 @@ namespace Mug.Compilation
             }
         }
 
-        private void InitializeLexer(string moduleName, string source)
+        public CompilationUnit(string outputFilename, params string[] paths) : base(new(outputFilename))
         {
-            Tower.ModuleName = moduleName;
-            Tower.Lexer = new MugLexer(moduleName, source, Tower);
-        }
-
-        public CompilationUnit(string moduleName, string source) : base(new(null))
-        {
-            InitializeLexer(moduleName, source);
-        }
-
-        public CompilationUnit(object filenames) : base(new(null))
-        {
-            if (filenames is string s)
-                InitializeLexer(Path.GetFileName(s), File.ReadAllText(s));
-            else if (filenames is string[] a)
-                _paths = a;
-            else
-                CompilationTower.Throw($"Internal error: unable to construct CompilationUnit with {filenames.GetType()}");
-        }
-
-        public CompilationUnit(string path, bool throwerror) : base(new(path))
-        {
-            if (!File.Exists(path))
-            {
-                if (throwerror)
-                    CompilationTower.Throw($"Unable to open path: '{path}'");
-
-                FailedOpeningPath = true;
-            }
-            else
-            {
-                CompilationTower.Todo("fix compilation unit");
-                // IRGenerator = new(path, File.ReadAllText(path), isMainModule);
-            }
+            Paths = paths;
         }
 
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
@@ -150,44 +117,26 @@ namespace Mug.Compilation
             }
         }*/
 
-        private void Parse()
+        public void GenerateAST()
         {
-            if (_paths is not null)
-                GeneratePaths();
-            else
-                Tower.Parser.Parse();
-        }
-
-        public NamespaceNode GenerateAST()
-        {
-            Tower.Lexer.Tokenize();
-            Parse();
-
-            return Tower.Parser.Module;
-        }
-
-        private void GeneratePaths()
-        {
-            var head = new NamespaceNode()
+            foreach (var path in Paths)
             {
-                Name = Token.NewInfo(TokenKind.ConstantString, Path.GetFileName(Environment.CurrentDirectory)),
-                Members = new()
-            };
+                if (!File.Exists(path))
+                    CompilationTower.Throw($"Invalid path '{path}'");
 
-            foreach (var path in _paths)
-            {
                 // only mug files
                 if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
-                var unit = new CompilationUnit(path/*, Path.GetFileName(path) == MainFileName*/, true);
-                head.Members.Nodes.AddRange(((NamespaceNode)unit.GenerateAST()).Members.Nodes);
-            }
+                var subtower = new CompilationTower(path);
+                (subtower.Lexer = new MugLexer(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
 
-            CompilationTower.Todo("fix generatepaths()");
-            /*IRGenerator._isMainModule = true;
-            IRGenerator.Parser.Module = head;
-            IRGenerator.Parser.Lexer = new MugLexer(head.Name.Value, "");*/
+                var head = subtower.Parser.Parse();
+
+                Tower.Types.AddRange(subtower.Types);
+                Tower.Parser.Module.Members.Nodes.AddRange(head.Members.Nodes);
+                Tower.Diagnostic.AddRange(subtower.Diagnostic);
+            }
         }
 
         public NamespaceNode GenerateTAST()

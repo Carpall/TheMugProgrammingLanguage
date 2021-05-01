@@ -1,4 +1,5 @@
 ﻿using Mug.Models.Lexer;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.Compilation
@@ -34,6 +35,11 @@ namespace Mug.Compilation
         public List<MugError> GetErrors()
         {
             return _diagnostic;
+        }
+
+        internal void AddRange(Diagnostic diagnostic)
+        {
+            _diagnostic.AddRange(diagnostic._diagnostic);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Mug.Models.Generator
 {
     public class MIRGenerator : MugComponent
     {
-        internal MIRModuleBuilder Module { get; } = new();
+        public MIRModuleBuilder Module { get; } = new();
 
         private MIRFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
@@ -290,12 +290,14 @@ namespace Mug.Models.Generator
             var rightsolved = expected.SolvedType.Value;
             var leftsolved = gottype.SolvedType.Value;
 
-            if (rightsolved.Kind != leftsolved.Kind ||
+            if (rightsolved.Kind != leftsolved.Kind || rightsolved.Base is not null && !rightsolved.Base.Equals(leftsolved.Base))
+                Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
+            /*if (rightsolved.Kind != leftsolved.Kind ||
                 (rightsolved.IsStruct() && rightsolved.GetStruct().Type.Name != leftsolved.GetStruct().Type.Name))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
             else if (rightsolved.IsArray() ||
                 (rightsolved.Kind == TypeKind.Pointer || rightsolved.Kind == TypeKind.Reference))
-                FixAndCheckTypes(rightsolved.GetBaseElementType(), leftsolved.GetBaseElementType(), position);
+                FixAndCheckTypes(rightsolved.GetBaseElementType(), leftsolved.GetBaseElementType(), position);*/
         }
 
         private static MugType FixType(MugType type, MugType expressiontype)

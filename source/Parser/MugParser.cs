@@ -1460,7 +1460,7 @@ namespace Mug.Models.Parser
             if (Match(TokenKind.EOF))
                 return Module;
 
-            Module.Name = Token.NewInfo(TokenKind.Identifier, Tower.ModuleName);
+            Module.Name = Token.NewInfo(TokenKind.Identifier, Tower.OutputFilename);
 
             // search for members
             Module.Members = ExpectNamespaceMembers();

@@ -22,15 +22,15 @@ namespace Mug.Compilation
         public MIRGenerator Generator { get; }
         public SymbolTable Symbols { get; }
         public List<MugType> Types { get; }
-        public string ModuleName { get; internal set; }
+        public string OutputFilename { get; internal set; }
         public LLVMModuleRef LLVMModule { get; internal set; }
 
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
 
-        public CompilationTower(string modulename)
+        public CompilationTower(string outputFilename)
         {
-            ModuleName = modulename;
+            OutputFilename = outputFilename;
             Parser = new(this);
             Solver = new(this);
             TypeInstaller = new(this);
