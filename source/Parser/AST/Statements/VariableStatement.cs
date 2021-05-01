@@ -17,5 +17,6 @@ namespace Mug.Models.Parser.AST.Statements
         }
         public INode Body { get; set; }
         public ModulePosition Position { get; set; }
+        public bool IsConst { get; set; }
     }
 }

@@ -15,17 +15,22 @@ namespace Mug.Models.Generator.IR
         Constant,
         StaticMemoryAddress,
         Load,
-        StoreLocal,
-        StoreField,
         Dupplicate,
         LoadZeroinitialized,
+        LoadLocal,
+        StoreLocal,
         LoadField,
-        LoadLocal
+        StoreField,
+        Comment,
+        Div,
+        Add,
+        Sub,
+        Mul,
     }
 
     public struct MIRValue
     {
-        public MIRValueKind Kind { get; }
+        public MIRValueKind Kind { get; internal set; }
         public MIRType? Type { get; }
         public object Value { get; }
 
@@ -51,7 +56,10 @@ namespace Mug.Models.Generator.IR
 
         public override string ToString()
         {
-            return $"{Kind} => ({Value ?? "_"}{(Type.HasValue ? $" {Type}" : "")})";
+            if (Kind == MIRValueKind.Comment)
+                return Value is not null ? $"~ {Value}" : "";
+
+            return $"{Kind}: ({(Type.HasValue ? $"{Type} " : "")}{Value ?? "_"})";
         }
     }
 }

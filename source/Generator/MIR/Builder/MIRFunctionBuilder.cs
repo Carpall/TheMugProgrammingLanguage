@@ -32,19 +32,24 @@ namespace Mug.Models.Generator.IR.Builder
             _allocations.Add(type);
         }
 
+        public void EmitInstruction(MIRValue instruction)
+        {
+            _body.Add(instruction);
+        }
+
         public void EmitInstruction(MIRValueKind kind, MIRValue value)
         {
-            _body.Add(new(kind, value.Type, value));
+            EmitInstruction(new MIRValue(kind, value.Type, value));
         }
 
         public void EmitInstruction(MIRValueKind kind)
         {
-            _body.Add(new(kind));
+            EmitInstruction(new MIRValue(kind));
         }
 
         public void EmitInstruction(MIRValueKind kind, MIRType type)
         {
-            _body.Add(new(kind, type));
+            EmitInstruction(new MIRValue(kind, type));
         }
 
         public void EmitLoadConstantValue(MIRValue constantvalue)
@@ -85,6 +90,40 @@ namespace Mug.Models.Generator.IR.Builder
         public void EmitLoadField(MIRValue fieldaddress)
         {
             EmitInstruction(MIRValueKind.LoadField, fieldaddress);
+        }
+
+        public MIRValue PopLastInstruction()
+        {
+            var value = _body[^1];
+            _body.RemoveAt(_body.Count - 1);
+            return value;
+        }
+
+        public void EmitComment(string text, bool first = true)
+        {
+            if (first) EmitComment(null, false);
+            EmitInstruction(new MIRValue(MIRValueKind.Comment, value: text));
+            if (first) EmitComment(null, false);
+        }
+
+        public int CurrentIndex()
+        {
+            return _body.Count;
+        }
+
+        public void MoveLastInstructionTo(int index)
+        {
+            _body.Insert(index, PopLastInstruction());
+        }
+
+        public int GetAllocationNumber()
+        {
+            return _allocations.Count - 1;
+        }
+
+        public void EmitReturn()
+        {
+            EmitInstruction(MIRValueKind.Return);
         }
     }
 }

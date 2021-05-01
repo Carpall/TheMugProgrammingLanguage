@@ -804,36 +804,14 @@ namespace Mug.Models.Parser
         {
             statement = null;
 
-            if (!MatchAdvance(TokenKind.KeyVar))
+            if (!MatchAdvance(TokenKind.KeyVar, out var token) && !MatchAdvance(TokenKind.KeyConst, out token))
                 return false;
 
             var name = Expect("Expected the variable name", TokenKind.Identifier);
             var type = ExpectVariableType();
             INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : null;
 
-            statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type };
-
-            return true;
-        }
-
-        private bool ConstantDefinition(out INode statement)
-        {
-            statement = null;
-
-            if (!MatchAdvance(TokenKind.KeyConst))
-                return false;
-
-            var name = Expect("Expected the constant name", TokenKind.Identifier);
-            var type = ExpectVariableType();
-
-            if (!MatchAdvance(TokenKind.Equal))
-            {
-                Report(name.Position, "A constant cannot be declared without a body");
-                return true;
-            }
-
-            var body = ExpectExpression(true);
-            statement = new ConstantStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type };
+            statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type, IsConst = token.Kind == TokenKind.KeyConst };
 
             return true;
         }
@@ -1015,7 +993,6 @@ namespace Mug.Models.Parser
         {
             if (!VariableDefinition(out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;
-                !ConstantDefinition(out statement) && // const x = value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
                 statement = ExpectExpression(true);

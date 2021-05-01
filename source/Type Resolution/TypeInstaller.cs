@@ -26,31 +26,32 @@ namespace Mug.TypeResolution
         private void CheckFunc(ParameterListNode parameters, List<Token> generics, Pragmas pragmas)
         {
             var declared = new string[parameters.Length];
-            int i;
-
-            for (i = 0; i < parameters.Length; i++)
-                CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "field");
+            
+            for (int i = 0; i < parameters.Length; i++)
+                CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "Parameter");
 
             declared = new string[generics.Count];
-
-            for (i = 0; i < generics.Count; i++)
-                CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "generic parameter");
+            CheckGenericParameters(generics, ref declared);
 
             // todo: check pragmas
+        }
+
+        private void CheckGenericParameters(List<Token> generics, ref string[] declared)
+        {
+            for (int i = 0; i < generics.Count; i++)
+                CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "Generic parameter");
         }
 
         private void CheckType(List<FieldNode> body, List<Token> generics, Pragmas pragmas)
         {
             var declared = new string[body.Count];
-            int i;
 
-            for (i = 0; i < body.Count; i++)
-                CheckSingleDeclaration(body[i].Position, ref declared, i, body[i].Name, "field");
+            for (int i = 0; i < body.Count; i++)
+                CheckSingleDeclaration(body[i].Position, ref declared, i, body[i].Name, "Field");
 
             declared = new string[generics.Count];
 
-            for (i = 0; i < generics.Count; i++)
-                CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "generic parameter");
+            CheckGenericParameters(generics, ref declared);
 
             // todo: check pragmas
         }
@@ -58,7 +59,7 @@ namespace Mug.TypeResolution
         private void CheckSingleDeclaration(ModulePosition position, ref string[] declared, int i, string name, string kind)
         {
             if (declared.Contains(name))
-                Tower.Report(position, $"'{name}' {kind} is declared multiple times");
+                Tower.Report(position, $"{kind} '{name}' is declared multiple times");
 
             declared[i] = name;
         }

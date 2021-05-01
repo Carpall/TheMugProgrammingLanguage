@@ -20,8 +20,11 @@ namespace Mug.Models.Generator
 
         private MIRFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
-        private VirtualMemory VirtualMemory { get; } = new();
+        private VirtualMemory VirtualMemory { get; set; }
         private Stack<MugType> ContextTypes { get; set; } = new();
+        
+        private MugType ContextType => ContextTypes.Peek();
+        private Scope CurrentScope = default;
 
         public MIRGenerator(CompilationTower tower) : base(tower)
         {
@@ -63,7 +66,7 @@ namespace Mug.Models.Generator
                     break;
                 case TypeKind.String:
                     break;
-                case TypeKind.Undefined:  
+                case TypeKind.Undefined:
                     break;
                 case TypeKind.Unknown:
                     break;
@@ -93,15 +96,15 @@ namespace Mug.Models.Generator
         {
             return kind switch
             {
-                TypeKind.Char or TypeKind.Bool or TypeKind.UInt8 => MIRTypeKind.Int8,
+                TypeKind.Char or TypeKind.Bool or TypeKind.UInt8 => MIRTypeKind.UInt8,
                 TypeKind.Int32 => MIRTypeKind.Int32,
                 TypeKind.UInt32 => MIRTypeKind.UInt32,
                 TypeKind.Int64 => MIRTypeKind.Int64,
                 TypeKind.UInt64 => MIRTypeKind.UInt64,
-                TypeKind.Void => MIRTypeKind.Void,
                 TypeKind.Float32 => MIRTypeKind.Float32,
                 TypeKind.Float64 => MIRTypeKind.Float64,
-                TypeKind.Float128 => MIRTypeKind.Float128
+                TypeKind.Float128 => MIRTypeKind.Float128,
+                TypeKind.Void or _ => MIRTypeKind.Void,
             };
         }
 
@@ -117,98 +120,193 @@ namespace Mug.Models.Generator
 
         private void GenerateFunctionBlock(BlockNode block)
         {
-            foreach (var statement in block.Statements)
-                RecognizeStatement(statement);
+            for (int i = 0; i < block.Statements.Count; i++)
+            {
+                var statement = block.Statements[i];
+                FunctionBuilder.EmitComment($"node: {statement.NodeKind}");
+                RecognizeStatement(statement, i == block.Statements.Count - 1);
+            }
         }
 
-        private void RecognizeStatement(INode opaque)
+        private void RecognizeStatement(INode opaque, bool isLastNodeOfBlock)
         {
             switch (opaque)
             {
                 case VariableStatement statement:
-                    GenerateVarStatement(statement);
+                    GenerateVarStatement(statement, statement.IsConst);
                     break;
                 case AssignmentStatement statement:
                     GenerateAssignmentStatement(statement);
                     break;
+                case ReturnStatement statement:
+                    GenerateReturnStatement(statement);
+                    break;
                 default:
-                    CompilationTower.Todo($"implement {opaque} in MIRGenerator.RecognizeStatement");
+                    if (!isLastNodeOfBlock)
+                        Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
+                    else
+                        EvaluateExpressionInHiddenBuffer(opaque);
                     break;
             }
         }
 
+        private void EvaluateExpressionInHiddenBuffer(INode expression)
+        {
+            if (CurrentScope.IsInFunctionBlock)
+            {
+                ContextTypes.Push(CurrentFunction.ReturnType);
+                FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
+                FunctionBuilder.EmitReturn();
+            }
+            else
+            {
+                if (CurrentScope.HiddenAllocationBuffer is null)
+                    ContextTypesPushAuto();
+                else
+                    ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
+
+                var allocation = TryAllocateHiddenBuffer(EvaluateExpression(expression));
+                FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
+
+                FunctionBuilder.EmitStoreLocal(
+                    MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
+            }
+        }
+
+        private AllocationData TryAllocateHiddenBuffer(MugType type)
+        {
+            if (CurrentScope.HiddenAllocationBuffer is null)
+            {
+                FunctionBuilder.DeclareAllocation(LowerType(type));
+                CurrentScope.HiddenAllocationBuffer = new(FunctionBuilder.GetAllocationNumber(), type, false);
+            }
+
+            return CurrentScope.HiddenAllocationBuffer;
+        }
+
+        private void GenerateReturnStatement(ReturnStatement statement)
+        {
+            if (statement.IsVoid())
+                FixAndCheckTypes(CurrentFunction.ReturnType, MugType.Void, statement.Position);
+            else
+            {
+                ContextTypes.Push(CurrentFunction.ReturnType);
+                FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(statement.Body), statement.Body.Position);
+                ContextTypes.Pop();
+            }
+
+            FunctionBuilder.EmitReturn();
+        }
+
         private void GenerateAssignmentStatement(AssignmentStatement statement)
         {
-            /*ContextTypesPushPlaceholder();
+            ContextTypesPushAuto();
 
-            var variable = EvaluateExpression(statement.Name);
+            var variable = EvaluateExpression(statement.Name, true);
 
             ContextTypes.Pop();
 
-            if (FunctionBuilder.LastInstruction().ParameterValue.Kind != MIRValueKind.StaticMemoryAddress)
-                Tower.Report(statement.Name.Position, $"Invalid left side of assignment");
+            var instruction = FunctionBuilder.PopLastInstruction();
+
+            if (instruction.ParameterValue.Kind != MIRValueKind.StaticMemoryAddress)
+                Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
 
             ContextTypes.Push(variable);
 
             var expressiontype = EvaluateExpression(statement.Body);
 
-            CheckTypes(variable, expressiontype, statement.Body.Position);
+            FixAndCheckTypes(variable, expressiontype, statement.Body.Position);
 
-            ContextTypes.Pop();*/
+            ContextTypes.Pop();
+
+            instruction.Kind = GetLeftExpressionInstruction(instruction.Kind);
+            FunctionBuilder.EmitInstruction(instruction);
         }
 
-        private void ContextTypesPushPlaceholder()
+        private void ContextTypesPushAuto()
         {
-            ContextTypes.Push(MugType.Solved(SolvedType.Primitive(TypeKind.Void)));
+            ContextTypes.Push(MugType.Solved(SolvedType.Primitive(TypeKind.Auto)));
         }
 
-        private void GenerateVarStatement(VariableStatement statement)
+        private static MIRValueKind GetLeftExpressionInstruction(MIRValueKind kind)
+        {
+            return kind + 1;
+        }
+
+        private void GenerateVarStatement(VariableStatement statement, bool isconst)
         {
             ContextTypes.Push(statement.Type);
 
-            var expressiontype = EvaluateExpression(statement.Body);
-            var allocation = DeclareVirtualMemorySymbol(statement.Name, FixAuto(statement.Type, expressiontype), statement.Position);
+            if (!statement.IsAssigned)
+            {
+                if (isconst)
+                    Tower.Report(statement.Position, "A constant declaration requires a body");
 
-            CheckTypes(statement.Type, expressiontype, statement.Body.Position);
+                if (statement.Type.SolvedType.Value.Kind == TypeKind.Auto)
+                    Tower.Report(statement.Position, "Type notation needed");
+            }
+
+            var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type) : statement.Body);
+
+            FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
+            var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, isconst);
 
             FunctionBuilder.EmitStoreLocal(allocation);
 
             ContextTypes.Pop();
         }
 
-        private void CheckTypes(MugType expected, MugType gottype, ModulePosition position)
+        private INode GetDefaultValueOf(MugType type)
         {
+            return null;
+        }
+
+        private void FixAndCheckTypes(MugType expected, MugType gottype, ModulePosition position)
+        {
+            FixType(expected, gottype);
+
             var rightsolved = expected.SolvedType.Value;
             var leftsolved = gottype.SolvedType.Value;
 
-            if (rightsolved.Kind != leftsolved.Kind)
+            if (rightsolved.Kind != leftsolved.Kind ||
+                (rightsolved.IsStruct() && rightsolved.GetStruct().Type.Name != leftsolved.GetStruct().Type.Name))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
+            else if (rightsolved.IsArray() ||
+                (rightsolved.Kind == TypeKind.Pointer || rightsolved.Kind == TypeKind.Reference))
+                FixAndCheckTypes(rightsolved.GetBaseElementType(), leftsolved.GetBaseElementType(), position);
         }
 
-        private static MugType FixAuto(MugType type, MugType expressiontype)
+        private static MugType FixType(MugType type, MugType expressiontype)
         {
-            if (type.SolvedType.Value.Kind == TypeKind.Auto)
-                type.Solve(expressiontype.SolvedType.Value);
+            type.Solve((type.SolvedType.Value.Kind switch
+            {
+                TypeKind.Undefined or
+                TypeKind.Auto => expressiontype.SolvedType,
+                _ => type.SolvedType,
+            }).Value);
 
             return type;
         }
 
-        private MugType EvaluateExpression(INode body)
+        private MugType EvaluateExpression(INode body, bool shouldBeLeftValue = false)
         {
-            MugType type = null;
+            MugType type = MugType.Undefined;
 
             switch (body)
             {
                 case Token expression:
                     type = expression.Kind == TokenKind.Identifier ?
-                        EvaluateIdentifier(expression.Value, expression.Position) :
+                        EvaluateIdentifier(expression.Value, expression.Position, shouldBeLeftValue) :
                         EvaluateConstant(expression);
                     break;
                 case TypeAllocationNode expression:
                     type = EvaluateTypeAllocationNode(expression);
                     break;
                 case MemberNode expression:
-                    type = EvaluateMemberNode(expression);
+                    type = EvaluateMemberNode(expression, shouldBeLeftValue);
+                    break;
+                case BinaryExpressionNode expression:
+                    type = EvaluateBinaryExpression(expression);
                     break;
                 default:
                     CompilationTower.Todo($"implement {body} in MIRGenerator.EvaluateExpression");
@@ -218,11 +316,107 @@ namespace Mug.Models.Generator
             return type;
         }
 
-        private MugType EvaluateMemberNode(MemberNode expression)
+        private MugType EvaluateBinaryExpression(BinaryExpressionNode expression)
         {
-            var basetype = EvaluateExpression(expression.Base);
+            var leftisconstant = IsConstantInt(expression.Left);
+            var rightisconstant = IsConstantInt(expression.Right);
+            MugType type;
+
+            // make it better
+            if (leftisconstant & rightisconstant)
+            {
+                var constant = MIRValue.Constant(
+                    LowerType(type = CoercedOr(MugType.Int32)),
+                    ulong.Parse(FoldConstantIntoToken(expression).Value));
+
+                FunctionBuilder.EmitLoadConstantValue(constant);
+            }
+            else
+            {
+                if (leftisconstant)
+                {
+                    var index = FunctionBuilder.CurrentIndex();
+                    var left = FoldConstantIntoToken(expression.Left);
+                    FunctionBuilder.EmitLoadConstantValue(
+                        MIRValue.Constant(
+                            LowerType(type = EvaluateExpression(expression.Right)),
+                            ulong.Parse(left.Value)));
+
+                    FunctionBuilder.MoveLastInstructionTo(index);
+                }
+                else if (rightisconstant)
+                {
+                    var right = FoldConstantIntoToken(expression.Right);
+                    FunctionBuilder.EmitLoadConstantValue(
+                        MIRValue.Constant(LowerType(type = EvaluateExpression(expression.Left)), ulong.Parse(right.Value)));
+                }
+                else
+                {
+                    type = EvaluateExpression(expression.Left);
+                    FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Position);
+                    // allow user defined operators
+                }
+
+                EmitOperation(expression.Operator);
+            }
+
+            return type;
+        }
+
+        private void EmitOperation(TokenKind op)
+        {
+            FunctionBuilder.EmitInstruction(op switch
+            {
+                TokenKind.Plus => MIRValueKind.Add,
+                TokenKind.Minus => MIRValueKind.Sub,
+                TokenKind.Star => MIRValueKind.Mul,
+                TokenKind.Slash => MIRValueKind.Div,
+                _ => throw new()
+            });
+        }
+
+        private Token FoldConstantIntoToken(INode opaque)
+        {
+            // make it better when introduce floating points
+            return opaque switch
+            {
+                Token expression => expression,
+                BinaryExpressionNode expression => new Token(
+                    TokenKind.ConstantDigit,
+                    FoldConstants(
+                        ulong.Parse(FoldConstantIntoToken(expression.Left).Value),
+                        ulong.Parse(FoldConstantIntoToken(expression.Right).Value),
+                        expression.Operator).ToString(), expression.Position, false),
+                _ => Token.NewInfo(TokenKind.Bad, "")
+            };
+        }
+
+        private static ulong FoldConstants(ulong left, ulong right, TokenKind op)
+        {
+            return op switch
+            {
+                TokenKind.Plus => left + right,
+                TokenKind.Minus => left - right,
+                TokenKind.Star => left * right,
+                TokenKind.Slash => left / right,
+            };
+        }
+
+        private bool IsConstantInt(INode node)
+        {
+            return
+                (node is Token token && token.Kind == TokenKind.ConstantDigit) ||
+                (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
+        }
+
+        private MugType EvaluateMemberNode(MemberNode expression, bool shouldBeLeftValue)
+        {
+            var basetype = EvaluateExpression(expression.Base, shouldBeLeftValue);
             if (!basetype.SolvedType.Value.IsNewOperatorAllocable())
+            {
                 Tower.Report(expression.Base.Position, $"Type '{basetype}' is not accessible via operator '.'");
+                return ContextType;
+            }
 
             var structure = basetype.SolvedType.Value.GetStruct();
 
@@ -232,7 +426,7 @@ namespace Mug.Models.Generator
             else
                 FunctionBuilder.EmitLoadField(MIRValue.StaticMemoryAddress(index, LowerType(type)));
 
-            return type;
+            return type ?? ContextType;
         }
 
         private MugType EvaluateTypeAllocationNode(TypeAllocationNode expression)
@@ -273,7 +467,7 @@ namespace Mug.Models.Generator
                 ContextTypes.Push(fieldtype);
 
                 FunctionBuilder.EmitDupplicate();
-                CheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
+                FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
                 FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex, LowerType(fieldtype)));
 
                 ContextTypes.Pop();
@@ -294,15 +488,20 @@ namespace Mug.Models.Generator
             return null;
         }
 
-        private MugType EvaluateIdentifier(string value, ModulePosition position)
+        private MugType EvaluateIdentifier(string value, ModulePosition position, bool isconst)
         {
             if (!VirtualMemory.TryGetValue(value, out var allocation))
             {
-                allocation = new AllocationData(0, MugType.Solved(SolvedType.Primitive(TypeKind.Void)));
+                allocation = new AllocationData(0, MugType.Solved(SolvedType.Primitive(TypeKind.Void)), false);
                 Tower.Report(position, $"Variable '{value}' is not declared");
             }
             else
+            {
+                if (allocation.IsConst && isconst)
+                    Tower.Report(position, "Constant allocation in left side of assignement");
+
                 FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
+            }
 
             return allocation.Type;
         }
@@ -335,10 +534,10 @@ namespace Mug.Models.Generator
             return contexttype.SolvedType.Value.IsInt() ? contexttype : or;
         }
 
-        private MIRValue DeclareVirtualMemorySymbol(string name, MugType type, ModulePosition position)
+        private MIRValue DeclareVirtualMemorySymbol(string name, MugType type, ModulePosition position, bool isconst)
         {
             var localindex = VirtualMemory.Count;
-            if (!VirtualMemory.TryAdd(name, new(localindex, type)))
+            if (!VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
                 Tower.Report(position, $"Variable '{name}' is already declared");
 
             var mirtype = LowerType(type);
@@ -351,12 +550,20 @@ namespace Mug.Models.Generator
         private void GenerateFunction(FunctionStatement func)
         {
             FunctionBuilder = new MIRFunctionBuilder(func.Name, LowerType(func.ReturnType), LowerParameterTypes(func.ParameterList));
-
             CurrentFunction = func;
+            CurrentScope = new(FunctionBuilder, null, true);
+            VirtualMemory = new();
 
+            AllocateParameters(func.ParameterList);
             GenerateFunctionBlock(func.Body);
 
             Module.Define(FunctionBuilder.Build());
+        }
+
+        private void AllocateParameters(ParameterListNode parameters)
+        {
+            foreach (var parameter in parameters.Parameters)
+                DeclareVirtualMemorySymbol(parameter.Name, parameter.Type, parameter.Position, false);
         }
 
         private void WalkDeclarations()

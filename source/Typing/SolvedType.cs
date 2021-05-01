@@ -21,7 +21,7 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
         }
 
-        public static SolvedType WithBase(TypeKind kind, SolvedType baseElementType)
+        public static SolvedType WithBase(TypeKind kind, MugType baseElementType)
         {
             return new SolvedType { Kind = kind, Base = baseElementType };
         }
@@ -31,14 +31,13 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = kind };
         }
 
-        public static SolvedType EnumError(SolvedType errorType, SolvedType successType)
+        public static SolvedType EnumError(MugType errorType, MugType successType)
         {
             return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
         }
 
         public StructSymbol GetStruct()
         {
-            Debug.Assert(IsStruct());
             return Base as StructSymbol;
         }
 
@@ -47,10 +46,9 @@ namespace Mug.TypeSystem
             return Kind == TypeKind.DefinedType;
         }
 
-        public SolvedType GetArrayBaseElementType()
+        public MugType GetBaseElementType()
         {
-            Debug.Assert(IsArray());
-            return (SolvedType)Base;
+            return (MugType)Base;
         }
 
         public bool IsArray()
@@ -58,9 +56,9 @@ namespace Mug.TypeSystem
             return Kind == TypeKind.Array;
         }
 
-        public (SolvedType ErrorType, SolvedType SuccessType) GetEnumError()
+        public (MugType ErrorType, MugType SuccessType) GetEnumError()
         {
-            return ((SolvedType, SolvedType))Base;
+            return ((MugType, MugType))Base;
         }
 
         public override string ToString()

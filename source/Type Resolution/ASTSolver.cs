@@ -29,11 +29,11 @@ namespace Mug.TypeResolution
             return unsolvedtype.Kind switch
             {
                 TypeKind.Array or
-                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, ResolveType(unsolvedtype.BaseType as MugType)),
+                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, MugType.Solved(ResolveType(unsolvedtype.BaseType as MugType))),
 
                 TypeKind.EnumError => SolvedType.EnumError(
-                    ResolveType(unsolvedtype.GetEnumError().ErrorType),
-                    ResolveType(unsolvedtype.GetEnumError().SuccessType)),
+                    MugType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
+                    MugType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
 
                 TypeKind.DefinedType => SolvedType.Struct(
                     Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position)),

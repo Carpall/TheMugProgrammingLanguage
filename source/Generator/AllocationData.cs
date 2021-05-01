@@ -8,5 +8,5 @@ using System.Threading.Tasks;
 
 namespace Mug.Models.Generator
 {
-    public record AllocationData(int StackIndex, MugType Type);
+    public record AllocationData(int StackIndex, MugType Type, bool IsConst);
 }

@@ -1,6 +1,9 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Parser;
 using System;
+using System.Collections.Immutable;
+using System.IO;
+using System.Reflection.PortableExecutable;
 using System.Text;
 
 try
@@ -11,19 +14,22 @@ try
     // todo: - check type recursion
     //       - add function overloading
     //       - add default values
+    //       - add support for user defined operators (only for non-int based values)
+    //       - merge all files passed
 
     const string test = @"
+
+func add(a: u8, b: u8): u8 { a + b }
 
 type A { a: i32 }
 
 func main() {
-  // var a = 10
-  // a = 10
-  var a = new A { a: 10 }
+  const a = new A { }
+  a.a = 10
 }
 
 ";
-    
+
     var unit = new CompilationUnit(@"test.mug", test);
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
