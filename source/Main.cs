@@ -21,11 +21,7 @@ try
 
 func add(a: u8, b: u8): u8 { a + b }
 
-type A { a: i32 }
-
 func main() {
-  const a = new A { }
-  a.a = 10
 }
 
 ";

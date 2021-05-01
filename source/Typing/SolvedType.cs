@@ -72,9 +72,12 @@ namespace Mug.TypeSystem
         public bool IsInt()
         {
             return
+                Kind == TypeKind.Int8 ||
+                Kind == TypeKind.Int16 ||
                 Kind == TypeKind.Int32 ||
                 Kind == TypeKind.Int64 ||
                 Kind == TypeKind.UInt8 ||
+                Kind == TypeKind.UInt16 ||
                 Kind == TypeKind.UInt32 ||
                 Kind == TypeKind.UInt64;
         }

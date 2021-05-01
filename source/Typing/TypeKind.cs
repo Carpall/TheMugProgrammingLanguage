@@ -27,6 +27,9 @@ namespace Mug.TypeSystem
         Float32,
         Float64,
         Float128,
-        Err
+        Err,
+        Int8,
+        Int16,
+        UInt16
     }
 }

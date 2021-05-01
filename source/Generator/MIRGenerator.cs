@@ -25,6 +25,7 @@ namespace Mug.Models.Generator
         
         private MugType ContextType => ContextTypes.Peek();
         private Scope CurrentScope = default;
+        private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
 
         public MIRGenerator(CompilationTower tower) : base(tower)
         {
@@ -49,9 +50,12 @@ namespace Mug.Models.Generator
                 case TypeKind.Pointer:
                     return new MIRType(MIRTypeKind.Pointer, LowerType(solved.Base as MugType));
                 case TypeKind.Char:
+                case TypeKind.Int8:
+                case TypeKind.Int16:
                 case TypeKind.Int32:
                 case TypeKind.Int64:
                 case TypeKind.UInt8:
+                case TypeKind.UInt16:
                 case TypeKind.UInt32:
                 case TypeKind.UInt64:
                 case TypeKind.Bool:
@@ -97,9 +101,12 @@ namespace Mug.Models.Generator
             return kind switch
             {
                 TypeKind.Char or TypeKind.Bool or TypeKind.UInt8 => MIRTypeKind.UInt8,
+                TypeKind.Int8 => MIRTypeKind.Int8,
+                TypeKind.Int16 => MIRTypeKind.Int16,
                 TypeKind.Int32 => MIRTypeKind.Int32,
-                TypeKind.UInt32 => MIRTypeKind.UInt32,
                 TypeKind.Int64 => MIRTypeKind.Int64,
+                TypeKind.UInt16 => MIRTypeKind.UInt16,
+                TypeKind.UInt32 => MIRTypeKind.UInt32,
                 TypeKind.UInt64 => MIRTypeKind.UInt64,
                 TypeKind.Float32 => MIRTypeKind.Float32,
                 TypeKind.Float64 => MIRTypeKind.Float64,
@@ -201,9 +208,11 @@ namespace Mug.Models.Generator
         private void GenerateAssignmentStatement(AssignmentStatement statement)
         {
             ContextTypesPushAuto();
+            SetLeftValueChecker(statement.Position);
 
-            var variable = EvaluateExpression(statement.Name, true);
+            var variable = EvaluateExpression(statement.Name);
 
+            CleanLeftValueChecker();
             ContextTypes.Pop();
 
             var instruction = FunctionBuilder.PopLastInstruction();
@@ -221,6 +230,17 @@ namespace Mug.Models.Generator
 
             instruction.Kind = GetLeftExpressionInstruction(instruction.Kind);
             FunctionBuilder.EmitInstruction(instruction);
+        }
+
+        private void CleanLeftValueChecker()
+        {
+            LeftValueChecker.IsLeftValue = false;
+        }
+
+        private void SetLeftValueChecker(ModulePosition position)
+        {
+            LeftValueChecker.IsLeftValue = true;
+            LeftValueChecker.Position = position;
         }
 
         private void ContextTypesPushAuto()
@@ -288,7 +308,7 @@ namespace Mug.Models.Generator
             return type;
         }
 
-        private MugType EvaluateExpression(INode body, bool shouldBeLeftValue = false)
+        private MugType EvaluateExpression(INode body)
         {
             MugType type = MugType.Undefined;
 
@@ -296,14 +316,14 @@ namespace Mug.Models.Generator
             {
                 case Token expression:
                     type = expression.Kind == TokenKind.Identifier ?
-                        EvaluateIdentifier(expression.Value, expression.Position, shouldBeLeftValue) :
+                        EvaluateIdentifier(expression.Value, expression.Position) :
                         EvaluateConstant(expression);
                     break;
                 case TypeAllocationNode expression:
                     type = EvaluateTypeAllocationNode(expression);
                     break;
                 case MemberNode expression:
-                    type = EvaluateMemberNode(expression, shouldBeLeftValue);
+                    type = EvaluateMemberNode(expression);
                     break;
                 case BinaryExpressionNode expression:
                     type = EvaluateBinaryExpression(expression);
@@ -409,9 +429,9 @@ namespace Mug.Models.Generator
                 (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
         }
 
-        private MugType EvaluateMemberNode(MemberNode expression, bool shouldBeLeftValue)
+        private MugType EvaluateMemberNode(MemberNode expression)
         {
-            var basetype = EvaluateExpression(expression.Base, shouldBeLeftValue);
+            var basetype = EvaluateExpression(expression.Base);
             if (!basetype.SolvedType.Value.IsNewOperatorAllocable())
             {
                 Tower.Report(expression.Base.Position, $"Type '{basetype}' is not accessible via operator '.'");
@@ -488,7 +508,7 @@ namespace Mug.Models.Generator
             return null;
         }
 
-        private MugType EvaluateIdentifier(string value, ModulePosition position, bool isconst)
+        private MugType EvaluateIdentifier(string value, ModulePosition position)
         {
             if (!VirtualMemory.TryGetValue(value, out var allocation))
             {
@@ -497,8 +517,8 @@ namespace Mug.Models.Generator
             }
             else
             {
-                if (allocation.IsConst && isconst)
-                    Tower.Report(position, "Constant allocation in left side of assignement");
+                if (allocation.IsConst && LeftValueChecker.IsLeftValue)
+                    Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
 
                 FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
             }

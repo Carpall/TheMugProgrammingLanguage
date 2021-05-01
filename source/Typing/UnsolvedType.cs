@@ -33,21 +33,27 @@ namespace Mug.TypeSystem
         /// </summary>
         public static MugType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
         {
-            return Create(tower, t.Position, t.Value switch
+            TypeKind type = t.Value switch
             {
                 "str" => TypeKind.String,
                 "chr" => TypeKind.Char,
                 "bool" => TypeKind.Bool,
+                "i8" => TypeKind.Int8,
+                "i16" => TypeKind.Int16,
                 "i32" => TypeKind.Int32,
                 "i64" => TypeKind.Int64,
                 "f32" => TypeKind.Float32,
                 "f64" => TypeKind.Float64,
                 "f128" => TypeKind.Float128,
                 "u8" => TypeKind.UInt8,
+                "u16" => TypeKind.UInt16,
+                "u32" => TypeKind.UInt32,
+                "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
                 "unknown" => TypeKind.Unknown,
                 _ => isInEnum && t.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
-            }, t.Value);
+            };
+            return Create(tower, t.Position, type, t.Value);
         }
 
         /// <summary>
@@ -102,12 +108,15 @@ namespace Mug.TypeSystem
                 TypeKind.Char => "chr",
                 TypeKind.DefinedType => basetype.ToString(),
                 // TypeKind.GenericDefinedType => GetGenericStructure().Item1.ToString(),
+                TypeKind.Int8 => "i8",
+                TypeKind.Int16 => "i16",
                 TypeKind.Int32 => "i32",
                 TypeKind.Int64 => "i64",
                 TypeKind.Float32 => "f32",
                 TypeKind.Float64 => "f64",
                 TypeKind.Float128 => "f128",
                 TypeKind.UInt8 => "u8",
+                TypeKind.UInt16 => "u16",
                 TypeKind.UInt32 => "u32",
                 TypeKind.UInt64 => "u64",
                 TypeKind.Unknown => "unknown",
