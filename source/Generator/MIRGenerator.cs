@@ -581,6 +581,7 @@ namespace Mug.Models.Generator
 
             AllocateParameters(func.ParameterList);
             GenerateFunctionBlock(func.Body);
+            FunctionBuilder.EmitOptionalReturnVoid();
 
             Module.Define(FunctionBuilder.Build());
         }

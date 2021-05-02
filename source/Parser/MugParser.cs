@@ -405,7 +405,7 @@ namespace Mug.Models.Parser
 
         private bool CollectBuiltInSymbol()
         {
-            return MatchAdvance(TokenKind.Negation);
+            return MatchAdvance(TokenKind.Negation, true);
         }
 
         private bool MatchCallStatement(out INode e, INode name)
@@ -419,7 +419,7 @@ namespace Mug.Models.Parser
 
             var generics = CollectGenericParameters(ref builtin);
 
-            if (!MatchAdvance(TokenKind.OpenPar))
+            if (!MatchAdvance(TokenKind.OpenPar, true))
             {
                 if (generics.Count > 0)
                     Report("Invalid generic parameters here");

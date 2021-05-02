@@ -125,5 +125,14 @@ namespace Mug.Models.Generator.IR.Builder
         {
             EmitInstruction(MIRValueKind.Return);
         }
+
+        public void EmitOptionalReturnVoid()
+        {
+            if (_returnType.Kind == MIRTypeKind.Void && _body.Count == 0 || _body[^1].Kind != MIRValueKind.Return)
+            {
+                EmitComment("implicit void return");
+                EmitReturn();
+            }
+        }
     }
 }
