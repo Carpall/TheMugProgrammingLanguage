@@ -30,6 +30,7 @@ namespace Mug.TypeSystem
         Err,
         Int8,
         Int16,
-        UInt16
+        UInt16,
+        Option
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Mug.Models.Generator.IR;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace Mug.Models.Generator.IR.Builder
     {
         private readonly List<MIRFunction> _functions = new();
 
-        public void Define(MIRFunction function)
+        public void DefineFunction(MIRFunction function)
         {
             _functions.Add(function);
         }

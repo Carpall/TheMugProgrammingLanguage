@@ -1,3 +1,7 @@
-type A { a: A }
+type A { a: ?A }
+
+func get_a(): ?A {
+  return new A { }
+}
 
 func add(a: i32, b: i32): i32 { a + b }

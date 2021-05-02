@@ -154,13 +154,13 @@ namespace Mug.Models.Parser
                     TypeKind.Array,
                     type);
             }
-            else if (MatchAdvance(TokenKind.Star, out token))
+            else if (MatchAdvance(TokenKind.Star, out token) || MatchAdvance(TokenKind.QuestionMark, out token))
             {
                 var type = ExpectType();
                 return UnsolvedType.Create(
                     Tower,
                     new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Position.Position.End),
-                    TypeKind.Pointer,
+                    token.Kind == TokenKind.Star ? TypeKind.Pointer : TypeKind.Option,
                     type);
             }
 

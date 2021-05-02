@@ -20,6 +20,7 @@ try
     //       - add pragmas' chekers
     //       - add deref statement
     //       - add option type '?type'
+    //       - add support for basewith type in get overload name in mirfunction
 
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 

@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿/*using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
@@ -32,6 +32,11 @@ namespace Mug.Models.Generator.IR
     {
         [JsonIgnore]
         public int ByteSize { get; }
+
+        public string Dump()
+        {
+            return ToString();
+        }
     }
 
     public struct MIRStruct : IMIRTypeBase
@@ -64,6 +69,7 @@ namespace Mug.Models.Generator.IR
     public struct MIRType : IMIRTypeBase
     {
         public MIRTypeKind Kind { get; }
+        [JsonIgnore]
         public IMIRTypeBase Base { get; }
         public int ByteSize => Kind switch
         {
@@ -91,7 +97,8 @@ namespace Mug.Models.Generator.IR
 
         public override string ToString()
         {
-            return $"{Kind}{(Base is not null ? $" -> {Base}" : "")}";
+            return $"{Kind}{(Base is not null ? $" -> {Base.Dump()}" : "")}";
         }
     }
 }
+*/

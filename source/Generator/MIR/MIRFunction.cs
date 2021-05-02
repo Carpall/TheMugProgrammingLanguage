@@ -10,12 +10,12 @@ namespace Mug.Models.Generator.IR
     public struct MIRFunction
     {
         public string Name { get; }
-        public MIRType ReturnType { get; }
-        public MIRType[] ParameterTypes { get; }
+        public MugType ReturnType { get; }
+        public MugType[] ParameterTypes { get; }
         public MIRValue[] Body { get; }
-        public MIRType[] Allocations { get; }
+        public MugType[] Allocations { get; }
 
-        public MIRFunction(string name, MIRType returntype, MIRType[] parametertypes, MIRValue[] body, MIRType[] allocations)
+        public MIRFunction(string name, MugType returntype, MugType[] parametertypes, MIRValue[] body, MugType[] allocations)
         {
             Name = name;
             ReturnType = returntype;
@@ -26,7 +26,7 @@ namespace Mug.Models.Generator.IR
 
         public string GetOverloadName()
         {
-            return $"{ReturnType}__{Name}__{string.Join("_", ParameterTypes)}";
+            return $"{ReturnType}__{Name}__{string.Join<MugType>("_", ParameterTypes)}";
         }
 
         public override string ToString()
@@ -39,7 +39,7 @@ namespace Mug.Models.Generator.IR
             for (int i = 0; i < Allocations.Length; i++)
                 locals.AppendFormat(".[{0}] {1}{2}", i, Allocations[i], i < Allocations.Length - 1 ? "\n    " : "");
 
-            return $@".fn {Name}({string.Join(", ", ParameterTypes)}) {ReturnType}:
+            return $@".fn {Name}({string.Join<MugType>(", ", ParameterTypes)}) {ReturnType}:
   .locals:
     {locals}
 

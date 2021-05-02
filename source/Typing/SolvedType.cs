@@ -12,8 +12,9 @@ namespace Mug.TypeSystem
 {
     public struct SolvedType
     {
-        public TypeKind Kind;
-        internal object Base;
+        public TypeKind Kind { get; set; }
+        [JsonIgnore]
+        public object Base { get; set; }
         public string BaseReppresentation => Base is not null ? Base.ToString() : "";
 
         public static SolvedType Struct(StructSymbol symbol)
@@ -92,6 +93,11 @@ namespace Mug.TypeSystem
         public bool IsPointer()
         {
             return Kind == TypeKind.Pointer;
+        }
+
+        public bool IsVoid()
+        {
+            return Kind == TypeKind.Void;
         }
     }
 }

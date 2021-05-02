@@ -39,7 +39,7 @@ namespace Mug.Models.Generator
             return Module.Build();
         }
 
-        private MIRType LowerType(MugType type)
+        /*private MIRType LowerType(MugType type)
         {
             var solved = type.SolvedType;
 
@@ -67,7 +67,7 @@ namespace Mug.Models.Generator
                     return new MIRType(TypeKindPrimitiveToMIRTypeKind(solved.Kind));
                 case TypeKind.DefinedType:
                     return new MIRType(MIRTypeKind.Struct, new MIRStruct(LowerStructType(solved.GetStruct())));
-                /*case TypeKind.GenericDefinedType:
+                *//*case TypeKind.GenericDefinedType:
                     break;
                 case TypeKind.String:
                     break;
@@ -80,14 +80,14 @@ namespace Mug.Models.Generator
                 case TypeKind.Reference:
                     break;
                 case TypeKind.Err:
-                    break;*/
+                    break;*//*
                 default:
                     CompilationTower.Todo($"implement '{solved.Kind}' in MIRGenerator.LowerType");
                     return default;
             }
-        }
+        }*/
 
-        private MIRType[] LowerStructType(StructSymbol structsymbol)
+        /*private MIRType[] LowerStructType(StructSymbol structsymbol)
         {
             var result = new MIRType[structsymbol.Type.Body.Count];
 
@@ -95,9 +95,9 @@ namespace Mug.Models.Generator
                  result[i] = LowerType(structsymbol.Type.Body[i].Type);
 
             return result;
-        }
+        }*/
 
-        private static MIRTypeKind TypeKindPrimitiveToMIRTypeKind(TypeKind kind)
+        /*private static MIRTypeKind TypeKindPrimitiveToMIRTypeKind(TypeKind kind)
         {
             return kind switch
             {
@@ -114,14 +114,24 @@ namespace Mug.Models.Generator
                 TypeKind.Float128 => MIRTypeKind.Float128,
                 TypeKind.Void or _ => MIRTypeKind.Void,
             };
-        }
+        }*/
 
-        private MIRType[] LowerParameterTypes(ParameterListNode parameters)
+        /*private MIRType[] LowerParameterTypes(ParameterListNode parameters)
         {
             var result = new MIRType[parameters.Length];
 
             for (int i = 0; i < parameters.Length; i++)
                 result[i] = LowerType(parameters.Parameters[i].Type);
+
+            return result;
+        }*/
+
+        private MugType[] GetParameterTypes(ParameterListNode parameters)
+        {
+            var result = new MugType[parameters.Length];
+
+            for (int i = 0; i < parameters.Length; i++)
+                result[i] = parameters.Parameters[i].Type;
 
             return result;
         }
@@ -178,7 +188,7 @@ namespace Mug.Models.Generator
                 FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
 
                 FunctionBuilder.EmitStoreLocal(
-                    MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
+                    MIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
             }
         }
 
@@ -186,7 +196,7 @@ namespace Mug.Models.Generator
         {
             if (CurrentScope.HiddenAllocationBuffer is null)
             {
-                FunctionBuilder.DeclareAllocation(LowerType(type));
+                FunctionBuilder.DeclareAllocation(type);
                 CurrentScope.HiddenAllocationBuffer = new(FunctionBuilder.GetAllocationNumber(), type, false);
             }
 
@@ -339,7 +349,7 @@ namespace Mug.Models.Generator
             if (leftisconstant & rightisconstant)
             {
                 var constant = MIRValue.Constant(
-                    LowerType(type = CoercedOr(MugType.Int32)),
+                    type = CoercedOr(MugType.Int32),
                     ulong.Parse(FoldConstantIntoToken(expression).Value));
 
                 FunctionBuilder.EmitLoadConstantValue(constant);
@@ -352,7 +362,7 @@ namespace Mug.Models.Generator
                     var left = FoldConstantIntoToken(expression.Left);
                     FunctionBuilder.EmitLoadConstantValue(
                         MIRValue.Constant(
-                            LowerType(type = EvaluateExpression(expression.Right)),
+                            type = EvaluateExpression(expression.Right),
                             ulong.Parse(left.Value)));
 
                     FunctionBuilder.MoveLastInstructionTo(index);
@@ -361,7 +371,7 @@ namespace Mug.Models.Generator
                 {
                     var right = FoldConstantIntoToken(expression.Right);
                     FunctionBuilder.EmitLoadConstantValue(
-                        MIRValue.Constant(LowerType(type = EvaluateExpression(expression.Left)), ulong.Parse(right.Value)));
+                        MIRValue.Constant(type = EvaluateExpression(expression.Left), ulong.Parse(right.Value)));
                 }
                 else
                 {
@@ -437,7 +447,7 @@ namespace Mug.Models.Generator
             if (type is null)
                 Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
             else
-                FunctionBuilder.EmitLoadField(MIRValue.StaticMemoryAddress(index, LowerType(type)));
+                FunctionBuilder.EmitLoadField(MIRValue.StaticMemoryAddress(index, type));
 
             return type ?? ContextType;
         }
@@ -456,7 +466,7 @@ namespace Mug.Models.Generator
             var structure = result.Type;
             var assignedFields = new List<string>();
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(LowerType(expression.Name));
+            FunctionBuilder.EmitLoadZeroinitializedStruct(expression.Name);
 
             for (int i = 0; i < expression.Body.Count; i++)
             {
@@ -481,7 +491,7 @@ namespace Mug.Models.Generator
 
                 FunctionBuilder.EmitDupplicate();
                 FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-                FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex, LowerType(fieldtype)));
+                FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex, fieldtype));
 
                 ContextTypes.Pop();
             }
@@ -513,7 +523,7 @@ namespace Mug.Models.Generator
                 if (allocation.IsConst && LeftValueChecker.IsLeftValue)
                     Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
 
-                FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, LowerType(allocation.Type)));
+                FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
             }
 
             return allocation.Type;
@@ -528,7 +538,7 @@ namespace Mug.Models.Generator
             {
                 case TokenKind.ConstantDigit:
                     result = CoercedOr(MugType.Solved(SolvedType.Primitive(TypeKind.Int32)));
-                    value = MIRValue.Constant(LowerType(result), ulong.Parse(expression.Value));
+                    value = MIRValue.Constant(result, ulong.Parse(expression.Value));
                     break;
                 default:
                     CompilationTower.Todo($"implement {expression.Kind} in MIRGenerator.EvaluateConstant");
@@ -553,16 +563,14 @@ namespace Mug.Models.Generator
             if (!VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
                 Tower.Report(position, $"Variable '{name}' is already declared");
 
-            var mirtype = LowerType(type);
+            FunctionBuilder.DeclareAllocation(type);
 
-            FunctionBuilder.DeclareAllocation(mirtype);
-
-            return MIRValue.StaticMemoryAddress(localindex, mirtype);
+            return MIRValue.StaticMemoryAddress(localindex, type);
         }
 
         private void GenerateFunction(FunctionStatement func)
         {
-            FunctionBuilder = new MIRFunctionBuilder(func.Name, LowerType(func.ReturnType), LowerParameterTypes(func.ParameterList));
+            FunctionBuilder = new MIRFunctionBuilder(func.Name, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(FunctionBuilder, null, true);
             VirtualMemory = new();
@@ -571,7 +579,7 @@ namespace Mug.Models.Generator
             GenerateFunctionBlock(func.Body);
             FunctionBuilder.EmitOptionalReturnVoid();
 
-            Module.Define(FunctionBuilder.Build());
+            Module.DefineFunction(FunctionBuilder.Build());
         }
 
         private void AllocateParameters(ParameterListNode parameters)

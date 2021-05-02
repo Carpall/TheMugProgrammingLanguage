@@ -10,12 +10,12 @@ namespace Mug.Models.Generator.IR.Builder
     internal class MIRFunctionBuilder
     {
         private readonly string _name;
-        private readonly MIRType _returnType;
-        private readonly MIRType[] _parameterTypes;
+        private readonly MugType _returnType;
+        private readonly MugType[] _parameterTypes;
         private readonly List<MIRValue> _body = new();
-        private readonly List<MIRType> _allocations = new();
+        private readonly List<MugType> _allocations = new();
 
-        public MIRFunctionBuilder(string name, MIRType returntype, MIRType[] parametertypes)
+        public MIRFunctionBuilder(string name, MugType returntype, MugType[] parametertypes)
         {
             _name = name;
             _returnType = returntype;
@@ -27,7 +27,7 @@ namespace Mug.Models.Generator.IR.Builder
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
         }
 
-        public void DeclareAllocation(MIRType type)
+        public void DeclareAllocation(MugType type)
         {
             _allocations.Add(type);
         }
@@ -47,7 +47,7 @@ namespace Mug.Models.Generator.IR.Builder
             EmitInstruction(new MIRValue(kind));
         }
 
-        public void EmitInstruction(MIRValueKind kind, MIRType type)
+        public void EmitInstruction(MIRValueKind kind, MugType type)
         {
             EmitInstruction(new MIRValue(kind, type));
         }
@@ -62,7 +62,7 @@ namespace Mug.Models.Generator.IR.Builder
             EmitInstruction(MIRValueKind.StoreLocal, localaddress);
         }
 
-        public void EmitLoadZeroinitializedStruct(MIRType type)
+        public void EmitLoadZeroinitializedStruct(MugType type)
         {
             EmitInstruction(MIRValueKind.LoadZeroinitialized, type);
         }
@@ -128,7 +128,7 @@ namespace Mug.Models.Generator.IR.Builder
 
         public void EmitOptionalReturnVoid()
         {
-            if (_returnType.Kind == MIRTypeKind.Void && (_body.Count == 0 || _body[^1].Kind != MIRValueKind.Return))
+            if (_returnType.SolvedType.IsVoid() && (_body.Count == 0 || _body[^1].Kind != MIRValueKind.Return))
             {
                 EmitComment("implicit void return");
                 EmitReturn();

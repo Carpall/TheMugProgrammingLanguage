@@ -29,6 +29,7 @@ namespace Mug.TypeResolution
             return unsolvedtype.Kind switch
             {
                 TypeKind.Array or
+                TypeKind.Option or
                 TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, MugType.Solved(ResolveType(unsolvedtype.BaseType as MugType))),
 
                 TypeKind.EnumError => SolvedType.EnumError(

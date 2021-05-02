@@ -83,6 +83,8 @@ namespace Mug.Models.Lexer
         BooleanGEQ = -20,
         [Description("!")]
         Negation = '!',
+        [Description("?")]
+        QuestionMark = '?',
         [Description("while")]
         KeyWhile = -21,
         [Description("to")]
