@@ -1,4 +1,5 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
@@ -10,7 +11,7 @@ namespace Mug.Models.Parser
         {
             ["inline"    ] = Token.NewInfo(TokenKind.ConstantBoolean, "false"),
             ["header"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
-            ["dynamiclib"] = Token.NewInfo(TokenKind.ConstantString, ""      ),
+            ["dynlib"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["export"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["extern"    ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
             ["code"      ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
@@ -39,13 +40,12 @@ namespace Mug.Models.Parser
             SetWithCheck("extern", symbol);
         }
 
-        public void SetPragma(string pragma, Token value, Action<string> error, ref int currentIndex)
+        public void SetPragma(string pragma, Token value, Action<ModulePosition, string> error, ModulePosition position)
         {
             if (!_table.ContainsKey(pragma))
             {
                 // going back to identifier token id(.)]
-                currentIndex -= 3;
-                error("Unknown pragma");
+                error(position, "Unknown pragma");
             }
 
             _table[pragma] = value;

@@ -7,9 +7,8 @@ using System.Text;
 
 namespace Mug.Models.Lexer
 {
-  public class MugLexer
+    public class MugLexer : MugComponent
     {
-        public MugDiagnostic DiagnosticBag { get; } = new();
         public List<Token> TokenCollection { get; set; }
 
         public readonly string Source;
@@ -48,7 +47,7 @@ namespace Mug.Models.Lexer
 
         public string ModuleRelativePath => Path.GetRelativePath(Environment.CurrentDirectory, ModuleName);
 
-        public MugLexer(string moduleName, string source)
+        public MugLexer(string moduleName, string source, CompilationTower tower) : base(tower)
         {
             ModuleName = moduleName;
             Source = source;
@@ -120,7 +119,7 @@ namespace Mug.Models.Lexer
 
         private T InExpressionError<T>(string error)
         {
-            DiagnosticBag.Report(this, CurrentIndex, error);
+            Tower.Report(this, CurrentIndex, error);
             return default;
         }
 
@@ -257,15 +256,15 @@ namespace Mug.Models.Lexer
 
             //if you found an EOF, throw
             if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '"')
-                this.Throw(CurrentIndex - 1, $"Char has not been correctly enclosed");
+                Tower.Report(this, CurrentIndex - 1, $"Char has not been correctly enclosed");
 
             end++;
 
             //longer than one char
             if (CurrentSymbol.Length > 1)
-                DiagnosticBag.Report(ModPos(start..end), "Too many characters in const char");
+                Tower.Report(ModPos(start..end), "Too many characters in const char");
             else if (CurrentSymbol.Length < 1)
-                DiagnosticBag.Report(ModPos(start..end), "Not enough characters in const char");
+                Tower.Report(ModPos(start..end), "Not enough characters in const char");
 
             //else add closing simbol
             TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), ModPos(start..end), GetEOL()));
@@ -317,7 +316,7 @@ namespace Mug.Models.Lexer
             CurrentSymbol.Clear();
 
             void reportNotCorrectlyEnclosed() {
-                this.Throw(start, $"String has not been correctly enclosed");
+                Tower.Report(this, start, $"String has not been correctly enclosed");
             }
         }
 
@@ -354,17 +353,17 @@ namespace Mug.Models.Lexer
 
             //if you found an EOF, throw
             if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '`')
-                DiagnosticBag.Report(this, CurrentIndex - 1, $"Backtick sequence has not been correctly enclosed");
+                Tower.Report(this, CurrentIndex - 1, $"Backtick sequence has not been correctly enclosed");
 
             var pos = ModPos(start..(end + 1));
 
             if (CurrentSymbol.Length < 1)
-                DiagnosticBag.Report(pos, "Not enough characters in backtick sequence");
+                Tower.Report(pos, "Not enough characters in backtick sequence");
 
             string sequence = CurrentSymbol.ToString();
 
             if (!IsValidBackTickSequence(sequence) && !IsKeyword(sequence))
-                DiagnosticBag.Report(pos, "Invalid backtick sequence");
+                Tower.Report(pos, "Invalid backtick sequence");
 
             //else add closing simbol, removing whitespaces
             TokenCollection.Add(new(TokenKind.Identifier, sequence, pos, GetEOL()));
@@ -374,7 +373,7 @@ namespace Mug.Models.Lexer
         /// <summary>
         /// follows identifier rules
         /// </summary>
-        private bool IsValidIdentifierChar(char current)
+        private static bool IsValidIdentifierChar(char current)
         {
             return char.IsLetter(current) || current == '_';
         }
@@ -382,7 +381,7 @@ namespace Mug.Models.Lexer
         /// <summary>
         /// tests if current is an escaped char or a white space
         /// </summary>
-        private bool IsSkippableControl(char current)
+        private static bool IsSkippableControl(char current)
         {
             return (char.IsControl(current) || char.IsWhiteSpace(current));
         }
@@ -458,7 +457,7 @@ namespace Mug.Models.Lexer
                         goto end;
 
                     if (isfloat)
-                        DiagnosticBag.Report(this, CurrentIndex, "Invalid dot here");
+                        Tower.Report(this, CurrentIndex, "Invalid dot here");
 
                     isfloat = true;
                     CurrentSymbol.Append(',');
@@ -483,7 +482,7 @@ namespace Mug.Models.Lexer
 
             // could overflow
             if (s.Length >= 21)
-                DiagnosticBag.Report(position, "Constant overflow");
+                Tower.Report(position, "Constant overflow");
 
             TokenCollection.Add(new(isfloat ? TokenKind.ConstantFloatDigit : TokenKind.ConstantDigit, s, position, GetEOL()));
             CurrentSymbol.Clear();
@@ -551,11 +550,6 @@ namespace Mug.Models.Lexer
             AddSingle(TokenKind.EOF, "<EOF>");
 
             return TokenCollection;
-        }
-
-        public void CheckDiagnostic()
-        {
-            DiagnosticBag.CheckDiagnostic(this);
         }
     }
 }

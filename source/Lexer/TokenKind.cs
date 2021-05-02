@@ -1,27 +1,30 @@
-﻿using System.ComponentModel;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.ComponentModel;
 
 namespace Mug.Models.Lexer
 {
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum TokenKind
     {
         [Description("bad")]
-        Bad,
+        Bad = -1,
         [Description("ident")]
-        Identifier,
+        Identifier = -2,
         [Description("const string")]
-        ConstantString,
+        ConstantString = -3,
         [Description("const num")]
-        ConstantDigit,
+        ConstantDigit = -4,
         [Description("eof")]
-        EOF,
+        EOF = -5,
         [Description("const char")]
-        ConstantChar,
+        ConstantChar = -6,
         [Description("func")]
-        KeyFunc,
+        KeyFunc = -7,
         [Description("var")]
-        KeyVar,
+        KeyVar = -8,
         [Description("const")]
-        KeyConst,
+        KeyConst = -9,
         [Description("(")]
         OpenPar = '(',
         [Description(")")]
@@ -37,7 +40,7 @@ namespace Mug.Models.Lexer
         [Description("]")]
         CloseBracket = ']',
         [Description("const float num")]
-        ConstantFloatDigit,
+        ConstantFloatDigit = -10,
         [Description(".")]
         Dot = '.',
         [Description(",")]
@@ -49,11 +52,11 @@ namespace Mug.Models.Lexer
         [Description("/")]
         Slash = '/',
         [Description("!=")]
-        BooleanNEQ,
+        BooleanNEQ = -11,
         [Description("+=")]
-        AddAssignment,
+        AddAssignment = -12,
         [Description("-=")]
-        SubAssignment,
+        SubAssignment = -13,
         [Description("+")]
         Plus = '+',
         [Description("-")]
@@ -61,74 +64,74 @@ namespace Mug.Models.Lexer
         [Description("*")]
         Star = '*',
         [Description("return")]
-        KeyReturn,
+        KeyReturn = -14,
         [Description("const bool")]
-        ConstantBoolean,
+        ConstantBoolean = -15,
         [Description("if")]
-        KeyIf,
+        KeyIf = -16,
         [Description("elif")]
-        KeyElif,
+        KeyElif = -17,
         [Description("else")]
-        KeyElse,
+        KeyElse = -18,
         [Description("<")]
         BooleanLess = '<',
         [Description(">")]
         BooleanGreater = '>',
         [Description("<=")]
-        BooleanLEQ,
+        BooleanLEQ = -19,
         [Description(">=")]
-        BooleanGEQ,
+        BooleanGEQ = -20,
         [Description("!")]
         Negation = '!',
         [Description("while")]
-        KeyWhile,
+        KeyWhile = -21,
         [Description("to")]
-        KeyTo,
+        KeyTo = -22,
         [Description("in")]
-        KeyIn,
+        KeyIn = -23,
         [Description("for")]
-        KeyFor,
+        KeyFor = -24,
         [Description("..")]
-        RangeDots,
+        RangeDots = -25,
         [Description("as")]
-        KeyAs,
+        KeyAs = -26,
         [Description("continue")]
-        KeyContinue,
+        KeyContinue = -27,
         [Description("break")]
-        KeyBreak,
+        KeyBreak = -28,
         [Description("type")]
-        KeyType,
+        KeyType = -29,
         [Description("pub")]
-        KeyPub,
+        KeyPub = -30,
         [Description("new")]
-        KeyNew,
+        KeyNew = -31,
         [Description("use")]
-        KeyUse,
+        KeyUse = -32,
         [Description("import")]
-        KeyImport,
+        KeyImport = -90,
         [Description("*=")]
-        MulAssignment,
+        MulAssignment = -33,
         [Description("/=")]
-        DivAssignment,
+        DivAssignment = -34,
         [Description("++")]
-        OperatorIncrement,
+        OperatorIncrement = -35,
         [Description("--")]
-        OperatorDecrement,
+        OperatorDecrement = -36,
         [Description("|")]
         BooleanOR = '|',
         [Description("&")]
         BooleanAND = '&',
         [Description("priv")]
-        KeyPriv,
+        KeyPriv = -37,
         [Description("enum")]
-        KeyEnum,
+        KeyEnum = -38,
         [Description("catch")]
-        KeyCatch,
+        KeyCatch = -39,
         [Description("is")]
-        KeyIs,
+        KeyIs = -40,
         [Description("switch")]
-        KeySwitch,
+        KeySwitch = -41,
         [Description("try")]
-        KeyTry
+        KeyTry = -42
     }
 }

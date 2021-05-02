@@ -5,10 +5,9 @@ using Newtonsoft.Json.Converters;
 
 namespace Mug.Models.Lexer
 {
-  public struct Token : INode
+    public struct Token : INode
     {
         public string NodeKind => "Literal";
-        [JsonConverter(typeof(StringEnumConverter))]
         public TokenKind Kind { get; }
         public string Value { get; set; }
         public ModulePosition Position { get; set; }

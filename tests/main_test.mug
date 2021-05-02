@@ -1,0 +1,6 @@
+func main(): i32 {
+  var x: u16 = 10
+  x = 11 + 2
+  break
+  10
+}

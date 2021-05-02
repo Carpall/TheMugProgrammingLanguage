@@ -21,7 +21,7 @@ namespace Mug.Compilation
 
         public int LineAt()
         {
-            return CompilationErrors.CountLines(Lexer.Source, Position.Start.Value);
+            return PrettyPrinter.CountLines(Lexer.Source, Position.Start.Value);
         }
     }
 }

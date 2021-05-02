@@ -1,34 +1,43 @@
 ﻿using Mug.Compilation;
+using Mug.Models.Parser;
 using System;
+using System.Collections.Immutable;
+using System.IO;
+using System.Text;
 
 try
 {
 
 #if DEBUG
 
-    const string test = @"
+    // todo: - check type recursion
+    //       - add function overloading
+    //       - remove default values in for loop and other
+    //       - add support for user defined operators (only for non-int based values)
+    //       - add calls
+    //       - add path checker
+    //       - make all a expression as terms allowing return value in hidden buffer with `break value`
+    //       - add mir (both json and dump) and tast to output flag
 
-func main() {
-}
-
-";
-
-    var unit = new CompilationUnit(@"test.mug", test, true);
+    var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-    Console.WriteLine(unit.GenerateAST().Dump());
-    // unit.Generate(true, true);
+    // Console.WriteLine((unit.GenerateAST() as INode).Dump());
+    // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
+    Console.WriteLine(unit.GenerateMIR().Dump());
 
 #else
 
-    if (args.Length == 0)
-        CompilationErrors.Throw("No arguments passed");
-
     var options = new CompilationFlags();
 
-    options.SetArguments(args[1..]);
+    if (args.Length == 0)
+        CompilationFlags.PrintUsageAndHelp();
+    else
+    {
+        options.SetArguments(args[1..]);
 
-    options.InterpretAction(args[0]);
+        options.InterpretAction(args[0]);
+    }
 
 #endif
 }
@@ -43,14 +52,14 @@ catch (CompilationException e)
             for (; i < errors.Count; i++)
             {
                 var error = errors[i];
-                CompilationErrors.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
+                PrettyPrinter.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
             }
         }
         catch
         {
-            CompilationErrors.WriteFail(errors[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
+            PrettyPrinter.WriteFail(errors[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
         }
     }
     else
-        CompilationErrors.WriteFail("", e.Message);
+        PrettyPrinter.WriteFail("", e.Message);
 }
