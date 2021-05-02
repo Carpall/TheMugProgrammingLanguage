@@ -17,7 +17,9 @@ try
     //       - add calls
     //       - add path checker
     //       - make all a expression as terms allowing return value in hidden buffer with `break value`
-    //       - add mir (both json and dump) and tast to output flag
+    //       - add pragmas' chekers
+    //       - add deref statement
+    //       - add option type '?type'
 
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 

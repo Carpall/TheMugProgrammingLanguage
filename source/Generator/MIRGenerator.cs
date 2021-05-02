@@ -41,7 +41,7 @@ namespace Mug.Models.Generator
 
         private MIRType LowerType(MugType type)
         {
-            var solved = type.SolvedType.Value;
+            var solved = type.SolvedType;
 
             // code to compress
             switch (solved.Kind)
@@ -264,7 +264,7 @@ namespace Mug.Models.Generator
                 if (isconst)
                     Tower.Report(statement.Position, "A constant declaration requires a body");
 
-                if (statement.Type.SolvedType.Value.Kind == TypeKind.Auto)
+                if (statement.Type.SolvedType.Kind == TypeKind.Auto)
                     Tower.Report(statement.Position, "Type notation needed");
             }
 
@@ -285,31 +285,19 @@ namespace Mug.Models.Generator
 
         private void FixAndCheckTypes(MugType expected, MugType gottype, ModulePosition position)
         {
-            FixType(expected, gottype);
+            FixAuto(expected, gottype);
 
-            var rightsolved = expected.SolvedType.Value;
-            var leftsolved = gottype.SolvedType.Value;
+            var rightsolved = expected.SolvedType;
+            var leftsolved = gottype.SolvedType;
 
             if (rightsolved.Kind != leftsolved.Kind || rightsolved.Base is not null && !rightsolved.Base.Equals(leftsolved.Base))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
-            /*if (rightsolved.Kind != leftsolved.Kind ||
-                (rightsolved.IsStruct() && rightsolved.GetStruct().Type.Name != leftsolved.GetStruct().Type.Name))
-                Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
-            else if (rightsolved.IsArray() ||
-                (rightsolved.Kind == TypeKind.Pointer || rightsolved.Kind == TypeKind.Reference))
-                FixAndCheckTypes(rightsolved.GetBaseElementType(), leftsolved.GetBaseElementType(), position);*/
         }
 
-        private static MugType FixType(MugType type, MugType expressiontype)
+        private static void FixAuto(MugType type, MugType expressiontype)
         {
-            type.Solve((type.SolvedType.Value.Kind switch
-            {
-                TypeKind.Undefined or
-                TypeKind.Auto => expressiontype.SolvedType,
-                _ => type.SolvedType,
-            }).Value);
-
-            return type;
+            if (type.SolvedType.Kind == TypeKind.Auto)
+                type.Solve(expressiontype.SolvedType);
         }
 
         private MugType EvaluateExpression(INode body)
@@ -437,13 +425,13 @@ namespace Mug.Models.Generator
         private MugType EvaluateMemberNode(MemberNode expression)
         {
             var basetype = EvaluateExpression(expression.Base);
-            if (!basetype.SolvedType.Value.IsNewOperatorAllocable())
+            if (!basetype.SolvedType.IsNewOperatorAllocable())
             {
                 Tower.Report(expression.Base.Position, $"Type '{basetype}' is not accessible via operator '.'");
                 return ContextType;
             }
 
-            var structure = basetype.SolvedType.Value.GetStruct();
+            var structure = basetype.SolvedType.GetStruct();
 
             var type = GetFieldType(expression.Member.Value, structure.Type.Body, out var index);
             if (type is null)
@@ -456,7 +444,7 @@ namespace Mug.Models.Generator
 
         private MugType EvaluateTypeAllocationNode(TypeAllocationNode expression)
         {
-            var type = expression.Name.SolvedType.Value;
+            var type = expression.Name.SolvedType;
 
             if (!type.IsNewOperatorAllocable())
             {
@@ -556,7 +544,7 @@ namespace Mug.Models.Generator
         private MugType CoercedOr(MugType or)
         {
             var contexttype = ContextTypes.Peek();
-            return contexttype.SolvedType.Value.IsInt() ? contexttype : or;
+            return contexttype.SolvedType.IsInt() ? contexttype : or;
         }
 
         private MIRValue DeclareVirtualMemorySymbol(string name, MugType type, ModulePosition position, bool isconst)
@@ -592,6 +580,29 @@ namespace Mug.Models.Generator
                 DeclareVirtualMemorySymbol(parameter.Name, parameter.Type, parameter.Position, false);
         }
 
+        private void CheckRecursiveType(TypeStatement type, List<string> illegaltypes)
+        {
+            illegaltypes.Add(type.Name);
+
+            foreach (var field in type.Body)
+            {
+                var fieldtype = field.Type.SolvedType;
+                if (fieldtype.IsStruct() ||
+                    (fieldtype.IsPointer() && fieldtype.GetBaseElementType().SolvedType.IsStruct()))
+                {
+                    var fieldstructtype = (fieldtype.Kind == TypeKind.Pointer ? ((MugType)fieldtype.Base).SolvedType : fieldtype).GetStruct().Type;
+
+                    if (illegaltypes.Contains(fieldtype.ToString()))
+                    {
+                        Tower.Report(type.Position, "Recursive type");
+                        Tower.Report(field.Type.Position, $"Use '?{fieldtype}' instead");
+                    }
+                    else
+                        CheckRecursiveType(fieldstructtype, illegaltypes);
+                }
+            }
+        }
+
         private void WalkDeclarations()
         {
             foreach (var symbol in Tower.Symbols.GetCache())
@@ -602,7 +613,9 @@ namespace Mug.Models.Generator
         {
             switch (value)
             {
-                case StructSymbol: break;
+                case StructSymbol structsymbol:
+                    CheckRecursiveType(structsymbol.Type, new());
+                    break;
                 case FuncSymbol funcsymbol:
                     GenerateFunction(funcsymbol.Func);
                     break;

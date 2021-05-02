@@ -43,7 +43,7 @@ namespace Mug.TypeSystem
 
         public bool IsStruct()
         {
-            return Kind == TypeKind.DefinedType;
+            return Kind == TypeKind.DefinedType || Kind == TypeKind.GenericDefinedType;
         }
 
         public MugType GetBaseElementType()
@@ -87,6 +87,11 @@ namespace Mug.TypeSystem
             return
                 Kind == TypeKind.GenericDefinedType ||
                 Kind == TypeKind.DefinedType;
+        }
+
+        public bool IsPointer()
+        {
+            return Kind == TypeKind.Pointer;
         }
     }
 }

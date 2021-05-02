@@ -1,4 +1,5 @@
-﻿using Mug.Models.Generator;
+﻿using Mug.Compilation;
+using Mug.Models.Generator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,13 +10,16 @@ namespace Mug.TypeSystem
 {
     public class MugType
     {
-        public UnsolvedType? UnsolvedType { get; private set; }
-        public SolvedType? SolvedType { get; private set; }
+        public UnsolvedType UnsolvedType { get; private set; }
+        public SolvedType SolvedType { get; private set; }
+        public bool IsSolved { get; private set; }
+        public ModulePosition Position => UnsolvedType.Position;
 
-        MugType(UnsolvedType? unsolvedtype, SolvedType? solvedtype)
+        MugType(UnsolvedType unsolvedtype, SolvedType solvedtype, bool issolved)
         {
             UnsolvedType = unsolvedtype;
             SolvedType = solvedtype;
+            IsSolved = issolved;
         }
 
         internal static MugType Int32 => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Int32));
@@ -23,23 +27,23 @@ namespace Mug.TypeSystem
 
         public static MugType Unsolved(UnsolvedType unsolvedtype)
         {
-            return new(unsolvedtype, null);
+            return new(unsolvedtype, default, false);
         }
 
         public static MugType Solved(SolvedType solvedtype)
         {
-            return new(null, solvedtype);
+            return new(default, solvedtype, true);
         }
 
         public void Solve(SolvedType solvedtype)
         {
             SolvedType = solvedtype;
-            UnsolvedType = null;
+            IsSolved = true;
         }
 
         public override string ToString()
         {
-            return UnsolvedType.HasValue ? UnsolvedType.Value.ToString() : SolvedType.Value.ToString();
+            return IsSolved ? SolvedType.ToString() : UnsolvedType.ToString();
         }
     }
 }

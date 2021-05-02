@@ -159,7 +159,7 @@ namespace Mug.Models.Parser
                 var type = ExpectType();
                 return UnsolvedType.Create(
                     Tower,
-                    new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Value.Position.Position.End),
+                    new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Position.Position.End),
                     TypeKind.Pointer,
                     type);
             }
@@ -169,7 +169,7 @@ namespace Mug.Models.Parser
             // struct generics
             if (MatchAdvance(TokenKind.BooleanLess))
             {
-                if (find.UnsolvedType.Value.Kind != TypeKind.DefinedType)
+                if (find.UnsolvedType.Kind != TypeKind.DefinedType)
                 {
                     CurrentIndex -= 2;
                     ParseError($"Generic parameters cannot be passed to type '{find}'");
@@ -185,7 +185,7 @@ namespace Mug.Models.Parser
 
                 find = UnsolvedType.Create(
                     Tower,
-                    new(find.UnsolvedType.Value.Position.Lexer, find.UnsolvedType.Value.Position.Position.Start..Back.Position.Position.End),
+                    new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End),
                     TypeKind.GenericDefinedType,
                     (find, genericTypes));
             }
@@ -1365,7 +1365,10 @@ namespace Mug.Models.Parser
                 if (statement.Body.Count > 0)
                     _ = int.TryParse(statement.Body.Last().Value.Value, out value);
 
-                var member = ExpectMemberDefinition(statement.BaseType.UnsolvedType.Value.IsInt() || statement.BaseType.UnsolvedType.Value.Kind == TypeKind.Err, value);
+                var member =
+                    ExpectMemberDefinition(statement.BaseType.UnsolvedType.IsInt() ||
+                    statement.BaseType.UnsolvedType.Kind == TypeKind.Err, value);
+
                 if (member is null)
                     return false;
 

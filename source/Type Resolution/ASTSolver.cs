@@ -21,10 +21,10 @@ namespace Mug.TypeResolution
 
         private SolvedType ResolveType(MugType type)
         {
-            if (!type.UnsolvedType.HasValue)
-                return type.SolvedType.Value;
+            if (type.IsSolved)
+                return type.SolvedType;
 
-            var unsolvedtype = type.UnsolvedType.Value;
+            var unsolvedtype = type.UnsolvedType;
 
             return unsolvedtype.Kind switch
             {
@@ -45,7 +45,7 @@ namespace Mug.TypeResolution
         private void WalkTypes()
         {
             for (int i = 0; i < Tower.Types.Count; i++)
-                if (Tower.Types[i].UnsolvedType.HasValue)
+                if (!Tower.Types[i].IsSolved)
                     Tower.Types[i].Solve(ResolveType(Tower.Types[i]));
         }
 
