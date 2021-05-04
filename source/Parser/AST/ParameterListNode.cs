@@ -20,6 +20,11 @@ namespace Mug.Models.Parser.AST
             Position = position;
             DefaultConstantValue = defaultConstValue;
         }
+
+        public override string ToString()
+        {
+            return Type.ToString();
+        }
     }
 
     public class ParameterListNode : INode

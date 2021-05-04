@@ -66,7 +66,7 @@ namespace Mug.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
-            CheckType(type.Body, type.Generics, type.Pragmas);
+            CheckType(type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, new StructSymbol(type));
         }
 

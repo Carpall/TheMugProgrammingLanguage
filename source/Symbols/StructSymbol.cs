@@ -40,7 +40,7 @@ namespace Mug.Symbols
 
             result.Append(" {\n");
 
-            foreach (var field in Type.Body)
+            foreach (var field in Type.BodyFields)
                 result.AppendLine($"  {field.Name}: {field.Type}");
 
             result.AppendLine("}");

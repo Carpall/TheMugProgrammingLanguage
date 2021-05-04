@@ -21,6 +21,10 @@ try
     //       - add deref statement
     //       - add option type '?type'
     //       - add support for basewith type in get overload name in mirfunction
+    //       - add doc comments for pub members
+    //       - add implicit true values in pragmas
+    //       - fix bugs with eof
+    //       - add tuple types and 'new (,,)' for initialize them
 
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 

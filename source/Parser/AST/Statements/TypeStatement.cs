@@ -10,8 +10,9 @@ namespace Mug.Models.Parser.AST.Statements
         public Pragmas Pragmas { get; set; }
         public string Name { get; set; }
         public List<Token> Generics { get; set; } = new();
-        public List<FieldNode> Body { get; set; } = new();
-        public ModulePosition Position { get; set; }
+        public List<FieldNode> BodyFields { get; set; } = new();
+        public List<FunctionStatement> BodyFunctions { get; set; } = new();
         public TokenKind Modifier { get; set; }
+        public ModulePosition Position { get; set; }
     }
 }

@@ -16,6 +16,6 @@ namespace Mug.Models.Parser.AST.Statements
         public BlockNode Body { get; set; } = new();
         public ModulePosition Position { get; set; }
         public TokenKind Modifier { get; set; }
-        public ParameterNode? Base { get; set; }
+        public string StaticOverloadReppresentation => $"{Name}({string.Join(", ", ParameterList.Parameters)})";
     }
 }

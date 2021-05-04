@@ -23,7 +23,6 @@ namespace Mug.TypeSystem
         Void,
         Unknown,
         EnumError,
-        Reference,
         Float32,
         Float64,
         Float128,

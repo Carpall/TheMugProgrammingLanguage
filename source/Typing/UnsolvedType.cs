@@ -50,7 +50,7 @@ namespace Mug.TypeSystem
                 "u32" => TypeKind.UInt32,
                 "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
-                "unknown" => TypeKind.Unknown,
+                "unk" => TypeKind.Unknown,
                 _ => isInEnum && t.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
             };
             return Create(tower, t.Position, type, t.Value);
@@ -119,10 +119,9 @@ namespace Mug.TypeSystem
                 TypeKind.UInt16 => "u16",
                 TypeKind.UInt32 => "u32",
                 TypeKind.UInt64 => "u64",
-                TypeKind.Unknown => "unknown",
+                TypeKind.Unknown => "unk",
                 TypeKind.Pointer => $"*{basetype}",
                 TypeKind.String => "str",
-                TypeKind.Reference => $"&{basetype}",
                 TypeKind.Void => "void",
                 TypeKind.Err => "err",
                 TypeKind.EnumError => $"{enumerror.Item1}!{enumerror.Item2}",

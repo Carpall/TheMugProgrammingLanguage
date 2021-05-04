@@ -137,14 +137,7 @@ namespace Mug.Models.Parser
 
         private MugType ExpectType(bool allowEnumError = false)
         {
-            if (MatchAdvance(TokenKind.BooleanAND, out var token))
-                return UnsolvedType.Create(
-                    Tower,
-                    token.Position,
-                    TypeKind.Reference,
-                    ExpectType(false));
-
-            if (MatchAdvance(TokenKind.OpenBracket, out token))
+            if (MatchAdvance(TokenKind.OpenBracket, out var token))
             {
                 var type = ExpectType();
                 Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
@@ -1053,20 +1046,7 @@ namespace Mug.Models.Parser
         {
             var result = _pragmas;
             _pragmas = null;
-            return result is not null ? result : new();
-        }
-
-        private ParameterNode? CollectBaseDefinition()
-        {
-            if (!MatchAdvance(TokenKind.OpenPar))
-                return null;
-
-            var name = Expect("Expected the base instance name", TokenKind.Identifier);
-            Expect("", TokenKind.Colon);
-            var type = ExpectType();
-            Expect("", TokenKind.ClosePar);
-
-            return new ParameterNode(type, name.Value, new(), name.Position);
+            return result ?? new();
         }
 
         private bool FunctionDefinition(out INode node)
@@ -1079,8 +1059,6 @@ namespace Mug.Models.Parser
             var modifier = GetModifier();
             var pragmas = GetPramas();
             var generics = new List<Token>();
-
-            var @base = CollectBaseDefinition();
 
             var name = Expect("In function definition must specify the name", TokenKind.Identifier); // func <name>
 
@@ -1096,25 +1074,28 @@ namespace Mug.Models.Parser
                 type = UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
 
             if (Match(TokenKind.OpenBrace)) // function definition
-            {
-                var body = ExpectBlock();
-
-                var f = new FunctionStatement() { Base = @base, Modifier = modifier, Pragmas = pragmas, Body = body, Name = name.Value.ToString(), ParameterList = parameters, ReturnType = type, Position = name.Position };
-
-                f.Generics = generics;
-
-                node = f;
-            }
+                node = new FunctionStatement
+                {
+                    Modifier = modifier,
+                    Pragmas = pragmas,
+                    Body = ExpectBlock(),
+                    Name = name.Value.ToString(),
+                    ParameterList = parameters,
+                    ReturnType = type,
+                    Position = name.Position,
+                    Generics = generics
+                };
             else // prototype
-            {
-                if (@base is not null)
-                    ParseError(@base.Value.Position, "The function base cannot be defined in function prototypes");
-
-                var f = new FunctionPrototypeNode() { Modifier = modifier, Pragmas = pragmas, Name = name.Value.ToString(), ParameterList = parameters, Type = type, Position = name.Position };
-                f.Generics = generics;
-
-                node = f;
-            }
+                node = new FunctionPrototypeNode
+                {
+                    Modifier = modifier,
+                    Pragmas = pragmas,
+                    Name = name.Value.ToString(),
+                    ParameterList = parameters,
+                    Type = type,
+                    Position = name.Position,
+                    Generics = generics
+                };
 
             return true;
         }
@@ -1173,7 +1154,7 @@ namespace Mug.Models.Parser
             if (!MatchAdvance(TokenKind.Colon))
             {
                 Report(UnexpectedToken);
-                return null;
+                return new FieldNode { Name = "", Type = MugType.Void };
             }
 
             var type = ExpectType(); // field: <error>
@@ -1196,15 +1177,18 @@ namespace Mug.Models.Parser
         private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
         {
             node = _badNode;
-            var variant = new VariantStatement() { Pragmas = pragmas, Modifier = modifier, Name = name.Value, Position = name.Position };
+            var variant = new VariantStatement()
+            {
+                Pragmas = pragmas,
+                Modifier = modifier,
+                Name = name.Value,
+                Position = name.Position
+            };
 
             Expect("", TokenKind.OpenPar);
 
             if (MatchAdvance(TokenKind.ClosePar))
-            {
-                report();
                 return;
-            }
 
             do
                 variant.Body.Add(ExpectType());
@@ -1212,15 +1196,7 @@ namespace Mug.Models.Parser
 
             Expect("", TokenKind.ClosePar);
 
-            report();
-
             node = variant;
-
-            void report()
-            {
-                if (variant.Body.Count < 2)
-                    Report(name.Position, "Expected at least one type in variants");
-            }
         }
 
         /// <summary>
@@ -1238,32 +1214,42 @@ namespace Mug.Models.Parser
             var modifier = GetModifier();
             var pragmas = GetPramas();
             var name = Expect("Expected the type name after 'type' keyword", TokenKind.Identifier);
-            var statement = new TypeStatement() { Modifier = modifier, Pragmas = pragmas, Name = name.Value.ToString(), Position = name.Position };
+            node = new TypeStatement()
+            {
+                Modifier = modifier,
+                Pragmas = pragmas,
+                Name = name.Value.ToString(),
+                Position = name.Position
+            };
+
+            // struct generics
+            CollectGenericParameterDefinitions((node as TypeStatement).Generics);
 
             // variant definition
             if (MatchAdvance(TokenKind.Equal))
-            {
                 ExpectVariantDefinition(out node, name, pragmas, modifier);
-                return true;
+            else
+            {
+                // struct body
+                Expect(UnexpectedToken, TokenKind.OpenBrace);
+                CollectTypeBody(node as TypeStatement);
             }
 
-            // struct generics
-            CollectGenericParameterDefinitions(statement.Generics);
-
-            // struct body
-            Expect(UnexpectedToken, TokenKind.OpenBrace);
-
-            while (Match(TokenKind.Identifier))
-                statement.Body.Add(ExpectFieldDefinition());
-
-            if (statement.Body.Count == 0)
-                Report(name.Position, "Structure must contain at least one member");
-
-            Expect(UnexpectedToken, TokenKind.CloseBrace); // expected close body
-
-            node = statement;
-
             return true;
+        }
+
+        private void CollectTypeBody(TypeStatement statement)
+        {
+            while (!MatchAdvance(TokenKind.CloseBrace))
+            {
+                CollectModifier();
+                CollectPragmas();
+
+                if (FunctionDefinition(out var functionstatement))
+                    statement.BodyFunctions.Add(functionstatement as FunctionStatement);
+                else
+                    statement.BodyFields.Add(ExpectFieldDefinition());
+            }
         }
 
         private EnumMemberNode ExpectMemberDefinition(bool basetypeisint, int lastvalue)

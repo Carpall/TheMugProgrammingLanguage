@@ -39,94 +39,7 @@ namespace Mug.Models.Generator
             return Module.Build();
         }
 
-        /*private MIRType LowerType(MugType type)
-        {
-            var solved = type.SolvedType;
-
-            // code to compress
-            switch (solved.Kind)
-            {
-                case TypeKind.Array:
-                case TypeKind.Pointer:
-                    return new MIRType(MIRTypeKind.Pointer, LowerType(solved.Base as MugType));
-                case TypeKind.Char:
-                case TypeKind.Int8:
-                case TypeKind.Int16:
-                case TypeKind.Int32:
-                case TypeKind.Int64:
-                case TypeKind.UInt8:
-                case TypeKind.UInt16:
-                case TypeKind.UInt32:
-                case TypeKind.UInt64:
-                case TypeKind.Bool:
-                case TypeKind.Void:
-                case TypeKind.Float32:
-                case TypeKind.Float64:
-                case TypeKind.Float128:
-                case TypeKind.Auto:
-                    return new MIRType(TypeKindPrimitiveToMIRTypeKind(solved.Kind));
-                case TypeKind.DefinedType:
-                    return new MIRType(MIRTypeKind.Struct, new MIRStruct(LowerStructType(solved.GetStruct())));
-                *//*case TypeKind.GenericDefinedType:
-                    break;
-                case TypeKind.String:
-                    break;
-                case TypeKind.Undefined:
-                    break;
-                case TypeKind.Unknown:
-                    break;
-                case TypeKind.EnumError:
-                    break;
-                case TypeKind.Reference:
-                    break;
-                case TypeKind.Err:
-                    break;*//*
-                default:
-                    CompilationTower.Todo($"implement '{solved.Kind}' in MIRGenerator.LowerType");
-                    return default;
-            }
-        }*/
-
-        /*private MIRType[] LowerStructType(StructSymbol structsymbol)
-        {
-            var result = new MIRType[structsymbol.Type.Body.Count];
-
-            for (int i = 0; i < structsymbol.Type.Body.Count; i++)
-                 result[i] = LowerType(structsymbol.Type.Body[i].Type);
-
-            return result;
-        }*/
-
-        /*private static MIRTypeKind TypeKindPrimitiveToMIRTypeKind(TypeKind kind)
-        {
-            return kind switch
-            {
-                TypeKind.Char or TypeKind.Bool or TypeKind.UInt8 => MIRTypeKind.UInt8,
-                TypeKind.Int8 => MIRTypeKind.Int8,
-                TypeKind.Int16 => MIRTypeKind.Int16,
-                TypeKind.Int32 => MIRTypeKind.Int32,
-                TypeKind.Int64 => MIRTypeKind.Int64,
-                TypeKind.UInt16 => MIRTypeKind.UInt16,
-                TypeKind.UInt32 => MIRTypeKind.UInt32,
-                TypeKind.UInt64 => MIRTypeKind.UInt64,
-                TypeKind.Float32 => MIRTypeKind.Float32,
-                TypeKind.Float64 => MIRTypeKind.Float64,
-                TypeKind.Float128 => MIRTypeKind.Float128,
-                TypeKind.Void or _ => MIRTypeKind.Void,
-            };
-        }*/
-
-        /*private MIRType[] LowerParameterTypes(ParameterListNode parameters)
-        {
-            var result = new MIRType[parameters.Length];
-
-            for (int i = 0; i < parameters.Length; i++)
-                result[i] = LowerType(parameters.Parameters[i].Type);
-
-            return result;
-        }*/
-
-        private MugType[] GetParameterTypes(ParameterListNode parameters)
+        private static MugType[] GetParameterTypes(ParameterListNode parameters)
         {
             var result = new MugType[parameters.Length];
 
@@ -288,7 +201,7 @@ namespace Mug.Models.Generator
             ContextTypes.Pop();
         }
 
-        private INode GetDefaultValueOf(MugType type)
+        private static INode GetDefaultValueOf(MugType type)
         {
             return new BadNode();
         }
@@ -398,7 +311,7 @@ namespace Mug.Models.Generator
             });
         }
 
-        private Token FoldConstantIntoToken(INode opaque)
+        private static Token FoldConstantIntoToken(INode opaque)
         {
             // make it better when introduce floating points
             return opaque switch
@@ -425,7 +338,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private bool IsConstantInt(INode node)
+        private static bool IsConstantInt(INode node)
         {
             return
                 (node is Token token && token.Kind == TokenKind.ConstantDigit) ||
@@ -443,7 +356,7 @@ namespace Mug.Models.Generator
 
             var structure = basetype.SolvedType.GetStruct();
 
-            var type = GetFieldType(expression.Member.Value, structure.Type.Body, out var index);
+            var type = GetFieldType(expression.Member.Value, structure.Type.BodyFields, out var index);
             if (type is null)
                 Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
             else
@@ -480,7 +393,7 @@ namespace Mug.Models.Generator
 
                 assignedFields.Add(field.Name);
 
-                var fieldtype = GetFieldType(field.Name, structure.Body, out var fieldindex);
+                var fieldtype = GetFieldType(field.Name, structure.BodyFields, out var fieldindex);
                 if (fieldtype is null)
                 {
                     Tower.Report(field.Position, $"Type '{structure.Name}' does not contain a definition for '{field.Name}'");
@@ -592,7 +505,7 @@ namespace Mug.Models.Generator
         {
             illegaltypes.Add(type.Name);
 
-            foreach (var field in type.Body)
+            foreach (var field in type.BodyFields)
             {
                 var fieldtype = field.Type.SolvedType;
                 if (fieldtype.IsStruct() ||
