@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.TypeSystem
+namespace Zap.TypeSystem
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TypeKind

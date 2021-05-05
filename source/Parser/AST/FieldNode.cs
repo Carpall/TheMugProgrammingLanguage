@@ -1,13 +1,13 @@
-﻿using Mug.Compilation;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.TypeSystem;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public class FieldNode : INode
     {
         public string NodeKind => "Field";
         public string Name { get; set; }
-        public MugType Type { get; set; }
+        public ZapType Type { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

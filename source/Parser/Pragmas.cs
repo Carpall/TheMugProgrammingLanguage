@@ -1,9 +1,9 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser
+namespace Zap.Models.Parser
 {
   public class Pragmas
     {

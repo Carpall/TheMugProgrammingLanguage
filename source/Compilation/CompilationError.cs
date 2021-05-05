@@ -1,11 +1,11 @@
-﻿namespace Mug.Compilation
+﻿namespace Zap.Compilation
 {
-  public struct MugError
+  public struct CompilationError
     {
         public ModulePosition Bad { get; }
         public string Message { get; }
 
-        public MugError(ModulePosition position, string message)
+        public CompilationError(ModulePosition position, string message)
         {
             Bad = position;
             Message = message;

@@ -1,11 +1,11 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Mug.Symbols
+namespace Zap.Symbols
 {
-    public class SymbolTable : MugComponent
+    public class SymbolTable : ZapComponent
     {
         private Dictionary<string, ISymbol> _symbols = new();
 

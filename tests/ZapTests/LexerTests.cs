@@ -1,13 +1,13 @@
-using Mug.Compilation;
-using Mug.Models.Lexer;
+using Zap.Compilation;
+using Zap.Models.Lexer;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MugTests
+namespace Zap.Tests
 {
-  public class LexerTests
+    public class LexerTests
     {
         // Well constructed code strings
         private const string OPERATION01 = "1 + 2";
@@ -55,7 +55,7 @@ namespace MugTests
         [Test]
         public void GetLength_EmptyCollection_ReturnZero()
         {
-            MugLexer lexer = new MugLexer("test", OPERATION01);
+            Lexer lexer = new Lexer("test", OPERATION01);
 
             Assert.AreEqual(lexer.Length, 0);
         }
@@ -63,7 +63,7 @@ namespace MugTests
         [Test]
         public void GetLength_NonEmptyCollection_ReturnLength()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE01);
+            Lexer lexer = new Lexer("test", VARIABLE01);
             lexer.Tokenize();
 
             Assert.AreEqual(lexer.Length, 5);
@@ -98,7 +98,7 @@ namespace MugTests
         [Test]
         public void Test01_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE01);
+            Lexer lexer = new Lexer("test", VARIABLE01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -118,7 +118,7 @@ namespace MugTests
         [Test]
         public void Test02_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE02);
+            Lexer lexer = new MugLexer("test", VARIABLE02);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -140,7 +140,7 @@ namespace MugTests
         [Test]
         public void Test03_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE03);
+            Lexer lexer = new MugLexer("test", VARIABLE03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -162,7 +162,7 @@ namespace MugTests
         [Test]
         public void Test04_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE04);
+            Lexer lexer = new MugLexer("test", VARIABLE04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -179,7 +179,7 @@ namespace MugTests
         [Test]
         public void Test05_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", VARIABLE05);
+            Lexer lexer = new MugLexer("test", VARIABLE05);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -197,7 +197,7 @@ namespace MugTests
         public void TestComments01_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            MugLexer lexer = new MugLexer("test", COMMENTS01);
+            Lexer lexer = new MugLexer("test", COMMENTS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -214,7 +214,7 @@ namespace MugTests
         public void TestComments02_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            MugLexer lexer = new MugLexer("test", COMMENTS02);
+            Lexer lexer = new MugLexer("test", COMMENTS02);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -231,7 +231,7 @@ namespace MugTests
         public void TestComments03_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            MugLexer lexer = new MugLexer("test", COMMENTS03);
+            Lexer lexer = new MugLexer("test", COMMENTS03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -248,7 +248,7 @@ namespace MugTests
         public void TestComments04_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            MugLexer lexer = new MugLexer("test", COMMENTS04);
+            Lexer lexer = new MugLexer("test", COMMENTS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -271,7 +271,7 @@ namespace MugTests
         public void TestComments05_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            MugLexer lexer = new MugLexer("test", COMMENTS05);
+            Lexer lexer = new MugLexer("test", COMMENTS05);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -294,7 +294,7 @@ namespace MugTests
         public void EmptyString_CorrectTokenization()
         {
             // An empty string gets converted into an <EOF>
-            MugLexer lexer = new MugLexer("test", EMPTYSTRING);
+            Lexer lexer = new MugLexer("test", EMPTYSTRING);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -310,7 +310,7 @@ namespace MugTests
         [Test]
         public void TestStrings01_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS01);
+            Lexer lexer = new MugLexer("test", STRINGS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -327,8 +327,8 @@ namespace MugTests
         [Test]
         public void TestStrings02_ExceptionCaught()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS02);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            Lexer lexer = new MugLexer("test", STRINGS02);
+            var ex = Assert.Throws<Zap.Compilation.CompilationException>(() => lexer.Tokenize());
 
             Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
@@ -336,7 +336,7 @@ namespace MugTests
         [Test]
         public void TestStrings03_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS03);
+            Lexer lexer = new MugLexer("test", STRINGS03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -355,7 +355,7 @@ namespace MugTests
         [Test]
         public void TestStrings04_EscapedChars()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS04);
+            Lexer lexer = new MugLexer("test", STRINGS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -372,7 +372,7 @@ namespace MugTests
         [Test]
         public void TestStrings05_AdvancedEscapedChars()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS05);
+            Lexer lexer = new MugLexer("test", STRINGS05);
             lexer.Tokenize();
             List<Token> tokens = lexer.TokenCollection;
 
@@ -391,7 +391,7 @@ namespace MugTests
         [Test]
         public void TestStrings06_ExceptionCaught()
         {
-            MugLexer lexer = new MugLexer("test", STRINGS06);
+            Lexer lexer = new MugLexer("test", STRINGS06);
             var ex = Assert.Throws<CompilationException>(() => lexer.Tokenize());
 
             Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
@@ -400,7 +400,7 @@ namespace MugTests
         [Test]
         public void TestSingleTokens_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", SINGLE_TOKENS);
+            Lexer lexer = new MugLexer("test", SINGLE_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -435,7 +435,7 @@ namespace MugTests
         [Test]
         public void TestDoubleTokens_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", DOUBLE_TOKENS);
+            Lexer lexer = new MugLexer("test", DOUBLE_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -462,7 +462,7 @@ namespace MugTests
         [Test]
         public void TestFullTokens_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", FULL_TOKENS);
+            Lexer lexer = new MugLexer("test", FULL_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -509,7 +509,7 @@ namespace MugTests
         [Test]
         public void TestRandomTokens_CorrectTokenization()
         {
-            MugLexer lexer = new MugLexer("test", RANDOM_TOKENS);
+            Lexer lexer = new MugLexer("test", RANDOM_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -535,7 +535,7 @@ namespace MugTests
         [Test]
         public void TestChars01_OneChar()
         {
-            MugLexer lexer = new MugLexer("test", CHARS01);
+            Lexer lexer = new MugLexer("test", CHARS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -552,8 +552,8 @@ namespace MugTests
         [Test]
         public void TestChars02_OneChar()
         {
-            MugLexer lexer = new MugLexer("test", CHARS02);
-            var ex = Assert.Throws<Mug.Compilation.CompilationException>(() => lexer.Tokenize());
+            Lexer lexer = new MugLexer("test", CHARS02);
+            var ex = Assert.Throws<Zap.Compilation.CompilationException>(() => lexer.Tokenize());
 
             Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
@@ -561,7 +561,7 @@ namespace MugTests
         [Test]
         public void TestChars03_TooManyChars()
         {
-            MugLexer lexer = new MugLexer("test", CHARS03);
+            Lexer lexer = new MugLexer("test", CHARS03);
             lexer.Tokenize();
 
             Assert.AreEqual("Too many characters in const char", lexer.DiagnosticBag.GetErrors().First().Message);
@@ -570,7 +570,7 @@ namespace MugTests
         [Test]
         public void TestChars04_OneEscapedChar()
         {
-            MugLexer lexer = new MugLexer("test", CHARS04);
+            Lexer lexer = new MugLexer("test", CHARS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -587,7 +587,7 @@ namespace MugTests
         [Test]
         public void TestChars05_TooManyEscapedChars()
         {
-            MugLexer lexer = new MugLexer("test", CHARS05);
+            Lexer lexer = new MugLexer("test", CHARS05);
             lexer.Tokenize();
             Assert.AreEqual(lexer.DiagnosticBag.Count, 1);
 
@@ -597,7 +597,7 @@ namespace MugTests
         [Test]
         public void TestBackticks01_OneSymbol()
         {
-            MugLexer lexer = new MugLexer("test", BACKTICKS01);
+            Lexer lexer = new MugLexer("test", BACKTICKS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
@@ -614,7 +614,7 @@ namespace MugTests
         [Test]
         public void TestBackticks02_OneChar()
         {
-            MugLexer lexer = new MugLexer("test", BACKTICKS02);
+            Lexer lexer = new MugLexer("test", BACKTICKS02);
             lexer.Tokenize();
 
             Assert.AreEqual("Backtick sequence has not been correctly enclosed", lexer.DiagnosticBag.GetErrors().First().Message);
@@ -623,7 +623,7 @@ namespace MugTests
         [Test]
         public void TestBackticks03_Empty()
         {
-            MugLexer lexer = new MugLexer("test", BACKTICKS03);
+            Lexer lexer = new MugLexer("test", BACKTICKS03);
             lexer.Tokenize();
 
             Assert.AreEqual("Not enough characters in backtick sequence", lexer.DiagnosticBag.GetErrors().First().Message);

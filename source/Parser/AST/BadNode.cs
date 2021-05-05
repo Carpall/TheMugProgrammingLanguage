@@ -1,7 +1,7 @@
-﻿using Mug.Compilation;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.TypeSystem;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public class BadNode : INode
     {

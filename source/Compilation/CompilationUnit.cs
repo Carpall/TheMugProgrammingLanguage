@@ -1,18 +1,18 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
+using Zap.Models.Generator.IR;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
+using Zap.Models.Parser.AST;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
-    public class CompilationUnit : MugComponent
+    public class CompilationUnit : ZapComponent
     {
-        public static readonly string[] AllowedExtensions = new[] { ".mug" };
+        public static readonly string[] AllowedExtensions = new[] { ".zap", ".zp" , ".z" };
 
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
@@ -124,12 +124,12 @@ namespace Mug.Compilation
                 if (!File.Exists(path))
                     CompilationTower.Throw($"Invalid path '{path}'");
 
-                // only mug files
+                // only zap files
                 if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
                 var subtower = new CompilationTower(path);
-                (subtower.Lexer = new MugLexer(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
+                (subtower.Lexer = new Lexer(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
 
                 var head = subtower.Parser.Parse();
 

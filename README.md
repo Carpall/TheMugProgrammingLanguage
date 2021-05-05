@@ -1,6 +1,3 @@
-<img width="200" height="200" src="other/tea.png" align="right" />
+<img width="200" height="200" src="other/zapico.png" align="right" />
 
-# Mug is a toy language
-* In [Tests](https://github.com/Carpall/mug/tree/master/tests) you can find the real language tests, compiled with the generated ast (*.mast -> mug ast);
-* In [Samples](https://github.com/Carpall/mug/tree/master/samples) you can find language sketches, syntax ideas that could also be discarded;
-* Source in [Source](https://github.com/Carpall/mug/tree/master/source);
+# Zap is a toy language

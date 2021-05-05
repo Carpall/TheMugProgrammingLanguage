@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31005.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mug", "source\Mug.csproj", "{57A516E4-014C-46A5-98ED-EC7A45C50280}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zap", "source\Zap.csproj", "{57A516E4-014C-46A5-98ED-EC7A45C50280}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MugTests", "tests\MugTests\MugTests.csproj", "{9EC2CE01-CAAC-4A45-AB6F-89D6EBE25097}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EB65E52F-0250-4B07-A2EE-3F15EED165BA}"
 	ProjectSection(SolutionItems) = preProject
-		tests\main_test.mug = tests\main_test.mug
+		tests\main_test.zap = tests\main_test.zap
 	EndProjectSection
 EndProject
 Global

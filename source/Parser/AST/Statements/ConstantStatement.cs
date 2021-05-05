@@ -1,14 +1,14 @@
-﻿using Mug.Compilation;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.TypeSystem;
 using System;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Zap.Models.Parser.AST.Statements
 {
     public struct ConstantStatement : INode
     {
         public string NodeKind => "Const";
         public String Name { get; set; }
-        public MugType Type { get; set; }
+        public ZapType Type { get; set; }
         public INode Body { get; set; }
         public ModulePosition Position { get; set; }
     }

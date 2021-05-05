@@ -1,12 +1,12 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 
-namespace Mug.TypeSystem
+namespace Zap.TypeSystem
 {
     public struct UnsolvedType : INode
     {
@@ -15,7 +15,7 @@ namespace Mug.TypeSystem
         public object BaseType { get; set; }
         public ModulePosition Position { get; set; }
 
-        public static MugType Create(CompilationTower tower, ModulePosition position, TypeKind type, object baseType = null)
+        public static ZapType Create(CompilationTower tower, ModulePosition position, TypeKind type, object baseType = null)
         {
             var result = new UnsolvedType
             {
@@ -24,14 +24,14 @@ namespace Mug.TypeSystem
                 Position = position
             };
 
-            tower.Types.Add(MugType.Unsolved(result));
+            tower.Types.Add(ZapType.Unsolved(result));
             return tower.Types[^1];
         }
 
         /// <summary>
         /// converts a keyword token into a type
         /// </summary>
-        public static MugType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
+        public static ZapType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
         {
             TypeKind type = t.Value switch
             {
@@ -59,7 +59,7 @@ namespace Mug.TypeSystem
         /// <summary>
         /// a short way of allocating with new operator
         /// </summary>
-        public static MugType Automatic(CompilationTower tower, ModulePosition position)
+        public static ZapType Automatic(CompilationTower tower, ModulePosition position)
         {
             return Create(tower, position, TypeKind.Auto);
         }
@@ -139,9 +139,9 @@ namespace Mug.TypeSystem
                 Kind == TypeKind.UInt64;
         }
 
-        public (MugType ErrorType, MugType SuccessType) GetEnumError()
+        public (ZapType ErrorType, ZapType SuccessType) GetEnumError()
         {
-            return ((MugType, MugType))BaseType;
+            return ((ZapType, ZapType))BaseType;
         }
 
         public override bool Equals(object obj)

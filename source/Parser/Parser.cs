@@ -1,16 +1,16 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Directives;
-using Mug.Models.Parser.AST.Statements;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.Models.Parser.AST;
+using Zap.Models.Parser.AST.Directives;
+using Zap.Models.Parser.AST.Statements;
+using Zap.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Mug.Models.Parser
+namespace Zap.Models.Parser
 {
-    public class MugParser : MugComponent
+    public class Parser : ZapComponent
     {
         public NamespaceNode Module { get; } = new();
         private int CurrentIndex { get; set; }
@@ -40,7 +40,7 @@ namespace Mug.Models.Parser
             Tower.Throw(Back, $"Unexpected <EOF>{(error != "" ? $": {error}" : "")}");
         }
 
-        public MugParser(CompilationTower tower) : base(tower)
+        public Parser(CompilationTower tower) : base(tower)
         {
         }
 
@@ -135,7 +135,7 @@ namespace Mug.Models.Parser
             return match;
         }
 
-        private MugType ExpectType(bool allowEnumError = false)
+        private ZapType ExpectType(bool allowEnumError = false)
         {
             if (MatchAdvance(TokenKind.OpenBracket, out var token))
             {
@@ -168,7 +168,7 @@ namespace Mug.Models.Parser
                     ParseError($"Generic parameters cannot be passed to type '{find}'");
                 }
 
-                var genericTypes = new List<MugType>();
+                var genericTypes = new List<ZapType>();
 
                 do
                     genericTypes.Add(ExpectType());
@@ -189,10 +189,10 @@ namespace Mug.Models.Parser
             return find;
         }
 
-        private bool MatchType(out MugType type)
+        private bool MatchType(out ZapType type)
         {
             type = null;
-            MugType t = null;
+            ZapType t = null;
 
             if (!Match(TokenKind.OpenBracket) && !Match(TokenKind.Star) && !MatchBaseType(out t))
                 return false;
@@ -244,7 +244,7 @@ namespace Mug.Models.Parser
             return new ParameterNode(type, name.Value, defaultvalue, name.Position);
         }
 
-        private MugType ExpectBaseType()
+        private ZapType ExpectBaseType()
         {
             if (!MatchBaseType(out var type))
                 ParseError("Expected a type, but found '" + Current.Value + "'");
@@ -252,7 +252,7 @@ namespace Mug.Models.Parser
             return type;
         }
 
-        private bool MatchBaseType(out MugType type)
+        private bool MatchBaseType(out ZapType type)
         {
             type = null;
             
@@ -368,7 +368,7 @@ namespace Mug.Models.Parser
                 Report(Back.Position, "Expected parameter's expression");
         }
 
-        private List<MugType> CollectGenericParameters(ref bool builtin)
+        private List<ZapType> CollectGenericParameters(ref bool builtin)
         {
             var oldindex = CurrentIndex;
 
@@ -379,7 +379,7 @@ namespace Mug.Models.Parser
 
                 if (MatchType(out var type))
                 {
-                    var generics = new List<MugType>() { type };
+                    var generics = new List<ZapType>() { type };
 
                     while (MatchAdvance(TokenKind.Comma))
                         generics.Add(ExpectType());
@@ -393,7 +393,7 @@ namespace Mug.Models.Parser
             }
 
             CurrentIndex = oldindex;
-            return new List<MugType>();
+            return new List<ZapType>();
         }
 
         private bool CollectBuiltInSymbol()
@@ -791,7 +791,7 @@ namespace Mug.Models.Parser
                 e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
-        private MugType ExpectVariableType()
+        private ZapType ExpectVariableType()
         {
             return MatchAdvance(TokenKind.Colon) ? ExpectType() : UnsolvedType.Automatic(Tower, Back.Position);
         }
@@ -1066,7 +1066,7 @@ namespace Mug.Models.Parser
 
             var parameters = ExpectParameterListDeclaration(); // func name<(..)>
 
-            MugType type;
+            ZapType type;
 
             if (MatchAdvance(TokenKind.Colon))
                 type = ExpectType(true);
@@ -1154,7 +1154,7 @@ namespace Mug.Models.Parser
             if (!MatchAdvance(TokenKind.Colon))
             {
                 Report(UnexpectedToken);
-                return new FieldNode { Name = "", Type = MugType.Void };
+                return new FieldNode { Name = "", Type = ZapType.Void };
             }
 
             var type = ExpectType(); // field: <error>
@@ -1278,7 +1278,7 @@ namespace Mug.Models.Parser
             };
         }
 
-        private MugType ExpectPrimitiveType(bool allowErr)
+        private ZapType ExpectPrimitiveType(bool allowErr)
         {
             if (!MatchPrimitiveType(out var type, allowErr))
             {
@@ -1313,7 +1313,7 @@ namespace Mug.Models.Parser
                 return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
         }
 
-        private MugType ExpectEnumBaseType()
+        private ZapType ExpectEnumBaseType()
         {
             return ExpectPrimitiveType(true);
         }

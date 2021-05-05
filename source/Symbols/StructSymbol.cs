@@ -1,13 +1,13 @@
-﻿using Mug.Compilation;
-using Mug.Models.Parser.AST.Statements;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Parser.AST.Statements;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Symbols
+namespace Zap.Symbols
 {
     public class StructSymbol : ISymbol
     {

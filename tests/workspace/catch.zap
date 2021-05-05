@@ -1,5 +1,5 @@
 import io
-import "parse.mug"
+import "parse.zap"
 
 [code:
 "

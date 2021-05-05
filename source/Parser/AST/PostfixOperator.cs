@@ -1,9 +1,9 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
   public class PostfixOperator : IStatement
     {

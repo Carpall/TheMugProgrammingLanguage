@@ -1,18 +1,18 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
-using Mug.Symbols;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
+using Zap.Models.Parser.AST;
+using Zap.Models.Parser.AST.Statements;
+using Zap.Symbols;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.TypeResolution
+namespace Zap.TypeResolution
 {
-    public class TypeInstaller : MugComponent
+    public class TypeInstaller : ZapComponent
     {
         public TypeInstaller(CompilationTower tower) : base(tower)
         {

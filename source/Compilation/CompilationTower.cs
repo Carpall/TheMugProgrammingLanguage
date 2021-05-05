@@ -1,27 +1,27 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Models.Generator;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Symbols;
-using Mug.TypeResolution;
-using Mug.TypeSystem;
+using Zap.Models.Generator;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
+using Zap.Models.Parser.AST;
+using Zap.Symbols;
+using Zap.TypeResolution;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
     public class CompilationTower
     {
         public Diagnostic Diagnostic { get; } = new();
-        public MugLexer Lexer { get; set; }
-        public MugParser Parser { get; }
+        public Lexer Lexer { get; set; }
+        public Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
         public MIRGenerator Generator { get; }
         public SymbolTable Symbols { get; }
-        public List<MugType> Types { get; }
+        public List<ZapType> Types { get; }
         public string OutputFilename { get; internal set; }
         public LLVMModuleRef LLVMModule { get; internal set; }
 
@@ -46,7 +46,7 @@ namespace Mug.Compilation
         }
 
         [DoesNotReturn()]
-        public void Throw(MugLexer lexer, int pos, string error)
+        public void Throw(Lexer lexer, int pos, string error)
         {
             Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
         }
@@ -69,7 +69,7 @@ namespace Mug.Compilation
             Diagnostic.Report(position, error);
         }
 
-        public void Report(MugLexer lexer, int position, string error)
+        public void Report(Lexer lexer, int position, string error)
         {
             Report(new(lexer, position..(position + 1)), error);
         }

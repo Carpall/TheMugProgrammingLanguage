@@ -1,14 +1,14 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Symbols;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
+using Zap.Symbols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Mug.TypeSystem
+namespace Zap.TypeSystem
 {
     public struct SolvedType
     {
@@ -22,7 +22,7 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
         }
 
-        public static SolvedType WithBase(TypeKind kind, MugType baseElementType)
+        public static SolvedType WithBase(TypeKind kind, ZapType baseElementType)
         {
             return new SolvedType { Kind = kind, Base = baseElementType };
         }
@@ -32,7 +32,7 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = kind };
         }
 
-        public static SolvedType EnumError(MugType errorType, MugType successType)
+        public static SolvedType EnumError(ZapType errorType, ZapType successType)
         {
             return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
         }
@@ -47,9 +47,9 @@ namespace Mug.TypeSystem
             return Kind == TypeKind.DefinedType || Kind == TypeKind.GenericDefinedType;
         }
 
-        public MugType GetBaseElementType()
+        public ZapType GetBaseElementType()
         {
-            return (MugType)Base;
+            return (ZapType)Base;
         }
 
         public bool IsArray()
@@ -57,9 +57,9 @@ namespace Mug.TypeSystem
             return Kind == TypeKind.Array;
         }
 
-        public (MugType ErrorType, MugType SuccessType) GetEnumError()
+        public (ZapType ErrorType, ZapType SuccessType) GetEnumError()
         {
-            return ((MugType, MugType))Base;
+            return ((ZapType, ZapType))Base;
         }
 
         public override string ToString()

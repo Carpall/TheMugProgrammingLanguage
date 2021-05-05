@@ -1,15 +1,15 @@
-﻿using Mug.Compilation;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Zap.Models.Parser.AST.Statements
 {
     public class CallStatement : INode
     {
         public string NodeKind => "Call";
         public NodeBuilder Parameters { get; set; } = new();
         public INode Name { get; set; }
-        public List<MugType> Generics { get; set; } = new();
+        public List<ZapType> Generics { get; set; } = new();
         public bool IsBuiltIn { get; set; }
         public ModulePosition Position { get; set; }
     }

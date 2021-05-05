@@ -1,21 +1,21 @@
-﻿using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
-using Mug.TypeSystem;
+﻿using Zap.Models.Generator.IR;
+using Zap.Models.Lexer;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Mug.Models.Generator.IR.Builder
+namespace Zap.Models.Generator.IR.Builder
 {
     internal class MIRFunctionBuilder
     {
         private readonly string _name;
-        private readonly MugType _returnType;
-        private readonly MugType[] _parameterTypes;
+        private readonly ZapType _returnType;
+        private readonly ZapType[] _parameterTypes;
         private readonly List<MIRValue> _body = new();
-        private readonly List<MugType> _allocations = new();
+        private readonly List<ZapType> _allocations = new();
 
-        public MIRFunctionBuilder(string name, MugType returntype, MugType[] parametertypes)
+        public MIRFunctionBuilder(string name, ZapType returntype, ZapType[] parametertypes)
         {
             _name = name;
             _returnType = returntype;
@@ -27,7 +27,7 @@ namespace Mug.Models.Generator.IR.Builder
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
         }
 
-        public void DeclareAllocation(MugType type)
+        public void DeclareAllocation(ZapType type)
         {
             _allocations.Add(type);
         }
@@ -47,7 +47,7 @@ namespace Mug.Models.Generator.IR.Builder
             EmitInstruction(new MIRValue(kind));
         }
 
-        public void EmitInstruction(MIRValueKind kind, MugType type)
+        public void EmitInstruction(MIRValueKind kind, ZapType type)
         {
             EmitInstruction(new MIRValue(kind, type));
         }
@@ -62,7 +62,7 @@ namespace Mug.Models.Generator.IR.Builder
             EmitInstruction(MIRValueKind.StoreLocal, localaddress);
         }
 
-        public void EmitLoadZeroinitializedStruct(MugType type)
+        public void EmitLoadZeroinitializedStruct(ZapType type)
         {
             EmitInstruction(MIRValueKind.LoadZeroinitialized, type);
         }

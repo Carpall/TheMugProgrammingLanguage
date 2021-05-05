@@ -1,29 +1,29 @@
-﻿using Mug.Compilation;
-using Mug.Models.Generator.IR;
-using Mug.Models.Generator.IR.Builder;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
-using Mug.Symbols;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Generator.IR;
+using Zap.Models.Generator.IR.Builder;
+using Zap.Models.Lexer;
+using Zap.Models.Parser;
+using Zap.Models.Parser.AST;
+using Zap.Models.Parser.AST.Statements;
+using Zap.Symbols;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 
-using VirtualMemory = System.Collections.Generic.Dictionary<string, Mug.Models.Generator.AllocationData>;
+using VirtualMemory = System.Collections.Generic.Dictionary<string, Zap.Models.Generator.AllocationData>;
 
-namespace Mug.Models.Generator
+namespace Zap.Models.Generator
 {
-    public class MIRGenerator : MugComponent
+    public class MIRGenerator : ZapComponent
     {
         public MIRModuleBuilder Module { get; } = new();
 
         private MIRFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
         private VirtualMemory VirtualMemory { get; set; }
-        private Stack<MugType> ContextTypes { get; set; } = new();
+        private Stack<ZapType> ContextTypes { get; set; } = new();
         
-        private MugType ContextType => ContextTypes.Peek();
+        private ZapType ContextType => ContextTypes.Peek();
         private Scope CurrentScope = default;
         private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
 
@@ -39,9 +39,9 @@ namespace Mug.Models.Generator
             return Module.Build();
         }
 
-        private static MugType[] GetParameterTypes(ParameterListNode parameters)
+        private static ZapType[] GetParameterTypes(ParameterListNode parameters)
         {
-            var result = new MugType[parameters.Length];
+            var result = new ZapType[parameters.Length];
 
             for (int i = 0; i < parameters.Length; i++)
                 result[i] = parameters.Parameters[i].Type;
@@ -105,7 +105,7 @@ namespace Mug.Models.Generator
             }
         }
 
-        private AllocationData TryAllocateHiddenBuffer(MugType type)
+        private AllocationData TryAllocateHiddenBuffer(ZapType type)
         {
             if (CurrentScope.HiddenAllocationBuffer is null)
             {
@@ -119,7 +119,7 @@ namespace Mug.Models.Generator
         private void GenerateReturnStatement(ReturnStatement statement)
         {
             if (statement.IsVoid())
-                FixAndCheckTypes(CurrentFunction.ReturnType, MugType.Void, statement.Position);
+                FixAndCheckTypes(CurrentFunction.ReturnType, ZapType.Void, statement.Position);
             else
             {
                 ContextTypes.Push(CurrentFunction.ReturnType);
@@ -170,7 +170,7 @@ namespace Mug.Models.Generator
 
         private void ContextTypesPushAuto()
         {
-            ContextTypes.Push(MugType.Solved(SolvedType.Primitive(TypeKind.Auto)));
+            ContextTypes.Push(ZapType.Solved(SolvedType.Primitive(TypeKind.Auto)));
         }
 
         private static MIRValueKind GetLeftExpressionInstruction(MIRValueKind kind)
@@ -201,12 +201,12 @@ namespace Mug.Models.Generator
             ContextTypes.Pop();
         }
 
-        private static INode GetDefaultValueOf(MugType type)
+        private static INode GetDefaultValueOf(ZapType type)
         {
             return new BadNode();
         }
 
-        private void FixAndCheckTypes(MugType expected, MugType gottype, ModulePosition position)
+        private void FixAndCheckTypes(ZapType expected, ZapType gottype, ModulePosition position)
         {
             FixAuto(expected, gottype);
 
@@ -217,13 +217,13 @@ namespace Mug.Models.Generator
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
         }
 
-        private static void FixAuto(MugType type, MugType expressiontype)
+        private static void FixAuto(ZapType type, ZapType expressiontype)
         {
             if (type.SolvedType.Kind == TypeKind.Auto)
                 type.Solve(expressiontype.SolvedType);
         }
 
-        private MugType EvaluateExpression(INode body)
+        private ZapType EvaluateExpression(INode body)
         {
             var type = ContextType;
 
@@ -252,17 +252,17 @@ namespace Mug.Models.Generator
             return type;
         }
 
-        private MugType EvaluateBinaryExpression(BinaryExpressionNode expression)
+        private ZapType EvaluateBinaryExpression(BinaryExpressionNode expression)
         {
             var leftisconstant = IsConstantInt(expression.Left);
             var rightisconstant = IsConstantInt(expression.Right);
-            MugType type;
+            ZapType type;
 
             // make it better
             if (leftisconstant & rightisconstant)
             {
                 var constant = MIRValue.Constant(
-                    type = CoercedOr(MugType.Int32),
+                    type = CoercedOr(ZapType.Int32),
                     ulong.Parse(FoldConstantIntoToken(expression).Value));
 
                 FunctionBuilder.EmitLoadConstantValue(constant);
@@ -345,7 +345,7 @@ namespace Mug.Models.Generator
                 (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
         }
 
-        private MugType EvaluateMemberNode(MemberNode expression)
+        private ZapType EvaluateMemberNode(MemberNode expression)
         {
             var basetype = EvaluateExpression(expression.Base);
             if (!basetype.SolvedType.IsNewOperatorAllocable())
@@ -365,7 +365,7 @@ namespace Mug.Models.Generator
             return type ?? ContextType;
         }
 
-        private MugType EvaluateTypeAllocationNode(TypeAllocationNode expression)
+        private ZapType EvaluateTypeAllocationNode(TypeAllocationNode expression)
         {
             var type = expression.Name.SolvedType;
 
@@ -409,10 +409,10 @@ namespace Mug.Models.Generator
                 ContextTypes.Pop();
             }
 
-            return MugType.Solved(SolvedType.Struct(result));
+            return ZapType.Solved(SolvedType.Struct(result));
         }
 
-        private static MugType GetFieldType(string name, List<FieldNode> body, out int i)
+        private static ZapType GetFieldType(string name, List<FieldNode> body, out int i)
         {
             for (i = 0; i < body.Count; i++)
             {
@@ -424,7 +424,7 @@ namespace Mug.Models.Generator
             return null;
         }
 
-        private MugType EvaluateIdentifier(string value, ModulePosition position)
+        private ZapType EvaluateIdentifier(string value, ModulePosition position)
         {
             if (!VirtualMemory.TryGetValue(value, out var allocation))
             {
@@ -442,15 +442,15 @@ namespace Mug.Models.Generator
             return allocation.Type;
         }
 
-        private MugType EvaluateConstant(Token expression)
+        private ZapType EvaluateConstant(Token expression)
         {
-            MugType result = null;
+            ZapType result = null;
             MIRValue value;
 
             switch (expression.Kind)
             {
                 case TokenKind.ConstantDigit:
-                    result = CoercedOr(MugType.Solved(SolvedType.Primitive(TypeKind.Int32)));
+                    result = CoercedOr(ZapType.Solved(SolvedType.Primitive(TypeKind.Int32)));
                     value = MIRValue.Constant(result, ulong.Parse(expression.Value));
                     break;
                 default:
@@ -464,13 +464,13 @@ namespace Mug.Models.Generator
             return result;
         }
 
-        private MugType CoercedOr(MugType or)
+        private ZapType CoercedOr(ZapType or)
         {
             var contexttype = ContextTypes.Peek();
             return contexttype.SolvedType.IsInt() ? contexttype : or;
         }
 
-        private MIRValue DeclareVirtualMemorySymbol(string name, MugType type, ModulePosition position, bool isconst)
+        private MIRValue DeclareVirtualMemorySymbol(string name, ZapType type, ModulePosition position, bool isconst)
         {
             var localindex = VirtualMemory.Count;
             if (!VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
@@ -511,7 +511,7 @@ namespace Mug.Models.Generator
                 if (fieldtype.IsStruct() ||
                     (fieldtype.IsPointer() && fieldtype.GetBaseElementType().SolvedType.IsStruct()))
                 {
-                    var fieldstructtype = (fieldtype.Kind == TypeKind.Pointer ? ((MugType)fieldtype.Base).SolvedType : fieldtype).GetStruct().Type;
+                    var fieldstructtype = (fieldtype.Kind == TypeKind.Pointer ? ((ZapType)fieldtype.Base).SolvedType : fieldtype).GetStruct().Type;
 
                     if (illegaltypes.Contains(fieldtype.ToString()))
                     {

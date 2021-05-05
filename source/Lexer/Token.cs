@@ -1,9 +1,9 @@
-﻿using Mug.Compilation;
-using Mug.Models.Parser;
+﻿using Zap.Compilation;
+using Zap.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Models.Lexer
+namespace Zap.Models.Lexer
 {
     public struct Token : INode
     {

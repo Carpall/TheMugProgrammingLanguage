@@ -1,19 +1,19 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public struct ParameterNode : INode
     {
         public string NodeKind => "Parameter";
-        public MugType Type { get; }
+        public ZapType Type { get; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(MugType type, string name, Token defaultConstValue, ModulePosition position)
+        public ParameterNode(ZapType type, string name, Token defaultConstValue, ModulePosition position)
         {
             Type = type;
             Name = name;

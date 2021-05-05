@@ -1,7 +1,7 @@
 import io;
 import string;
 import memory;
-import "stack.mug";
+import "stack.zap";
 
 func strlen(text: str): i64;
 

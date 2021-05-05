@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
   public class CompilationException : Exception
     {

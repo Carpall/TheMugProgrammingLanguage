@@ -1,25 +1,25 @@
 ﻿using LLVMSharp;
-using Mug.Compilation;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
-using Mug.Symbols;
-using Mug.TypeSystem;
+using Zap.Compilation;
+using Zap.Models.Parser;
+using Zap.Models.Parser.AST;
+using Zap.Models.Parser.AST.Statements;
+using Zap.Symbols;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.TypeResolution
+namespace Zap.TypeResolution
 {
-    public class ASTSolver : MugComponent
+    public class ASTSolver : ZapComponent
     {
         public ASTSolver(CompilationTower tower) : base(tower)
         {   
         }
 
-        private SolvedType ResolveType(MugType type)
+        private SolvedType ResolveType(ZapType type)
         {
             if (type.IsSolved)
                 return type.SolvedType;
@@ -30,11 +30,11 @@ namespace Mug.TypeResolution
             {
                 TypeKind.Array or
                 TypeKind.Option or
-                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, MugType.Solved(ResolveType(unsolvedtype.BaseType as MugType))),
+                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, ZapType.Solved(ResolveType(unsolvedtype.BaseType as ZapType))),
 
                 TypeKind.EnumError => SolvedType.EnumError(
-                    MugType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
-                    MugType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
+                    ZapType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
+                    ZapType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
 
                 TypeKind.DefinedType => SolvedType.Struct(
                     Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position)),

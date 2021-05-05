@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
     internal unsafe struct MarshaledString : IDisposable
     {

@@ -1,15 +1,15 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Zap.Models.Parser.AST.Statements
 {
     public class EnumStatement : INode
     {
         public string NodeKind => "Enum";
         public Pragmas Pragmas { get; set; }
-        public MugType BaseType { get; set; }
+        public ZapType BaseType { get; set; }
         public string Name { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         public TokenKind Modifier { get; set; }

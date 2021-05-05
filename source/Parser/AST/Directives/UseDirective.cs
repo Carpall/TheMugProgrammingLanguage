@@ -1,7 +1,7 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
 
-namespace Mug.Models.Parser.AST.Directives
+namespace Zap.Models.Parser.AST.Directives
 {
     public class UseDirective : INode
     {

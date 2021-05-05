@@ -1,14 +1,14 @@
-﻿using Mug.Models.Lexer;
+﻿using Zap.Models.Lexer;
 using System;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
   public struct ModulePosition
     {
-        public MugLexer Lexer { get; }
+        public Lexer Lexer { get; }
         public Range Position { get; }
 
-        public ModulePosition(MugLexer lexer, Range position)
+        public ModulePosition(Lexer lexer, Range position)
         {
             Lexer = lexer;
             Position = position;

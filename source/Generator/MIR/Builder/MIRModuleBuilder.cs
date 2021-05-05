@@ -1,12 +1,12 @@
-﻿using Mug.Models.Generator.IR;
-using Mug.TypeSystem;
+﻿using Zap.Models.Generator.IR;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR.Builder
+namespace Zap.Models.Generator.IR.Builder
 {
     public class MIRModuleBuilder
     {

@@ -1,21 +1,21 @@
-﻿using Mug.TypeSystem;
+﻿using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR
+namespace Zap.Models.Generator.IR
 {
     public struct MIRFunction
     {
         public string Name { get; }
-        public MugType ReturnType { get; }
-        public MugType[] ParameterTypes { get; }
+        public ZapType ReturnType { get; }
+        public ZapType[] ParameterTypes { get; }
         public MIRValue[] Body { get; }
-        public MugType[] Allocations { get; }
+        public ZapType[] Allocations { get; }
 
-        public MIRFunction(string name, MugType returntype, MugType[] parametertypes, MIRValue[] body, MugType[] allocations)
+        public MIRFunction(string name, ZapType returntype, ZapType[] parametertypes, MIRValue[] body, ZapType[] allocations)
         {
             Name = name;
             ReturnType = returntype;
@@ -34,7 +34,7 @@ namespace Mug.Models.Generator.IR
             for (int i = 0; i < Allocations.Length; i++)
                 locals.AppendFormat(".[{0}] {1}{2}", i, Allocations[i], i < Allocations.Length - 1 ? "\n    " : "");
 
-            return $@".fn {Name}({string.Join<MugType>(", ", ParameterTypes)}) {ReturnType}:
+            return $@".fn {Name}({string.Join<ZapType>(", ", ParameterTypes)}) {ReturnType}:
   .locals:
     {locals}
 

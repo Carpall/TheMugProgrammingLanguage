@@ -1,13 +1,13 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Mug.Models.Lexer
+namespace Zap.Models.Lexer
 {
-    public class MugLexer : MugComponent
+    public class Lexer : ZapComponent
     {
         public List<Token> TokenCollection { get; set; }
 
@@ -47,7 +47,7 @@ namespace Mug.Models.Lexer
 
         public string ModuleRelativePath => Path.GetRelativePath(Environment.CurrentDirectory, ModuleName);
 
-        public MugLexer(string moduleName, string source, CompilationTower tower) : base(tower)
+        public Lexer(string moduleName, string source, CompilationTower tower) : base(tower)
         {
             ModuleName = moduleName;
             Source = source;

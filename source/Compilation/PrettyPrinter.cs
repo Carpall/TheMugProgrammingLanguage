@@ -1,10 +1,10 @@
-﻿using Mug.Models.Lexer;
+﻿using Zap.Models.Lexer;
 using Pastel;
 using System;
 using System.Drawing;
 using System.IO;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
     public static class PrettyPrinter
     {

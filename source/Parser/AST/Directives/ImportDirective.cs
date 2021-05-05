@@ -1,6 +1,6 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 
-namespace Mug.Models.Parser.AST.Directives
+namespace Zap.Models.Parser.AST.Directives
 {
   public enum ImportMode
     {

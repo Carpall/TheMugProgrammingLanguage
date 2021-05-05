@@ -1,6 +1,6 @@
 import io;
 import string;
-# import "stack.mug";
+# import "stack.zap";
 import memory;
 
 func strlen(text: str): i64;

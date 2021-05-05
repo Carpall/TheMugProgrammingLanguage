@@ -1,13 +1,13 @@
-﻿using Mug.Models.Generator.IR;
-using Mug.Models.Generator.IR.Builder;
-using Mug.TypeSystem;
+﻿using Zap.Models.Generator.IR;
+using Zap.Models.Generator.IR.Builder;
+using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator
+namespace Zap.Models.Generator
 {
     struct Scope
     {

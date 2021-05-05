@@ -1,7 +1,7 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 using Newtonsoft.Json;
 
-namespace Mug.Models.Parser
+namespace Zap.Models.Parser
 {
     public interface INode
     {

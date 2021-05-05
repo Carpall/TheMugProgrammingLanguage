@@ -1,6 +1,6 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Models.Generator.IR;
-using Mug.Models.Parser;
+using Zap.Models.Generator.IR;
+using Zap.Models.Parser;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
   public enum CompilationMode
     {
@@ -34,7 +34,7 @@ namespace Mug.Compilation
     {
         private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "mir", "mirjson" };
 
-        private const string USAGE = "\nUSAGE: mug <action> <file> <options>\n";
+        private const string USAGE = "\nUSAGE: zap <action> <file> <options>\n";
         private static readonly string HELP = @$"
 Compilation Actions:
   - build: to compile a program, with the following default options: {{target: exe, mode: debug, output: <file>.exe}}
@@ -53,19 +53,19 @@ How To Use:
   - compilation flag: it's a directive to give to the compilatio action, each compilation flag must be preceded by *
 ";
         private const string SRC_HELP = @"
-USAGE: mug <action> <options> *src <file>
+USAGE: zap <action> <options> *src <file>
 
 HELP: uses the next argument as source file to compile, curretly only one file at compilation supported
 ";
         private const string MODE_HELP = @"
-USAGE: mug <action> <file> <options> *mode (debug | release)
+USAGE: zap <action> <file> <options> *mode (debug | release)
 
 HELP: uses the next argument as compilation mode:
   - debug: for a faster compilation, allows debugging with llvmdbg
   - release: for a faster runtime execution, supports code optiminzation
 ";
         private static readonly string TARGET_HELP = @$"
-USAGE: mug build <file> <options> *target ( {string.Join(" | ", _targets)} )
+USAGE: zap build <file> <options> *target ( {string.Join(" | ", _targets)} )
 
 HELP: uses the next argument as compilation target:
   - exe: executable with platform specific extension
@@ -79,17 +79,17 @@ HELP: uses the next argument as compilation target:
   - mirjson: internal ir in json format
 ";
         private const string DEC_HELP = @"
-USAGE: mug <action> <file> <options> *dec symbol
+USAGE: zap <action> <file> <options> *dec symbol
 
 HELP: uses the next argument as symbol to declare before the compilation:
 ";
         private const string OUTPUT_HELP = @"
-USAGE: mug <action> <file> <options> *output <name>
+USAGE: zap <action> <file> <options> *output <name>
 
 HELP: uses the next argument as output file name. The extension is not required
 ";
         private const string ARGS_HELP = @"
-USAGE: mug run <file> <options> *args <arg0> <arg1> ...
+USAGE: zap run <file> <options> *args <arg0> <arg1> ...
 
 HELP: uses the next argument as arguments to pass to the compiled program, available only whe compilation action is 'run'
 ";
@@ -277,15 +277,15 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return path;
         }
 
-        private static string[] CheckMugFiles(string[] sources)
+        private static string[] CheckZapFiles(string[] sources)
         {
             foreach (var source in sources)
-                CheckMugFile(source);
+                CheckZapFile(source);
 
             return sources;
         }
 
-        private static string CheckMugFile(string source)
+        private static string CheckZapFile(string source)
         {
             if (source == ".")
                 return source;
@@ -367,7 +367,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 switch (arg)
                 {
                     case "src":
-                        ConfigureFlag(arg, CheckMugFiles(NextArgument().Split(' ')));
+                        ConfigureFlag(arg, CheckZapFiles(NextArgument().Split(' ')));
                         break;
                     case "mode":
                         ConfigureFlag(arg, GetMode(NextArgument()));
@@ -393,7 +393,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 }
             }
             else
-                AddSourceFilename(CheckMugFile(argument));
+                AddSourceFilename(CheckZapFile(argument));
         }
 
         private void AddSourceFilename(string source)

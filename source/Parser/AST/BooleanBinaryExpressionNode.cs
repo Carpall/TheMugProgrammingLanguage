@@ -1,10 +1,10 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.TypeSystem;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
+using Zap.TypeSystem;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public class BooleanBinaryExpressionNode : INode
     {
@@ -12,7 +12,7 @@ namespace Mug.Models.Parser.AST
         public INode Left { get; set; }
         public INode Right { get; set; }
         public TokenKind Operator { get; set; }
-        public MugType IsInstructionType { get; set; }
+        public ZapType IsInstructionType { get; set; }
         public ModulePosition Position { get; set; }
         public Token? IsInstructionAlias { get; set; }
     }

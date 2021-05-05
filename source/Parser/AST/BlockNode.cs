@@ -1,7 +1,7 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public class BlockNode : INode
     {

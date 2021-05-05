@@ -1,5 +1,5 @@
-﻿using Mug.Compilation;
-using Mug.Models.Parser;
+﻿using Zap.Compilation;
+using Zap.Models.Parser;
 using System;
 using System.Collections.Immutable;
 using System.IO;
@@ -26,7 +26,7 @@ try
     //       - fix bugs with eof
     //       - add tuple types and 'new (,,)' for initialize them
 
-    var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
+    var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());

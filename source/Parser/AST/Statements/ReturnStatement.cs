@@ -1,6 +1,6 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Zap.Models.Parser.AST.Statements
 {
   public class ReturnStatement : INode
     {

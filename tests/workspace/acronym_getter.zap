@@ -1,6 +1,6 @@
 import io;
 import string;
-import "stack.mug";
+import "stack.zap";
 
 func strlen(text: str): i64;
 func malloc(size: i64): unknown;

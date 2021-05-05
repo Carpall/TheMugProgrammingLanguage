@@ -1,6 +1,6 @@
-﻿using Mug.Compilation;
+﻿using Zap.Compilation;
 
-namespace Mug.Models.Parser.AST
+namespace Zap.Models.Parser.AST
 {
     public class ArraySelectElemNode : INode
     {

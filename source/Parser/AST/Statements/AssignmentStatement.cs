@@ -1,7 +1,7 @@
-﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+﻿using Zap.Compilation;
+using Zap.Models.Lexer;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Zap.Models.Parser.AST.Statements
 {
     public class AssignmentStatement : IStatement
     {

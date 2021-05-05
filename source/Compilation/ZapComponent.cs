@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
-    public class MugComponent
+    public class ZapComponent
     {
         public CompilationTower Tower { get; }
 
-        public MugComponent(CompilationTower tower)
+        public ZapComponent(CompilationTower tower)
         {
             Tower = tower;
         }

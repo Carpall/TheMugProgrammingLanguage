@@ -1,26 +1,26 @@
-﻿using Mug.Models.Lexer;
+﻿using Zap.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Mug.Compilation
+namespace Zap.Compilation
 {
   public class Diagnostic
     {
-        private readonly List<MugError> _diagnostic = new();
+        private readonly List<CompilationError> _diagnostic = new();
 
         public int Count => _diagnostic.Count;
 
-        public void Report(MugLexer lexer, int pos, string error)
+        public void Report(Lexer lexer, int pos, string error)
         {
             Report(new(new(lexer, pos..(pos + 1)), error));
         }
 
         public void Report(ModulePosition position, string message)
         {
-            Report(new MugError(position, message));
+            Report(new CompilationError(position, message));
         }
 
-        public void Report(MugError error)
+        public void Report(CompilationError error)
         {
             if (!_diagnostic.Contains(error))
                 _diagnostic.Add(error);
@@ -32,7 +32,7 @@ namespace Mug.Compilation
                 throw new CompilationException(this);
         }
 
-        public List<MugError> GetErrors()
+        public List<CompilationError> GetErrors()
         {
             return _diagnostic;
         }
