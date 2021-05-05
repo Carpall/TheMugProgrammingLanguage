@@ -13,7 +13,7 @@ namespace Zap.Models.Lexer
 
         public readonly string Source;
         public readonly string ModuleName;
-        public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=', '$' };
+        public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=', '$', '^', '~' };
 
         private StringBuilder CurrentSymbol { get; set; }
         private bool _eol = false;

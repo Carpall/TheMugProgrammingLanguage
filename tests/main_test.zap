@@ -1,20 +1,3 @@
-pub type A {
-  pub x
-  pub func x() {
-  }
-}
-
-/*pub type Person {
-  name: str
-  age: u8
-
-  pub func create(name: str, age: u8): Person { new Person { name: name, age: age } }
-
-  pub func say(self, msg: str) { println!("{}: {}", self.name, msg) }
-  pub func say_hello(self) { self.say("Hello, World!") }
-}
-
-
 pub enum AllocatorErr: err { size_is_zero }
 
 pub type Allocator<T> {
@@ -39,28 +22,28 @@ pub type Allocator<T> {
 
   // public
 
-  pub func drop(self) {
+  pub func drop(self: Allocator) {
     if self.deallocated { return }
     
     mfree(self.data_with_refc, self.get_real_size())
     self.deallocated = true
   }
 
-  pub func get_real_size(self) { size<T>!() + size<u64>!() }
+  pub func get_real_size(self: Allocator) { size<T>!() + size<u64>!() }
 
   // private
 
-  func get_alloc(self): T { (*self.data_with_refc).item1 }
-  func dereference(self) { if --(*self.data_with_refc).item2 == 0 { self.drop() } }
-  func reference(self) { (*self.data_with_refc).item2++ }
+  func get_alloc(self: Allocator): T { (*self.data_with_refc).item1 }
+  func dereference(self: Allocator) { if --(*self.data_with_refc).item2 == 0 { self.drop() } }
+  func reference(self: Allocator) { (*self.data_with_refc).item2++ }
 
-  func `*`(): T {
+  func `*`(self: Allocator): T {
     if self.deallocated { panic!("dereferenced nil pointer") } else { get_alloc() }
   }
 
-  func `=`(self, allocator: Allocator): T { self.dereference() }           // assigned
-  func `^`(self, ): Allocator             { self.reference() get_alloc() } // passed
-  func `~`(self)                          { self.dereference() }           // out of scoped
+  func `=`(self: Allocator, allocator: Allocator): T { self.dereference() }           // assigned
+  func `^`(self: Allocator): Allocator               { self.reference() get_alloc() } // passed
+  func `~`(self: Allocator)                          { self.dereference() }           // out of scoped
 }
 
 func malloc(size: u64): unk
@@ -80,4 +63,3 @@ func test_allocate_implicit_deallocate() {
 
   print!("*ptr: {}", *ptr)
 }
-*/

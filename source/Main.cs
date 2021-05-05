@@ -10,7 +10,8 @@ try
 
 #if DEBUG
 
-    // todo: - check type recursion
+    // quick todo:
+    //       - check type recursion
     //       - add function overloading
     //       - remove default values in for loop and other
     //       - add support for user defined operators (only for non-int based values)
@@ -25,6 +26,7 @@ try
     //       - add implicit true values in pragmas
     //       - fix bugs with eof
     //       - add tuple types and 'new (,,)' for initialize them
+    //       - fix tests
 
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
 

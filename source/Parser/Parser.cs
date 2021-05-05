@@ -7,6 +7,7 @@ using Zap.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System;
 
 namespace Zap.Models.Parser
 {
@@ -137,7 +138,18 @@ namespace Zap.Models.Parser
 
         private ZapType ExpectType(bool allowEnumError = false)
         {
-            if (MatchAdvance(TokenKind.OpenBracket, out var token))
+            if (MatchAdvance(TokenKind.OpenPar, out var token, true))
+            {
+                var types = new List<ZapType>();
+                do
+                    types.Add(ExpectType());
+                while (MatchAdvance(TokenKind.Comma));
+
+                Expect("", TokenKind.ClosePar);
+                var position = new ModulePosition(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End);
+                return UnsolvedType.Create(Tower, position, TypeKind.Tuple, types.ToArray());
+            }
+            if (MatchAdvance(TokenKind.OpenBracket, out token, true))
             {
                 var type = ExpectType();
                 Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
@@ -147,7 +159,7 @@ namespace Zap.Models.Parser
                     TypeKind.Array,
                     type);
             }
-            else if (MatchAdvance(TokenKind.Star, out token) || MatchAdvance(TokenKind.QuestionMark, out token))
+            else if (MatchAdvance(TokenKind.Star, out token, true) || MatchAdvance(TokenKind.QuestionMark, out token, true))
             {
                 var type = ExpectType();
                 return UnsolvedType.Create(
@@ -160,7 +172,7 @@ namespace Zap.Models.Parser
             var find = ExpectBaseType();
 
             // struct generics
-            if (MatchAdvance(TokenKind.BooleanLess))
+            if (MatchAdvance(TokenKind.BooleanLess, true))
             {
                 if (find.UnsolvedType.Kind != TypeKind.DefinedType)
                 {
@@ -183,7 +195,7 @@ namespace Zap.Models.Parser
                     (find, genericTypes));
             }
 
-            if (allowEnumError && MatchAdvance(TokenKind.Negation))
+            if (allowEnumError && MatchAdvance(TokenKind.Negation, true))
                 find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
 
             return find;
@@ -902,7 +914,7 @@ namespace Zap.Models.Parser
 
             var body = ExpectBlock();
 
-            INode elif = _badNode;
+            INode elif = null;
             if (key.Kind != TokenKind.KeyWhile && key.Kind != TokenKind.KeyElse && (Match(TokenKind.KeyElif) || Match(TokenKind.KeyElse)))
                 ConditionDefinition(out elif, false);
 
@@ -1377,11 +1389,11 @@ namespace Zap.Models.Parser
 
             do
             {
-                var name = Expect("Expected pragma's name", TokenKind.Identifier).Value;
-                Expect("", TokenKind.Colon);
-                var value = ExpectConstant("Non-constant expressions not allowed in pragmas");
+                var name = Expect("Expected pragma's name", TokenKind.Identifier);
+                var value = MatchAdvance(TokenKind.Colon) ?
+                    ExpectConstant("Non-constant expressions not allowed in pragmas") : Token.NewInfo(TokenKind.ConstantBoolean, "true");
 
-                _pragmas.SetPragma(name, value, ParseError, Tower.TokenCollection[CurrentIndex - 3].Position);
+                _pragmas.SetPragma(name.Value, value, Tower, name.Position);
             } while (MatchAdvance(TokenKind.Comma));
 
             Expect("Expected pragmas close", TokenKind.CloseBracket);

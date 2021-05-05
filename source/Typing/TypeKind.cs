@@ -30,6 +30,7 @@ namespace Zap.TypeSystem
         Int8,
         Int16,
         UInt16,
-        Option
+        Option,
+        Tuple
     }
 }
