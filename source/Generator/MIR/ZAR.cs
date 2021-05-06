@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace Zap.Models.Generator.IR
 {
-    public struct MIR
+    public struct ZAR
     {
-        public MIRFunction[] Functions { get; }
+        public ZARFunction[] Functions { get; }
 
-        public MIR(MIRFunction[] functions)
+        public ZAR(ZARFunction[] functions)
         {
             Functions = functions;
         }

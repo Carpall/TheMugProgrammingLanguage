@@ -7,22 +7,22 @@ using System.Linq;
 
 namespace Zap.Models.Generator.IR.Builder
 {
-    internal class MIRFunctionBuilder
+    internal class ZARFunctionBuilder
     {
         private readonly string _name;
         private readonly ZapType _returnType;
         private readonly ZapType[] _parameterTypes;
-        private readonly List<MIRValue> _body = new();
+        private readonly List<ZARValue> _body = new();
         private readonly List<ZapType> _allocations = new();
 
-        public MIRFunctionBuilder(string name, ZapType returntype, ZapType[] parametertypes)
+        public ZARFunctionBuilder(string name, ZapType returntype, ZapType[] parametertypes)
         {
             _name = name;
             _returnType = returntype;
             _parameterTypes = parametertypes;
         }
 
-        public MIRFunction Build()
+        public ZARFunction Build()
         {
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
         }
@@ -32,67 +32,67 @@ namespace Zap.Models.Generator.IR.Builder
             _allocations.Add(type);
         }
 
-        public void EmitInstruction(MIRValue instruction)
+        public void EmitInstruction(ZARValue instruction)
         {
             _body.Add(instruction);
         }
 
-        public void EmitInstruction(MIRValueKind kind, MIRValue value)
+        public void EmitInstruction(ZARValueKind kind, ZARValue value)
         {
-            EmitInstruction(new MIRValue(kind, value.Type, value));
+            EmitInstruction(new ZARValue(kind, value.Type, value));
         }
 
-        public void EmitInstruction(MIRValueKind kind)
+        public void EmitInstruction(ZARValueKind kind)
         {
-            EmitInstruction(new MIRValue(kind));
+            EmitInstruction(new ZARValue(kind));
         }
 
-        public void EmitInstruction(MIRValueKind kind, ZapType type)
+        public void EmitInstruction(ZARValueKind kind, ZapType type)
         {
-            EmitInstruction(new MIRValue(kind, type));
+            EmitInstruction(new ZARValue(kind, type));
         }
 
-        public void EmitLoadConstantValue(MIRValue constantvalue)
+        public void EmitLoadConstantValue(ZARValue constantvalue)
         {
-            EmitInstruction(MIRValueKind.Load, constantvalue);
+            EmitInstruction(ZARValueKind.Load, constantvalue);
         }
 
-        public void EmitStoreLocal(MIRValue localaddress)
+        public void EmitStoreLocal(ZARValue localaddress)
         {
-            EmitInstruction(MIRValueKind.StoreLocal, localaddress);
+            EmitInstruction(ZARValueKind.StoreLocal, localaddress);
         }
 
         public void EmitLoadZeroinitializedStruct(ZapType type)
         {
-            EmitInstruction(MIRValueKind.LoadZeroinitialized, type);
+            EmitInstruction(ZARValueKind.LoadZeroinitialized, type);
         }
 
         public void EmitDupplicate()
         {
-            EmitInstruction(MIRValueKind.Dupplicate);
+            EmitInstruction(ZARValueKind.Dupplicate);
         }
 
-        public void EmitStoreField(MIRValue fieldaddress)
+        public void EmitStoreField(ZARValue fieldaddress)
         {
-            EmitInstruction(MIRValueKind.StoreField, fieldaddress);
+            EmitInstruction(ZARValueKind.StoreField, fieldaddress);
         }
 
-        public void EmitLoadLocal(MIRValue staticMemoryAddress)
+        public void EmitLoadLocal(ZARValue staticMemoryAddress)
         {
-            EmitInstruction(MIRValueKind.LoadLocal, staticMemoryAddress);
+            EmitInstruction(ZARValueKind.LoadLocal, staticMemoryAddress);
         }
 
-        public MIRValue LastInstruction()
+        public ZARValue LastInstruction()
         {
             return _body.Last();
         }
 
-        public void EmitLoadField(MIRValue fieldaddress)
+        public void EmitLoadField(ZARValue fieldaddress)
         {
-            EmitInstruction(MIRValueKind.LoadField, fieldaddress);
+            EmitInstruction(ZARValueKind.LoadField, fieldaddress);
         }
 
-        public MIRValue PopLastInstruction()
+        public ZARValue PopLastInstruction()
         {
             var value = _body[^1];
             _body.RemoveAt(_body.Count - 1);
@@ -102,7 +102,7 @@ namespace Zap.Models.Generator.IR.Builder
         public void EmitComment(string text, bool first = true)
         {
             if (first) EmitComment(null, false);
-            EmitInstruction(new MIRValue(MIRValueKind.Comment, value: text));
+            EmitInstruction(new ZARValue(ZARValueKind.Comment, value: text));
             if (first) EmitComment(null, false);
         }
 
@@ -123,12 +123,12 @@ namespace Zap.Models.Generator.IR.Builder
 
         public void EmitReturn()
         {
-            EmitInstruction(MIRValueKind.Return);
+            EmitInstruction(ZARValueKind.Return);
         }
 
         public void EmitOptionalReturnVoid()
         {
-            if (_returnType.SolvedType.IsVoid() && (_body.Count == 0 || _body[^1].Kind != MIRValueKind.Return))
+            if (_returnType.SolvedType.IsVoid() && (_body.Count == 0 || _body[^1].Kind != ZARValueKind.Return))
             {
                 EmitComment("implicit void return");
                 EmitReturn();

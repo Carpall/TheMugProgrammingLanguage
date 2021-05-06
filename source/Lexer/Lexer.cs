@@ -494,11 +494,13 @@ namespace Zap.Models.Lexer
         {
             var oldIndex = CurrentIndex;
             while (HasNext() && Current == '\n')
-            {
-                // var CRLFOffset = Convert.ToInt32(HasNext() && GetNext() == '\n');
-                CurrentIndex += 1;// + CRLFOffset;
-            }
+                CurrentIndex += 1;
 
+            return IndexIsAdvanced(oldIndex);
+        }
+
+        private bool IndexIsAdvanced(int oldIndex)
+        {
             return CurrentIndex != oldIndex;
         }
 
@@ -510,17 +512,15 @@ namespace Zap.Models.Lexer
             // remove useless comments
             ConsumeComments();
 
-            // check if the newly stripped code is empty
-            if (CurrentIndex >= Source.Length)
+            if (ReachedEOF())
                 return;
 
             if (!_eol)
                 _eol = MatchEOL();
 
-            // to avoid a massive array access, also better to read
-            char current = Current;
+            var current = Current;
 
-            if (IsSkippableControl(current)) // skipping it and add the symbol if it's not empty
+            if (IsSkippableControl(current))
                 return;
 
             if (IsValidIdentifierChar(current)) // identifiers
@@ -529,6 +529,11 @@ namespace Zap.Models.Lexer
                 CollectDigit();
             else
                 ProcessSpecial(current); // if current is not a valid id char, a control or a string quote
+        }
+
+        private bool ReachedEOF()
+        {
+            return CurrentIndex >= Source.Length;
         }
 
         /// <summary>

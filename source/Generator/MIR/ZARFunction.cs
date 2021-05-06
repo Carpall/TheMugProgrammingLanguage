@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace Zap.Models.Generator.IR
 {
-    public struct MIRFunction
+    public struct ZARFunction
     {
         public string Name { get; }
         public ZapType ReturnType { get; }
         public ZapType[] ParameterTypes { get; }
-        public MIRValue[] Body { get; }
+        public ZARValue[] Body { get; }
         public ZapType[] Allocations { get; }
 
-        public MIRFunction(string name, ZapType returntype, ZapType[] parametertypes, MIRValue[] body, ZapType[] allocations)
+        public ZARFunction(string name, ZapType returntype, ZapType[] parametertypes, ZARValue[] body, ZapType[] allocations)
         {
             Name = name;
             ReturnType = returntype;
