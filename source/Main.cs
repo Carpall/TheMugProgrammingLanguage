@@ -27,7 +27,7 @@ try
     //       - fix bugs with eof
     //       - add tuple types and 'new (,,)' for initialize them
     //       - fix tests
-
+    
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
 
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));

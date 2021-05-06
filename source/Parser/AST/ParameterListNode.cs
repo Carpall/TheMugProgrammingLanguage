@@ -11,14 +11,16 @@ namespace Zap.Models.Parser.AST
         public ZapType Type { get; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
+        public bool IsPassedAsReference { get; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(ZapType type, string name, Token defaultConstValue, ModulePosition position)
+        public ParameterNode(ZapType type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
         {
             Type = type;
             Name = name;
             Position = position;
             DefaultConstantValue = defaultConstValue;
+            IsPassedAsReference = isPassedAsReference;
         }
 
         public override string ToString()

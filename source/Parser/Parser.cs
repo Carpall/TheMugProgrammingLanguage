@@ -240,6 +240,7 @@ namespace Zap.Models.Parser
             if (!isFirst)
                 Expect("", TokenKind.Comma);
 
+            var isPassedAsReference = MatchAdvance(TokenKind.BooleanAND);
             var name = Expect("Expected parameter's name", TokenKind.Identifier);
 
             Expect("Expected parameter's type", TokenKind.Colon);
@@ -253,7 +254,7 @@ namespace Zap.Models.Parser
             ExpectMultiple("", TokenKind.Comma, TokenKind.ClosePar);
             CurrentIndex--;
 
-            return new ParameterNode(type, name.Value, defaultvalue, name.Position);
+            return new ParameterNode(type, name.Value, defaultvalue, isPassedAsReference, name.Position);
         }
 
         private ZapType ExpectBaseType()
