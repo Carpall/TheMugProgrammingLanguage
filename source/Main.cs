@@ -29,7 +29,7 @@ try
     //       - fix tests
     
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
-
+    
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());
     // Console.WriteLine((unit.GenerateTAST() as INode).Dump());

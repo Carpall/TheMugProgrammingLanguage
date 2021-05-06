@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 
 namespace Zap.Compilation
 {
-  public enum CompilationMode
+    public enum CompilationMode
     {
         Release = 3,
         Debug = 0
@@ -39,6 +39,7 @@ namespace Zap.Compilation
 Compilation Actions:
   - build: to compile a program, with the following default options: {{target: exe, mode: debug, output: <file>.exe}}
   - run: build and run
+  - check: check for errors in any source, generates nothing
   - help: show this list or describes a compilation flag when one argument is passed
 
 Compilation Flags:
@@ -89,7 +90,7 @@ USAGE: zap <action> <file> <options> *output <name>
 HELP: uses the next argument as output file name. The extension is not required
 ";
         private const string ARGS_HELP = @"
-USAGE: zap run <file> <options> *args <arg0> <arg1> ...
+USAGE: zap run <file> <options> *args ""<arg1> <arg2> ...""
 
 HELP: uses the next argument as arguments to pass to the compiled program, available only whe compilation action is 'run'
 ";
@@ -185,10 +186,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             if (loadArgs)
             {
-                LoadArguments();
-
-                if (!IsDefault("args"))
-                    CompilationTower.Throw("Unable to use flag 'args' when compilation action is 'run'");
+                ParseArguments();
+                CheckForUnusableFlags("build", "args");
+                DeclareCompilerSymbols();
             }
 
             var path = GetFiles();
@@ -199,9 +199,6 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
             DeclareSymbol(GetFlag<CompilationMode>("mode").ToString());
             DeclareSymbol(target.ToString());
-            DeclarePlatformSymbol();
-
-            DeclarePreDeclaredSymbols();
 
             switch (target)
             {
@@ -234,6 +231,20 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             }
         }
 
+        private void DeclareCompilerSymbols()
+        {
+            DeclarePlatformSymbol();
+            DeclarePreDeclaredSymbols();
+            SetDefaultIFNeeded();
+        }
+
+        private void CheckForUnusableFlags(string compilationAction, params string[] unusables)
+        {
+            foreach (var unusable in unusables)
+                if (!IsDefault(unusable))
+                    CompilationTower.Throw($"Unable to use flag '{unusable}' when compilation action is '{compilationAction}'");
+        }
+
         private void DumpMIR(MIR mir, bool generatejson)
         {
             File.WriteAllText(GetOutputPath(), generatejson ? mir.DumpJSON() : mir.Dump());
@@ -256,7 +267,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void BuildRun()
         {
-            LoadArguments();
+            ParseArguments();
 
             if (GetFlag<CompilationTarget>("target") != CompilationTarget.EXE)
                 CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
@@ -396,6 +407,16 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 AddSourceFilename(CheckZapFile(argument));
         }
 
+        private void Check()
+        {
+            ParseArguments();
+            CheckForUnusableFlags("check", "output", "target", "mode", "args");
+            DeclareCompilerSymbols();
+
+            _unit = new CompilationUnit("", GetFiles());
+            _unit.GenerateMIR();
+        }
+
         private void AddSourceFilename(string source)
         {
             var sources = source == "." ?
@@ -406,13 +427,12 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             SetFlag("src", sources);
         }
 
-        private void LoadArguments()
+        private void ParseArguments()
         {
             for (; _argumentSelector < _arguments.Length; _argumentSelector++)
                 InterpretArgument(_arguments[_argumentSelector]);
-
-            SetDefaultIFNeeded();
         }
+
 
         internal static void PrintUsageAndHelp()
         {
@@ -446,6 +466,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     CompilationTower.Throw($"Unkown compiler flag '{flag}'");
                     break;
             }
+        
         }
 
         private void Help()
@@ -467,6 +488,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     break;
                 case "run":
                     BuildRun();
+                    break;
+                case "check":
+                    Check();
                     break;
                 case "help":
                     Help();
