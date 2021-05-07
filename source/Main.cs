@@ -27,6 +27,8 @@ try
     //       - fix bugs with eof
     //       - add tuple types and 'new (,,)' for initialize them
     //       - fix tests
+    //       - fix positions
+    //       - fix crash when error's position is on different lines
     
     var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
     
