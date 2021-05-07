@@ -1,4 +1,18 @@
-pub enum AllocatorErr: err { size_is_zero }
+type A {
+  field: i32
+
+  func create(field: i32): A { new { field: field } }
+}
+
+
+func a(field: i32): i32 { new { field: field } }
+
+func b() {
+  var x = new { a: 1 }
+  var y: A = new { field: 1 }
+}
+
+/*pub enum AllocatorErr: err { size_is_zero }
 
 pub type Allocator<T> {
 
@@ -62,4 +76,4 @@ func test_allocate_implicit_deallocate() {
   const ptr = Allocator.create<i32>()
 
   print!("*ptr: {}", *ptr)
-}
+}*/

@@ -11,11 +11,11 @@ namespace Zap.Models.Generator
 {
     struct Scope
     {
-        internal MIRFunctionBuilder Parent { get; set; }
+        internal ZARFunctionBuilder Parent { get; set; }
         internal AllocationData HiddenAllocationBuffer { get; set; }
         internal bool IsInFunctionBlock { get; }
 
-        public Scope(MIRFunctionBuilder functionbuilder, AllocationData hiddenAllocationBuffer, bool isinfunctionblock)
+        public Scope(ZARFunctionBuilder functionbuilder, AllocationData hiddenAllocationBuffer, bool isinfunctionblock)
         {
             Parent = functionbuilder;
             HiddenAllocationBuffer = hiddenAllocationBuffer;

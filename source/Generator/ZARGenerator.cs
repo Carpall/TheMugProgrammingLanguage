@@ -14,11 +14,11 @@ using VirtualMemory = System.Collections.Generic.Dictionary<string, Zap.Models.G
 
 namespace Zap.Models.Generator
 {
-    public class MIRGenerator : ZapComponent
+    public class ZARGenerator : ZapComponent
     {
-        public MIRModuleBuilder Module { get; } = new();
+        public ZARModuleBuilder Module { get; } = new();
 
-        private MIRFunctionBuilder FunctionBuilder { get; set; }
+        private ZARFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
         private VirtualMemory VirtualMemory { get; set; }
         private Stack<ZapType> ContextTypes { get; set; } = new();
@@ -27,11 +27,11 @@ namespace Zap.Models.Generator
         private Scope CurrentScope = default;
         private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
 
-        public MIRGenerator(CompilationTower tower) : base(tower)
+        public ZARGenerator(CompilationTower tower) : base(tower)
         {
         }
 
-        public MIR Generate()
+        public ZAR Generate()
         {
             WalkDeclarations();
 
@@ -101,7 +101,7 @@ namespace Zap.Models.Generator
                 FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
 
                 FunctionBuilder.EmitStoreLocal(
-                    MIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
+                    ZARValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
             }
         }
 
@@ -142,7 +142,7 @@ namespace Zap.Models.Generator
 
             var instruction = FunctionBuilder.PopLastInstruction();
 
-            if (instruction.ParameterValue.Kind != MIRValueKind.StaticMemoryAddress)
+            if (instruction.ParameterValue.Kind != ZARValueKind.StaticMemoryAddress)
                 Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
 
             ContextTypes.Push(variable);
@@ -173,7 +173,7 @@ namespace Zap.Models.Generator
             ContextTypes.Push(ZapType.Solved(SolvedType.Primitive(TypeKind.Auto)));
         }
 
-        private static MIRValueKind GetLeftExpressionInstruction(MIRValueKind kind)
+        private static ZARValueKind GetLeftExpressionInstruction(ZARValueKind kind)
         {
             return kind + 1;
         }
@@ -245,7 +245,7 @@ namespace Zap.Models.Generator
                     type = EvaluateBinaryExpression(expression);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {body} in MIRGenerator.EvaluateExpression");
+                    CompilationTower.Todo($"implement {body} in ZARGenerator.EvaluateExpression");
                     break;
             }
 
@@ -261,7 +261,7 @@ namespace Zap.Models.Generator
             // make it better
             if (leftisconstant & rightisconstant)
             {
-                var constant = MIRValue.Constant(
+                var constant = ZARValue.Constant(
                     type = CoercedOr(ZapType.Int32),
                     ulong.Parse(FoldConstantIntoToken(expression).Value));
 
@@ -274,7 +274,7 @@ namespace Zap.Models.Generator
                     var index = FunctionBuilder.CurrentIndex();
                     var left = FoldConstantIntoToken(expression.Left);
                     FunctionBuilder.EmitLoadConstantValue(
-                        MIRValue.Constant(
+                        ZARValue.Constant(
                             type = EvaluateExpression(expression.Right),
                             ulong.Parse(left.Value)));
 
@@ -284,7 +284,7 @@ namespace Zap.Models.Generator
                 {
                     var right = FoldConstantIntoToken(expression.Right);
                     FunctionBuilder.EmitLoadConstantValue(
-                        MIRValue.Constant(type = EvaluateExpression(expression.Left), ulong.Parse(right.Value)));
+                        ZARValue.Constant(type = EvaluateExpression(expression.Left), ulong.Parse(right.Value)));
                 }
                 else
                 {
@@ -303,10 +303,10 @@ namespace Zap.Models.Generator
         {
             FunctionBuilder.EmitInstruction(op switch
             {
-                TokenKind.Plus => MIRValueKind.Add,
-                TokenKind.Minus => MIRValueKind.Sub,
-                TokenKind.Star => MIRValueKind.Mul,
-                TokenKind.Slash => MIRValueKind.Div,
+                TokenKind.Plus => ZARValueKind.Add,
+                TokenKind.Minus => ZARValueKind.Sub,
+                TokenKind.Star => ZARValueKind.Mul,
+                TokenKind.Slash => ZARValueKind.Div,
                 _ => throw new()
             });
         }
@@ -360,19 +360,23 @@ namespace Zap.Models.Generator
             if (type is null)
                 Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
             else
-                FunctionBuilder.EmitLoadField(MIRValue.StaticMemoryAddress(index, type));
+                FunctionBuilder.EmitLoadField(ZARValue.StaticMemoryAddress(index, type));
 
             return type ?? ContextType;
         }
 
         private ZapType EvaluateTypeAllocationNode(TypeAllocationNode expression)
         {
-            var type = expression.Name.SolvedType;
+            SolvedType type;
+            if (expression.Name is not null)
+                type = expression.Name.SolvedType;
+            else if (ContextTypeIsAmbiguousOrGet(expression.Position, out type))
+                return ZapType.Void;
 
             if (!type.IsNewOperatorAllocable())
             {
                 Tower.Report(expression.Position, $"Unable to allocate type '{type}' via operator 'new'");
-                return expression.Name;
+                return ZapType.Solved(type);
             }
 
             var result = type.GetStruct();
@@ -404,12 +408,22 @@ namespace Zap.Models.Generator
 
                 FunctionBuilder.EmitDupplicate();
                 FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-                FunctionBuilder.EmitStoreField(MIRValue.StaticMemoryAddress(fieldindex, fieldtype));
+                FunctionBuilder.EmitStoreField(ZARValue.StaticMemoryAddress(fieldindex, fieldtype));
 
                 ContextTypes.Pop();
             }
 
             return ZapType.Solved(SolvedType.Struct(result));
+        }
+
+        private bool ContextTypeIsAmbiguousOrGet(ModulePosition position, out SolvedType type)
+        {
+            type = ContextType.SolvedType;
+            var isambiguous = type.IsAuto();
+            if (isambiguous)
+                Tower.Report(position, "Cannot infer ambiguous type");
+
+            return isambiguous;
         }
 
         private static ZapType GetFieldType(string name, List<FieldNode> body, out int i)
@@ -436,7 +450,7 @@ namespace Zap.Models.Generator
                 if (allocation.IsConst && LeftValueChecker.IsLeftValue)
                     Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
 
-                FunctionBuilder.EmitLoadLocal(MIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
+                FunctionBuilder.EmitLoadLocal(ZARValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
             }
 
             return allocation.Type;
@@ -445,16 +459,16 @@ namespace Zap.Models.Generator
         private ZapType EvaluateConstant(Token expression)
         {
             ZapType result = null;
-            MIRValue value;
+            ZARValue value;
 
             switch (expression.Kind)
             {
                 case TokenKind.ConstantDigit:
                     result = CoercedOr(ZapType.Solved(SolvedType.Primitive(TypeKind.Int32)));
-                    value = MIRValue.Constant(result, ulong.Parse(expression.Value));
+                    value = ZARValue.Constant(result, ulong.Parse(expression.Value));
                     break;
                 default:
-                    CompilationTower.Todo($"implement {expression.Kind} in MIRGenerator.EvaluateConstant");
+                    CompilationTower.Todo($"implement {expression.Kind} in ZARGenerator.EvaluateConstant");
                     value = new();
                     break;
             }
@@ -470,7 +484,7 @@ namespace Zap.Models.Generator
             return contexttype.SolvedType.IsInt() ? contexttype : or;
         }
 
-        private MIRValue DeclareVirtualMemorySymbol(string name, ZapType type, ModulePosition position, bool isconst)
+        private ZARValue DeclareVirtualMemorySymbol(string name, ZapType type, ModulePosition position, bool isconst)
         {
             var localindex = VirtualMemory.Count;
             if (!VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
@@ -478,12 +492,12 @@ namespace Zap.Models.Generator
 
             FunctionBuilder.DeclareAllocation(type);
 
-            return MIRValue.StaticMemoryAddress(localindex, type);
+            return ZARValue.StaticMemoryAddress(localindex, type);
         }
 
         private void GenerateFunction(FunctionStatement func)
         {
-            FunctionBuilder = new MIRFunctionBuilder(func.Name, func.ReturnType, GetParameterTypes(func.ParameterList));
+            FunctionBuilder = new ZARFunctionBuilder(func.Name, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(FunctionBuilder, null, true);
             VirtualMemory = new();
@@ -541,7 +555,7 @@ namespace Zap.Models.Generator
                     GenerateFunction(funcsymbol.Func);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {value} in MIRGenerator.RecognizeSymbol");
+                    CompilationTower.Todo($"implement {value} in ZARGenerator.RecognizeSymbol");
                     break;
             }
         }

@@ -8,16 +8,16 @@ using System.Threading.Tasks;
 
 namespace Zap.Models.Generator.IR.Builder
 {
-    public class MIRModuleBuilder
+    public class ZARModuleBuilder
     {
-        private readonly List<MIRFunction> _functions = new();
+        private readonly List<ZARFunction> _functions = new();
 
-        public void DefineFunction(MIRFunction function)
+        public void DefineFunction(ZARFunction function)
         {
             _functions.Add(function);
         }
 
-        public MIR Build()
+        public ZAR Build()
         {
             return new(_functions.ToArray());
         }

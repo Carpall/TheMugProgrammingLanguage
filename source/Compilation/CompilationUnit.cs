@@ -36,7 +36,7 @@ namespace Zap.Compilation
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             // generates the bytecode
-            GenerateMIR();
+            GenerateZAR();
 
             CompileModule(optimizazioneLevel, output, onlyBitcode, optionalFlag);
         }
@@ -145,7 +145,7 @@ namespace Zap.Compilation
             return Tower.Solver.Solve();
         }
 
-        public MIR GenerateMIR()
+        public ZAR GenerateZAR()
         {
             GenerateTAST();
             return Tower.Generator.Generate();

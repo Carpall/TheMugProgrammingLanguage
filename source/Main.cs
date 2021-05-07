@@ -4,6 +4,7 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Linq;
 
 try
 {
@@ -19,9 +20,8 @@ try
     //       - add path checker
     //       - make all a expression as terms allowing return value in hidden buffer with `break value`
     //       - add pragmas' chekers
-    //       - add deref statement
+    //       - add defer statement
     //       - add option type '?type'
-    //       - add support for basewith type in get overload name in mirfunction
     //       - add doc comments for pub members
     //       - add implicit true values in pragmas
     //       - fix bugs with eof
@@ -29,13 +29,14 @@ try
     //       - fix tests
     //       - fix positions
     //       - fix crash when error's position is on different lines
+    //       - add implicit new operator with type inference 'new { }' and '[]', with context type
     
-    var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.zap");
+    var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
     
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());
     // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
-    Console.WriteLine(unit.GenerateMIR().Dump());
+    Console.WriteLine(unit.GenerateZAR().Dump());
 
 #else
 

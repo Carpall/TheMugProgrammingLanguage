@@ -669,37 +669,10 @@ namespace Zap.Models.Parser
         private INode CollectNodeNew(ModulePosition newposition)
         {
             if (MatchAdvance(TokenKind.OpenBracket))
-            {
-                var type = ExpectType();
-                INode size = _badNode;
+                return CollectNodeNewArray();
 
-                if (MatchAdvance(TokenKind.Comma))
-                {
-                    size = ExpectExpression(end: TokenKind.CloseBracket);
-                    CurrentIndex--;
-                }
-                
-                Expect("Expected ']' and the array body", TokenKind.CloseBracket);
-
-                var array = new ArrayAllocationNode() { SizeIsImplicit = size is BadNode, Size = size, Type = type };
-                Expect("Expected the array body, empty ('{}') if has to be instanced with type default values", TokenKind.OpenBrace);
-
-                if (!Match(TokenKind.CloseBrace))
-                {
-                    do
-                    {
-                        array.Body.Add(ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace));
-                        CurrentIndex--;
-                    }
-                    while (MatchAdvance(TokenKind.Comma));
-                }
-
-                Expect("", TokenKind.CloseBrace);
-
-                return array;
-            }
-
-            var name = ExpectType();
+            // could be type inferred
+            MatchType(out var name);
             var allocation = new TypeAllocationNode() { Name = name, Position = newposition };
 
             Expect("Type allocation requires '{}'", TokenKind.OpenBrace);
@@ -712,6 +685,37 @@ namespace Zap.Models.Parser
             Expect("", TokenKind.CloseBrace);
 
             return allocation;
+        }
+
+        private INode CollectNodeNewArray()
+        {
+            var type = ExpectType();
+            INode size = _badNode;
+
+            if (MatchAdvance(TokenKind.Comma))
+            {
+                size = ExpectExpression(end: TokenKind.CloseBracket);
+                CurrentIndex--;
+            }
+
+            Expect("Expected ']' and the array body", TokenKind.CloseBracket);
+
+            var array = new ArrayAllocationNode() { SizeIsImplicit = size is BadNode, Size = size, Type = type };
+            Expect("Expected the array body, empty ('{}') if has to be instanced with type default values", TokenKind.OpenBrace);
+
+            if (!Match(TokenKind.CloseBrace))
+            {
+                do
+                {
+                    array.Body.Add(ExpectExpression(true, true, false, TokenKind.Comma, TokenKind.CloseBrace));
+                    CurrentIndex--;
+                }
+                while (MatchAdvance(TokenKind.Comma));
+            }
+
+            Expect("", TokenKind.CloseBrace);
+
+            return array;
         }
 
         private bool MatchAndOrOperator()
