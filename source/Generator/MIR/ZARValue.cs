@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Zap.Models.Generator.IR
 {
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum MIRValueKind
+    public enum ZARValueKind
     {
         Return,
         Constant,
@@ -29,35 +29,35 @@ namespace Zap.Models.Generator.IR
         Mul,
     }
 
-    public struct MIRValue
+    public struct ZARValue
     {
-        public MIRValueKind Kind { get; internal set; }
+        public ZARValueKind Kind { get; internal set; }
         public ZapType Type { get; }
         public object Value { get; }
 
-        internal MIRValue(MIRValueKind kind, ZapType type = null, object value = null)
+        internal ZARValue(ZARValueKind kind, ZapType type = null, object value = null)
         {
             Kind = kind;
             Type = type;
             Value = value;
         }
 
-        internal static MIRValue Constant(ZapType type, object value)
+        internal static ZARValue Constant(ZapType type, object value)
         {
-            return new(MIRValueKind.Constant, type, value);
+            return new(ZARValueKind.Constant, type, value);
         }
 
-        internal static MIRValue StaticMemoryAddress(int address, ZapType type)
+        internal static ZARValue StaticMemoryAddress(int address, ZapType type)
         {
-            return new MIRValue(MIRValueKind.StaticMemoryAddress, type, address);
+            return new ZARValue(ZARValueKind.StaticMemoryAddress, type, address);
         }
 
         internal ulong ConstantIntValue => (ulong)Value;
-        internal MIRValue ParameterValue => (MIRValue)Value;
+        internal ZARValue ParameterValue => (ZARValue)Value;
 
         public override string ToString()
         {
-            if (Kind == MIRValueKind.Comment)
+            if (Kind == ZARValueKind.Comment)
                 return Value is not null ? $"~ {Value}" : "";
 
             return $"{Kind}: ({(Type is not null ? $"{Type} " : "")}{Value ?? "_"})";

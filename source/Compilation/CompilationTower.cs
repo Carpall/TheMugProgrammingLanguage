@@ -19,7 +19,7 @@ namespace Zap.Compilation
         public Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
-        public MIRGenerator Generator { get; }
+        public ZARGenerator Generator { get; }
         public SymbolTable Symbols { get; }
         public List<ZapType> Types { get; }
         public string OutputFilename { get; internal set; }

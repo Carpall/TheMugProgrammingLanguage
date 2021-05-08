@@ -4,6 +4,7 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Linq;
 
 try
 {
@@ -21,7 +22,6 @@ try
     //       - add pragmas' chekers
     //       - add deref statement
     //       - add option type '?type'
-    //       - add support for basewith type in get overload name in mirfunction
     //       - add doc comments for pub members
     //       - add implicit true values in pragmas
     //       - fix bugs with eof
@@ -35,7 +35,7 @@ try
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());
     // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
-    Console.WriteLine(unit.GenerateMIR().Dump());
+    Console.WriteLine(unit.GenerateZAR().Dump());
 
 #else
 

@@ -26,20 +26,19 @@ namespace Zap.Compilation
         AST,
         LL,
         TAST,
-        MIR,
-        MIRJSON
+        ZAR,
+        ZARJSON
     }
 
     public class CompilationFlags
     {
-        private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "mir", "mirjson" };
+        private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "zar", "zar-json" };
 
         private const string USAGE = "\nUSAGE: zap <action> <file> <options>\n";
         private static readonly string HELP = @$"
 Compilation Actions:
   - build: to compile a program, with the following default options: {{target: exe, mode: debug, output: <file>.exe}}
   - run: build and run
-  - check: check for errors in any source, generates nothing
   - help: show this list or describes a compilation flag when one argument is passed
 
 Compilation Flags:
@@ -76,8 +75,8 @@ HELP: uses the next argument as compilation target:
   - ast: abstract syntax tree
   - tast: ast with types resolved
   - ll: llvm bytecode
-  - mir: internal ir
-  - mirjson: internal ir in json format
+  - zar: internal ir
+  - zar-json: internal ir in json format
 ";
         private const string DEC_HELP = @"
 USAGE: zap <action> <file> <options> *dec symbol
@@ -221,9 +220,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case CompilationTarget.EXE:
                     Compile();
                     break;
-                case CompilationTarget.MIRJSON:
-                case CompilationTarget.MIR:
-                    DumpMIR(_unit.GenerateMIR(), target == CompilationTarget.MIRJSON);
+                case CompilationTarget.ZARJSON:
+                case CompilationTarget.ZAR:
+                    DumpZAR(_unit.GenerateZAR(), target == CompilationTarget.ZARJSON);
                     break;
                 default:
                     CompilationTower.Throw("Unsupported target, try with another");
@@ -245,9 +244,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     CompilationTower.Throw($"Unable to use flag '{unusable}' when compilation action is '{compilationAction}'");
         }
 
-        private void DumpMIR(MIR mir, bool generatejson)
+        private void DumpZAR(ZAR zar, bool generatejson)
         {
-            File.WriteAllText(GetOutputPath(), generatejson ? mir.DumpJSON() : mir.Dump());
+            File.WriteAllText(GetOutputPath(), generatejson ? zar.DumpJSON() : zar.Dump());
         }
 
         private void DeclareSymbol(string name)
