@@ -39,6 +39,7 @@ namespace Zap.Compilation
 Compilation Actions:
   - build: to compile a program, with the following default options: {{target: exe, mode: debug, output: <file>.exe}}
   - run: build and run
+  - check: prints errors in a source, without generating anything
   - help: show this list or describes a compilation flag when one argument is passed
 
 Compilation Flags:
@@ -413,7 +414,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", GetFiles());
-            _unit.GenerateMIR();
+            _unit.GenerateZAR();
         }
 
         private void AddSourceFilename(string source)

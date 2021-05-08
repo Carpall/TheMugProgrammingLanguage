@@ -1,11 +1,15 @@
-type A { a: i32 }
+type A {
+  field: i32
 
-func a(): A {
-  return new A { a: 10 }
+  func create(field: i32): A { new { field: field } }
 }
 
-func main() {
-  a().a = 10
+
+func a(field: i32): i32 { new { field: field } }
+
+func b() {
+  var x = new { a: 1 }
+  var y: A = new { field: 1 }
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

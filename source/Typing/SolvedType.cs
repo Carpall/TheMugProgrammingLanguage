@@ -99,5 +99,10 @@ namespace Zap.TypeSystem
         {
             return Kind == TypeKind.Void;
         }
+
+        public bool IsAuto()
+        {
+            return Kind == TypeKind.Auto;
+        }
     }
 }

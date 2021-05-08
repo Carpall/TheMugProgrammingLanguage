@@ -367,12 +367,16 @@ namespace Zap.Models.Generator
 
         private ZapType EvaluateTypeAllocationNode(TypeAllocationNode expression)
         {
-            var type = expression.Name.SolvedType;
+            SolvedType type;
+            if (expression.Name is not null)
+                type = expression.Name.SolvedType;
+            else if (ContextTypeIsAmbiguousOrGet(expression.Position, out type))
+                return ZapType.Void;
 
             if (!type.IsNewOperatorAllocable())
             {
                 Tower.Report(expression.Position, $"Unable to allocate type '{type}' via operator 'new'");
-                return expression.Name;
+                return ZapType.Solved(type);
             }
 
             var result = type.GetStruct();
@@ -410,6 +414,16 @@ namespace Zap.Models.Generator
             }
 
             return ZapType.Solved(SolvedType.Struct(result));
+        }
+
+        private bool ContextTypeIsAmbiguousOrGet(ModulePosition position, out SolvedType type)
+        {
+            type = ContextType.SolvedType;
+            var isambiguous = type.IsAuto();
+            if (isambiguous)
+                Tower.Report(position, "Cannot infer ambiguous type");
+
+            return isambiguous;
         }
 
         private static ZapType GetFieldType(string name, List<FieldNode> body, out int i)
