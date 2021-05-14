@@ -10,8 +10,6 @@ using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
 
-using VirtualMemory = System.Collections.Generic.Dictionary<string, Zap.Models.Generator.AllocationData>;
-
 namespace Zap.Models.Generator
 {
     public class ZARGenerator : ZapComponent
@@ -20,7 +18,6 @@ namespace Zap.Models.Generator
 
         private ZARFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
-        private VirtualMemory VirtualMemory { get; set; }
         private Stack<ZapType> ContextTypes { get; set; } = new();
         
         private ZapType ContextType => ContextTypes.Peek();
@@ -49,7 +46,7 @@ namespace Zap.Models.Generator
             return result;
         }
 
-        private void GenerateFunctionBlock(BlockNode block)
+        private void GenerateBlock(BlockNode block)
         {
             for (int i = 0; i < block.Statements.Count; i++)
             {
@@ -93,7 +90,7 @@ namespace Zap.Models.Generator
             else
             {
                 if (CurrentScope.HiddenAllocationBuffer is null)
-                    ContextTypesPushAuto();
+                    ContextTypesPushUndefined();
                 else
                     ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
 
@@ -132,10 +129,13 @@ namespace Zap.Models.Generator
 
         private void GenerateAssignmentStatement(AssignmentStatement statement)
         {
-            ContextTypesPushAuto();
+            ContextTypesPushUndefined();
             SetLeftValueChecker(statement.Position);
 
             var variable = EvaluateExpression(statement.Name);
+
+            if (variable.SolvedType.IsUndefined())
+                return;
 
             CleanLeftValueChecker();
             ContextTypes.Pop();
@@ -168,9 +168,9 @@ namespace Zap.Models.Generator
             LeftValueChecker.Position = position;
         }
 
-        private void ContextTypesPushAuto()
+        private void ContextTypesPushUndefined()
         {
-            ContextTypes.Push(ZapType.Solved(SolvedType.Primitive(TypeKind.Auto)));
+            ContextTypes.Push(ZapType.Solved(SolvedType.Primitive(TypeKind.Undefined)));
         }
 
         private static ZARValueKind GetLeftExpressionInstruction(ZARValueKind kind)
@@ -244,12 +244,27 @@ namespace Zap.Models.Generator
                 case BinaryExpressionNode expression:
                     type = EvaluateBinaryExpression(expression);
                     break;
+                case BlockNode expression:
+                    type = EvaluateBlockNode(expression);
+                    break;
                 default:
                     CompilationTower.Todo($"implement {body} in ZARGenerator.EvaluateExpression");
                     break;
             }
 
             return type;
+        }
+
+        private ZapType EvaluateBlockNode(BlockNode expression)
+        {
+            var oldScope = CurrentScope;
+            CurrentScope = new(null, false, CurrentScope.VirtualMemory);
+
+            GenerateBlock(expression);
+
+            var hiddentAllocation = CurrentScope.HiddenAllocationBuffer;
+            CurrentScope = oldScope;
+            return hiddentAllocation is not null ? hiddentAllocation.Type : ZapType.Void;
         }
 
         private ZapType EvaluateBinaryExpression(BinaryExpressionNode expression)
@@ -284,12 +299,12 @@ namespace Zap.Models.Generator
                 {
                     var right = FoldConstantIntoToken(expression.Right);
                     FunctionBuilder.EmitLoadConstantValue(
-                        ZARValue.Constant(type = EvaluateExpression(expression.Left), ulong.Parse(right.Value)));
+                        ZARValue.Constant(type = EvaluateExpression(expression.Left), long.Parse(right.Value)));
                 }
                 else
                 {
                     type = EvaluateExpression(expression.Left);
-                    FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Position);
+                    FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Right.Position);
                     // allow user defined operators
                 }
 
@@ -440,7 +455,7 @@ namespace Zap.Models.Generator
 
         private ZapType EvaluateIdentifier(string value, ModulePosition position)
         {
-            if (!VirtualMemory.TryGetValue(value, out var allocation))
+            if (!CurrentScope.VirtualMemory.TryGetValue(value, out var allocation))
             {
                 allocation = new AllocationData(0, ContextType, false);
                 Tower.Report(position, $"Variable '{value}' is not declared");
@@ -486,8 +501,8 @@ namespace Zap.Models.Generator
 
         private ZARValue DeclareVirtualMemorySymbol(string name, ZapType type, ModulePosition position, bool isconst)
         {
-            var localindex = VirtualMemory.Count;
-            if (!VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
+            var localindex = GetLocalIndex();
+            if (!CurrentScope.VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
                 Tower.Report(position, $"Variable '{name}' is already declared");
 
             FunctionBuilder.DeclareAllocation(type);
@@ -495,15 +510,19 @@ namespace Zap.Models.Generator
             return ZARValue.StaticMemoryAddress(localindex, type);
         }
 
+        private int GetLocalIndex()
+        {
+            return CurrentScope.VirtualMemory.Count;
+        }
+
         private void GenerateFunction(FunctionStatement func)
         {
             FunctionBuilder = new ZARFunctionBuilder(func.Name, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
-            CurrentScope = new(FunctionBuilder, null, true);
-            VirtualMemory = new();
+            CurrentScope = new(null, true, new());
 
             AllocateParameters(func.ParameterList);
-            GenerateFunctionBlock(func.Body);
+            GenerateBlock(func.Body);
             FunctionBuilder.EmitOptionalReturnVoid();
 
             Module.DefineFunction(FunctionBuilder.Build());

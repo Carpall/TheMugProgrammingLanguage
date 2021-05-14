@@ -31,6 +31,7 @@ try
     //       - fix crash when error's position is on different lines
     //       - add implicit new operator with type inference 'new { }' and '[]', with context type
     //       - fix 'x *' 'x /'
+    //       - fix '//' at the start of the line makes the compiler throws error
     
     var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
     
@@ -65,7 +66,12 @@ catch (CompilationException e)
             for (; i < errors.Count; i++)
             {
                 var error = errors[i];
-                PrettyPrinter.WriteSourceLineStyle(error.Bad.Lexer.ModuleName, error.Bad.Position, error.Bad.LineAt(), error.Bad.Lexer.Source, error.Message);
+                PrettyPrinter.WriteSourceLineStyle(
+                    error.Bad.Lexer.ModuleName,
+                    error.Bad.Position,
+                    error.Bad.LineAt(),
+                    error.Bad.Lexer.Source,
+                    error.Message);
             }
         }
         catch

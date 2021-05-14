@@ -104,5 +104,10 @@ namespace Zap.TypeSystem
         {
             return Kind == TypeKind.Auto;
         }
+
+        public bool IsUndefined()
+        {
+            return Kind == TypeKind.Undefined;
+        }
     }
 }

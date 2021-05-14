@@ -5,8 +5,12 @@ type A {
 }
 
 func b() {
-  const y = 2
-  const x: u8 = 2 + 10
+  const y: u8 = 2
+  const x = y + {
+    var result: u8 = 0
+    
+    result
+  }
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

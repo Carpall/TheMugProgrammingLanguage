@@ -1034,8 +1034,11 @@ namespace Zap.Models.Parser
             return true;
         }
 
-        private INode ExpectStatement()
+        private INode ExpectStatement(bool isfirst)
         {
+            if (!isfirst && !Current.IsOnNewLine)
+                Report(Current.Position, "Putting multiple statements on the same line is bad design");
+
             if (!VariableDefinition(out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
@@ -1048,12 +1051,12 @@ namespace Zap.Models.Parser
         private BlockNode ExpectBlock()
         {
             var start = Expect("", TokenKind.OpenBrace).Position;
-
             var block = new BlockNode();
+            var i = 0;
 
             while (!Match(TokenKind.CloseBrace))
             {
-                var statement = ExpectStatement();
+                var statement = ExpectStatement(i++ == 0);
                 if (statement is not BadNode)
                     block.Statements.Add(statement);
             }
