@@ -75,7 +75,7 @@ namespace Zap.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
-            CheckType(type.BodyFunctions, type.BodyFields, type.Generics, type.Pragmas);
+            CheckType(type.BodyMethods, type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, new StructSymbol(type));
         }
 

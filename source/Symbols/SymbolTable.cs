@@ -13,12 +13,12 @@ namespace Zap.Symbols
         {
         }
 
-        public T GetSymbol<T>(string name, ModulePosition position) where T : ISymbol
+        public T GetSymbol<T>(string name, ModulePosition position, string memberKind) where T : ISymbol
         {
             if (!_symbols.TryGetValue(name, out var symbol))
                 Tower.Report(position, $"'{name}' is not declared");
             else if (symbol is not T)
-                Tower.Report(position, $"'{name}' is not valid here");
+                Tower.Report(position, $"'{name}' is not a {memberKind}");
             else
                 return (T)symbol;
 

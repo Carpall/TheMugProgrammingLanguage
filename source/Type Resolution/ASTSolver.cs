@@ -29,7 +29,7 @@ namespace Zap.TypeResolution
                     ZapType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
 
                 TypeKind.DefinedType => SolvedType.Struct(
-                    Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position)),
+                    Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type")),
 
                 _ => SolvedType.Primitive(unsolvedtype.Kind),
             };

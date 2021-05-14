@@ -4,10 +4,9 @@ type A {
   func is_ready(self: A): bool { true }
 }
 
-func add() { }
-
 func b() {
-  add(add(1), 2 + 3)
+  var x = new A { }
+  x.is_ready(x)
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

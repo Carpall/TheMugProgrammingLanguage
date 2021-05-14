@@ -1303,7 +1303,7 @@ namespace Zap.Models.Parser
                 CollectPragmas();
 
                 if (FunctionDefinition(out var functionstatement))
-                    statement.BodyFunctions.Add(functionstatement as FunctionStatement);
+                    statement.BodyMethods.Add(functionstatement as FunctionStatement);
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
             }

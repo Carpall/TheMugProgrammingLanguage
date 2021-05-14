@@ -9,6 +9,7 @@ using Zap.Symbols;
 using Zap.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Zap.Models.Generator
 {
@@ -63,7 +64,7 @@ namespace Zap.Models.Generator
             {
                 case BadNode: break;
                 case VariableStatement statement:
-                    GenerateVarStatement(statement, statement.IsConst);
+                    GenerateVarStatement(statement);
                     break;
                 case AssignmentStatement statement:
                     GenerateAssignmentStatement(statement);
@@ -74,7 +75,6 @@ namespace Zap.Models.Generator
                 case CallStatement statement:
                     if (!EvaluateNodeCall(statement).SolvedType.IsVoid())
                         FunctionBuilder.EmitPop();
-
                     break;
                 default:
                     if (!isLastNodeOfBlock)
@@ -176,7 +176,7 @@ namespace Zap.Models.Generator
 
         private void ContextTypesPushUndefined()
         {
-            ContextTypes.Push(ZapType.Solved(SolvedType.Primitive(TypeKind.Undefined)));
+            ContextTypes.Push(ZapType.Primitive(TypeKind.Undefined));
         }
 
         private static ZARValueKind GetLeftExpressionInstruction(ZARValueKind kind)
@@ -184,13 +184,13 @@ namespace Zap.Models.Generator
             return kind + 1;
         }
 
-        private void GenerateVarStatement(VariableStatement statement, bool isconst)
+        private void GenerateVarStatement(VariableStatement statement)
         {
             ContextTypes.Push(statement.Type);
 
             if (!statement.IsAssigned)
             {
-                if (isconst)
+                if (statement.IsConst)
                     Tower.Report(statement.Position, "A constant declaration requires a body");
 
                 if (statement.Type.SolvedType.Kind == TypeKind.Auto)
@@ -200,7 +200,7 @@ namespace Zap.Models.Generator
             var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type) : statement.Body);
 
             FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
-            var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, isconst);
+            var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, statement.IsConst);
 
             FunctionBuilder.EmitStoreLocal(allocation);
 
@@ -269,13 +269,7 @@ namespace Zap.Models.Generator
 
         private ZapType EvaluateNodeCall(CallStatement expression)
         {
-            if (expression.Name is not Token token)
-            {
-                CompilationTower.Todo("implement {} in ZARGenerator.EvaluateNodeCall");
-                return null;
-            }
-
-            var funcSymbol = SearchForFunction(token);
+            var funcSymbol = EvaluateFunctionName(expression.Name);
 
             if (funcSymbol is null)
                 return ZapType.Void;
@@ -284,6 +278,48 @@ namespace Zap.Models.Generator
             EvaluateCallParameters(expression, func);
 
             return func.ReturnType;
+        }
+
+        private FuncSymbol EvaluateFunctionName(INode functioName)
+        {
+            FuncSymbol funcSymbol;
+            switch (functioName)
+            {
+                case Token name:
+                    funcSymbol = SearchForFunction(name);
+                    break;
+                case MemberNode name:
+                    ContextTypesPushUndefined();
+                    var type = EvaluateExpression(name.Base);
+                    ContextTypes.Pop();
+
+                    if (type.SolvedType.IsUndefined())
+                        return null;
+                    if (!type.SolvedType.IsStruct())
+                    {
+                        Tower.Report(functioName.Position, "Currently primitive types don't support methods");
+                        return null;
+                    }
+
+                    var structModel = type.SolvedType.GetStruct().Type;
+                    funcSymbol = SearchForMethod(name.Member.Value, structModel);
+                    break;
+                default:
+                    CompilationTower.Todo($"implement {functioName} in ZARGenerator.EvaluateNodeCall");
+                    throw new();
+            }
+
+            return funcSymbol;
+        }
+
+        private FuncSymbol SearchForMethod(string value, TypeStatement type)
+        {
+            foreach (var method in type.BodyMethods)
+                if (value == method.Name)
+                    return new(method);
+
+            Tower.Report(type.Position, $"No method '{value}' declared in type '{type.Name}'");
+            return null;
         }
 
         private void EvaluateCallParameters(CallStatement expression, FunctionStatement func)
@@ -338,7 +374,7 @@ namespace Zap.Models.Generator
 
         private FuncSymbol SearchForFunction(Token name)
         {
-            return Tower.Symbols.GetSymbol<FuncSymbol>(name.Value, name.Position);
+            return Tower.Symbols.GetSymbol<FuncSymbol>(name.Value, name.Position, "function");
         }
 
         private ZapType EvaluateNodeBlock(BlockNode expression)
@@ -541,7 +577,7 @@ namespace Zap.Models.Generator
 
         private ZapType EvaluateIdentifier(string value, ModulePosition position)
         {
-            if (!CurrentScope.VirtualMemory.TryGetValue(value, out var allocation))
+            if (!GetLocalVariable(value, out var allocation))
             {
                 allocation = new AllocationData(0, ContextType, false);
                 Tower.Report(position, $"Variable '{value}' is not declared");
@@ -555,6 +591,11 @@ namespace Zap.Models.Generator
             }
 
             return allocation.Type;
+        }
+
+        private bool GetLocalVariable(string value, out AllocationData allocation)
+        {
+            return CurrentScope.VirtualMemory.TryGetValue(value, out allocation);
         }
 
         private ZapType EvaluateConstant(Token expression)
@@ -606,9 +647,9 @@ namespace Zap.Models.Generator
             return CurrentScope.VirtualMemory.Count;
         }
 
-        private void GenerateFunction(FunctionStatement func)
+        private void GenerateFunction(FunctionStatement func, string zarFunctionName)
         {
-            FunctionBuilder = new ZARFunctionBuilder(func.Name, func.ReturnType, GetParameterTypes(func.ParameterList));
+            FunctionBuilder = new ZARFunctionBuilder(zarFunctionName, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(null, true, new());
 
@@ -629,11 +670,8 @@ namespace Zap.Models.Generator
         {
             CurrentType = type;
 
-            foreach (var method in type.BodyFunctions)
-            {
-                method.Name = $"{type.Name}::{method.Name}";
-                GenerateFunction(method);
-            }
+            foreach (var method in type.BodyMethods)
+                GenerateFunction(method, $"{type.Name}.{method.Name}");
 
             CurrentType = null;
         }
@@ -653,17 +691,30 @@ namespace Zap.Models.Generator
                 if (fieldtype.IsStruct() ||
                     (fieldtype.IsPointer() && fieldtype.GetBaseElementType().SolvedType.IsStruct()))
                 {
-                    var fieldstructtype = (fieldtype.Kind == TypeKind.Pointer ? ((ZapType)fieldtype.Base).SolvedType : fieldtype).GetStruct().Type;
+                    var fieldstructtype =
+                        (fieldtype.Kind == TypeKind.Pointer ?
+                            ((ZapType)fieldtype.Base).SolvedType : fieldtype
+                        ).GetStruct().Type;
 
-                    if (illegaltypes.Contains(fieldtype.ToString()))
-                    {
-                        Tower.Report(type.Position, "Recursive type");
-                        Tower.Report(field.Type.Position, $"Use '?{fieldtype}' instead");
-                    }
-                    else
-                        CheckRecursiveType(fieldstructtype, illegaltypes);
+                    CheckIfThereIsARecursion(type, illegaltypes, field, fieldtype, fieldstructtype);
                 }
             }
+        }
+
+        private void CheckIfThereIsARecursion(
+            TypeStatement type,
+            List<string> illegaltypes,
+            FieldNode field,
+            SolvedType fieldtype,
+            TypeStatement fieldstructtype)
+        {
+            if (illegaltypes.Contains(fieldtype.ToString()))
+            {
+                Tower.Report(type.Position, "Recursive type");
+                Tower.Report(field.Type.Position, $"Use '?{fieldtype}' instead");
+            }
+            else
+                CheckRecursiveType(fieldstructtype, illegaltypes);
         }
 
         private void WalkDeclarations()
@@ -681,7 +732,7 @@ namespace Zap.Models.Generator
                     GenerateStruct(structsymbol.Type);
                     break;
                 case FuncSymbol funcsymbol:
-                    GenerateFunction(funcsymbol.Func);
+                    GenerateFunction(funcsymbol.Func, funcsymbol.Func.Name);
                     break;
                 default:
                     CompilationTower.Todo($"implement {value} in ZARGenerator.RecognizeSymbol");

@@ -12,28 +12,24 @@ try
 #if DEBUG
 
     // quick todo:
-    //       - check type recursion
-    //       - add function overloading
     //       - remove default values in for loop and other
     //       - add support for user defined operators (only for non-int based values)
-    //       - add calls
     //       - add path checker
-    //       - make all a expression as terms allowing return value in hidden buffer with `break value`
     //       - add pragmas' chekers
     //       - add defer statement
-    //       - add option type '?type'
     //       - add doc comments for pub members
-    //       - add implicit true values in pragmas
     //       - fix bugs with eof
     //       - add tuple types and 'new (,,)' for initialize them
     //       - fix tests
-    //       - fix positions
     //       - fix crash when error's position is on different lines
     //       - add implicit new operator with type inference 'new { }' and '[]', with context type
     //       - fix 'x *' 'x /'
-    //       - fix '//' at the start of the line makes the compiler throws error
+    //       - fix '//' at the start of the line is not recognized as comment by the lexer
     //       - rename project in nylon
     //       - consider changing generic parameters from '<>' to '[]'
+    //       - add attributes to ZAR._allocations 'const', 'hiddenbuf'
+    //       - add check for uninitialized memory
+    //       - add warnings
     
     var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
     
