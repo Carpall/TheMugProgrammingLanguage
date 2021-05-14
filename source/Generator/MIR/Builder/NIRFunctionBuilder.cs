@@ -22,6 +22,15 @@ namespace Nylon.Models.Generator.IR.Builder
             _parameterTypes = parametertypes;
         }
 
+        public NIRFunctionBuilder(NIRFunctionBuilder functionBuilder)
+        {
+            _name = functionBuilder._name;
+            _returnType = functionBuilder._returnType;
+            _parameterTypes = functionBuilder._parameterTypes;
+            _body = new(functionBuilder._body);
+            _allocations = new(functionBuilder._allocations);
+        }
+
         public NIRFunction Build()
         {
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
@@ -52,14 +61,19 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitInstruction(new NIRValue(kind, type));
         }
 
-        public void EmitLoadConstantValue(NIRValue constantvalue)
+        private void EmitInstruction(NIRValueKind kind, DataType type, object value)
         {
-            EmitInstruction(NIRValueKind.Load, constantvalue);
+            EmitInstruction(new NIRValue(kind, type, value));
         }
 
-        public void EmitStoreLocal(NIRValue localaddress)
+        public void EmitLoadConstantValue(object constant, DataType type)
         {
-            EmitInstruction(NIRValueKind.StoreLocal, localaddress);
+            EmitInstruction(NIRValueKind.Load, type, constant);
+        }
+
+        public void EmitStoreLocal(int stackIndex, DataType type)
+        {
+            EmitInstruction(NIRValueKind.StoreLocal, type, stackIndex);
         }
 
         public void EmitLoadZeroinitializedStruct(DataType type)
@@ -72,14 +86,14 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitInstruction(NIRValueKind.Dupplicate);
         }
 
-        public void EmitStoreField(NIRValue fieldaddress)
+        public void EmitStoreField(int stackindex, DataType type)
         {
-            EmitInstruction(NIRValueKind.StoreField, fieldaddress);
+            EmitInstruction(NIRValueKind.StoreField, type, stackindex);
         }
 
-        public void EmitLoadLocal(NIRValue staticMemoryAddress)
+        public void EmitLoadLocal(int stackindex, DataType type)
         {
-            EmitInstruction(NIRValueKind.LoadLocal, staticMemoryAddress);
+            EmitInstruction(NIRValueKind.LoadLocal, type, stackindex);
         }
 
         public NIRValue LastInstruction()
@@ -87,9 +101,9 @@ namespace Nylon.Models.Generator.IR.Builder
             return _body.Last();
         }
 
-        public void EmitLoadField(NIRValue fieldaddress)
+        public void EmitLoadField(int index, DataType type)
         {
-            EmitInstruction(NIRValueKind.LoadField, fieldaddress);
+            EmitInstruction(NIRValueKind.LoadField, type, index);
         }
 
         public void EmitPop()
@@ -126,9 +140,9 @@ namespace Nylon.Models.Generator.IR.Builder
             return _allocations.Count - 1;
         }
 
-        public void EmitReturn()
+        public void EmitReturn(DataType type)
         {
-            EmitInstruction(NIRValueKind.Return);
+            EmitInstruction(NIRValueKind.Return, type);
         }
 
         public void EmitOptionalReturnVoid()
@@ -136,13 +150,13 @@ namespace Nylon.Models.Generator.IR.Builder
             if (_returnType.SolvedType.IsVoid() && (_body.Count == 0 || _body[^1].Kind != NIRValueKind.Return))
             {
                 EmitComment("implicit void return");
-                EmitReturn();
+                EmitReturn(DataType.Void);
             }
         }
 
         public void EmitCall(string name, DataType type)
         {
-            EmitInstruction(NIRValueKind.Call, NIRValue.MemberIdentifier(name, type));
+            EmitInstruction(NIRValueKind.Call, type, name);
         }
     }
 }

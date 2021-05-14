@@ -1,9 +1,11 @@
 type Math {
-  func add(a: i32, b: i32): i32 { a + b }
+  result: i32
+
+  func add(self: Math, a: i32, b: i32) { self.result = a + b }
 }
 
-func b() {
-  const Math = Math.add(10, 2)
+func main() {
+  (new Math { }).add(1, 2)
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

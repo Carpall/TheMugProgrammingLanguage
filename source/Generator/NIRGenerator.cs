@@ -90,7 +90,8 @@ namespace Nylon.Models.Generator
             {
                 ContextTypes.Push(CurrentFunction.ReturnType);
                 FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
-                FunctionBuilder.EmitReturn();
+
+                FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
             }
             else
             {
@@ -102,8 +103,7 @@ namespace Nylon.Models.Generator
                 var allocation = TryAllocateHiddenBuffer(EvaluateExpression(expression));
                 FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
 
-                FunctionBuilder.EmitStoreLocal(
-                    NIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
+                FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
             }
         }
 
@@ -129,7 +129,7 @@ namespace Nylon.Models.Generator
                 ContextTypes.Pop();
             }
 
-            FunctionBuilder.EmitReturn();
+            FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
         }
 
         private void GenerateAssignmentStatement(AssignmentStatement statement)
@@ -147,7 +147,7 @@ namespace Nylon.Models.Generator
 
             var instruction = FunctionBuilder.PopLastInstruction();
 
-            if (instruction.ParameterValue.Kind != NIRValueKind.StaticMemoryAddress)
+            if (!IsConvertibleToLeftExpressionInstruction(instruction.Kind))
                 Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
 
             ContextTypes.Push(variable);
@@ -160,6 +160,11 @@ namespace Nylon.Models.Generator
 
             instruction.Kind = GetLeftExpressionInstruction(instruction.Kind);
             FunctionBuilder.EmitInstruction(instruction);
+        }
+
+        private static bool IsConvertibleToLeftExpressionInstruction(NIRValueKind kind)
+        {
+            return kind == NIRValueKind.LoadLocal || kind == NIRValueKind.LoadField;
         }
 
         private void CleanLeftValueChecker()
@@ -201,7 +206,7 @@ namespace Nylon.Models.Generator
             FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
             var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, statement.IsConst);
 
-            FunctionBuilder.EmitStoreLocal(allocation);
+            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
 
             ContextTypes.Pop();
         }
@@ -290,32 +295,7 @@ namespace Nylon.Models.Generator
                     funcSymbol = SearchForFunction(name);
                     break;
                 case MemberNode name:
-                    if (name.Base is Token baseToken && baseToken.Kind == TokenKind.Identifier)
-                    {
-                        string typeName;
-                        if (GetLocalVariable(baseToken.Value, out var allocation))
-                        {
-                            if (!allocation.Type.SolvedType.IsStruct())
-                            {
-                                Tower.Report(functioName.Position, "Primitive types don't support methods");
-                                return null;
-                            }
-
-                            parameters.Prepend(baseToken);
-                            typeName = allocation.Type.SolvedType.GetStruct().Type.Name;
-                        }
-                        else
-                            typeName = baseToken.Value;
-
-                        var type = Tower.Symbols.GetSymbol<StructSymbol>(
-                            typeName,
-                            baseToken.Position, "type");
-
-                        funcSymbol = type is null ? null : SearchForMethod(name.Member.Value, type.Type);
-                    }
-                    else
-                        funcSymbol = null;
-
+                    funcSymbol = EvaluateBaseFunctionName(name, ref parameters);
                     break;
                 default:
                     CompilationTower.Todo($"implement {functioName} in NIRGenerator.EvaluateNodeCall");
@@ -323,6 +303,66 @@ namespace Nylon.Models.Generator
             }
 
             return funcSymbol;
+        }
+
+        private FuncSymbol EvaluateBaseFunctionName(MemberNode name, ref NodeBuilder parameters)
+        {
+            return
+                name.Base is Token baseToken ?
+                    EvaluateTokenBaseFunctionName(name, parameters, baseToken) :
+                    EvaluateExpressionBaseFunctionName(name, parameters);
+        }
+
+        private FuncSymbol EvaluateExpressionBaseFunctionName(MemberNode name, NodeBuilder parameters)
+        {
+            parameters.Prepend(name.Base);
+
+            var type = GetExpressionType(name.Base);
+
+            if (!type.SolvedType.IsStruct())
+                return ReportPrimitiveCannotHaveMethods(name.Base.Position);
+
+            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct().Type);
+        }
+
+        private DataType GetExpressionType(INode expression)
+        {
+            var oldFunctionBuilder = new NIRFunctionBuilder(FunctionBuilder);
+
+            ContextTypesPushUndefined();
+            var type = EvaluateExpression(expression);
+            ContextTypes.Pop();
+
+            FunctionBuilder = oldFunctionBuilder;
+            return type;
+        }
+
+        private FuncSymbol EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken)
+        {
+            if (baseToken.Kind != TokenKind.Identifier)
+                return ReportPrimitiveCannotHaveMethods(baseToken.Position);
+
+            string typeName;
+            if (GetLocalVariable(baseToken.Value, out var allocation))
+            {
+                if (!allocation.Type.SolvedType.IsStruct())
+                    return ReportPrimitiveCannotHaveMethods(baseToken.Position);
+
+                parameters.Prepend(baseToken);
+                typeName = allocation.Type.SolvedType.GetStruct().Type.Name;
+            }
+            else
+                typeName = baseToken.Value;
+
+            var type = Tower.Symbols.GetSymbol<StructSymbol>(typeName, baseToken.Position, "type");
+
+            return type is null ? null : SearchForMethod(name.Member.Value, type.Type);
+        }
+
+        private FuncSymbol ReportPrimitiveCannotHaveMethods(ModulePosition position)
+        {
+            Tower.Report(position, "Primitive types don't support methods");
+            return null;
         }
 
         private FuncSymbol SearchForMethod(string value, TypeStatement type)
@@ -411,11 +451,9 @@ namespace Nylon.Models.Generator
             // make it better
             if (leftisconstant & rightisconstant)
             {
-                var constant = NIRValue.Constant(
-                    type = CoercedOr(DataType.Int32),
-                    ulong.Parse(FoldConstantIntoToken(expression).Value));
+                var constant = long.Parse(FoldConstantIntoToken(expression).Value);
 
-                FunctionBuilder.EmitLoadConstantValue(constant);
+                FunctionBuilder.EmitLoadConstantValue(constant, type = CoercedOr(DataType.Int32));
             }
             else
             {
@@ -423,18 +461,20 @@ namespace Nylon.Models.Generator
                 {
                     var index = FunctionBuilder.CurrentIndex();
                     var left = FoldConstantIntoToken(expression.Left);
+
                     FunctionBuilder.EmitLoadConstantValue(
-                        NIRValue.Constant(
-                            type = EvaluateExpression(expression.Right),
-                            ulong.Parse(left.Value)));
+                        long.Parse(left.Value),
+                        type = EvaluateExpression(expression.Right));
 
                     FunctionBuilder.MoveLastInstructionTo(index);
                 }
                 else if (rightisconstant)
                 {
                     var right = FoldConstantIntoToken(expression.Right);
+
                     FunctionBuilder.EmitLoadConstantValue(
-                        NIRValue.Constant(type = EvaluateExpression(expression.Left), long.Parse(right.Value)));
+                        long.Parse(right.Value),
+                        type = EvaluateExpression(expression.Left));
                 }
                 else
                 {
@@ -443,13 +483,13 @@ namespace Nylon.Models.Generator
                     // allow user defined operators
                 }
 
-                EmitOperation(expression.Operator);
+                EmitOperation(expression.Operator, type);
             }
 
             return type;
         }
 
-        private void EmitOperation(TokenKind op)
+        private void EmitOperation(TokenKind op, DataType type)
         {
             FunctionBuilder.EmitInstruction(op switch
             {
@@ -458,7 +498,7 @@ namespace Nylon.Models.Generator
                 TokenKind.Star => NIRValueKind.Mul,
                 TokenKind.Slash => NIRValueKind.Div,
                 _ => throw new()
-            });
+            }, type);
         }
 
         private static Token FoldConstantIntoToken(INode opaque)
@@ -510,7 +550,7 @@ namespace Nylon.Models.Generator
             if (type is null)
                 Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
             else
-                FunctionBuilder.EmitLoadField(NIRValue.StaticMemoryAddress(index, type));
+                FunctionBuilder.EmitLoadField(index, type);
 
             return type ?? ContextType;
         }
@@ -558,7 +598,7 @@ namespace Nylon.Models.Generator
 
                 FunctionBuilder.EmitDupplicate();
                 FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-                FunctionBuilder.EmitStoreField(NIRValue.StaticMemoryAddress(fieldindex, fieldtype));
+                FunctionBuilder.EmitStoreField(fieldindex, fieldtype);
 
                 ContextTypes.Pop();
             }
@@ -600,7 +640,7 @@ namespace Nylon.Models.Generator
                 if (allocation.IsConst && LeftValueChecker.IsLeftValue)
                     Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
 
-                FunctionBuilder.EmitLoadLocal(NIRValue.StaticMemoryAddress(allocation.StackIndex, allocation.Type));
+                FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
             }
 
             return allocation.Type;
@@ -614,17 +654,17 @@ namespace Nylon.Models.Generator
         private DataType EvaluateConstant(Token expression)
         {
             DataType result;
-            NIRValue value;
+            object value;
 
             switch (expression.Kind)
             {
                 case TokenKind.ConstantDigit:
                     result = CoercedOr(DataType.Int32);
-                    value = NIRValue.Constant(result, long.Parse(expression.Value));
+                    value = long.Parse(expression.Value);
                     break;
                 case TokenKind.ConstantBoolean:
                     result = DataType.Bool;
-                    value = NIRValue.Constant(result, bool.Parse(expression.Value));
+                    value = bool.Parse(expression.Value);
                     break;
                 default:
                     CompilationTower.Todo($"implement {expression.Kind} in NIRGenerator.EvaluateConstant");
@@ -633,7 +673,7 @@ namespace Nylon.Models.Generator
                     break;
             }
 
-            FunctionBuilder.EmitLoadConstantValue(value);
+            FunctionBuilder.EmitLoadConstantValue(value, result);
 
             return result;
         }
@@ -644,15 +684,16 @@ namespace Nylon.Models.Generator
             return contexttype.SolvedType.IsInt() ? contexttype : or;
         }
 
-        private NIRValue DeclareVirtualMemorySymbol(string name, DataType type, ModulePosition position, bool isconst)
+        private AllocationData DeclareVirtualMemorySymbol(string name, DataType type, ModulePosition position, bool isconst)
         {
             var localindex = GetLocalIndex();
-            if (!CurrentScope.VirtualMemory.TryAdd(name, new(localindex, type, isconst)))
+            var allocation = new AllocationData(localindex, type, isconst);
+            if (!CurrentScope.VirtualMemory.TryAdd(name, allocation))
                 Tower.Report(position, $"Variable '{name}' is already declared");
 
             FunctionBuilder.DeclareAllocation(type);
 
-            return NIRValue.StaticMemoryAddress(localindex, type);
+            return allocation;
         }
 
         private int GetLocalIndex()

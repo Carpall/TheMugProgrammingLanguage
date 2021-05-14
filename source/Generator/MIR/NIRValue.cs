@@ -14,7 +14,6 @@ namespace Nylon.Models.Generator.IR
     {
         Return,
         Constant,
-        StaticMemoryAddress,
         Load,
         Dupplicate,
         LoadZeroinitialized,
@@ -28,7 +27,6 @@ namespace Nylon.Models.Generator.IR
         Sub,
         Mul,
         Call,
-        MemberIdentifer,
         Pop,
     }
 
@@ -45,21 +43,6 @@ namespace Nylon.Models.Generator.IR
             Value = value;
         }
 
-        internal static NIRValue Constant(DataType type, object value)
-        {
-            return new(NIRValueKind.Constant, type, value);
-        }
-
-        internal static NIRValue StaticMemoryAddress(int address, DataType type)
-        {
-            return new(NIRValueKind.StaticMemoryAddress, type, address);
-        }
-
-        internal static NIRValue MemberIdentifier(string name, DataType type)
-        {
-            return new(NIRValueKind.MemberIdentifer, type, name);
-        }
-
         internal long ConstantIntValue => (long)Value;
         internal NIRValue ParameterValue => (NIRValue)Value;
 
@@ -68,7 +51,7 @@ namespace Nylon.Models.Generator.IR
             if (Kind == NIRValueKind.Comment)
                 return Value is not null ? $"~ {Value}" : "";
 
-            return $"{Kind}: ({(Type is not null ? $"{Type} " : "")}{Value ?? "_"})";
+            return $"{Kind} {Type} ({Value ?? "_"})";
         }
 
         public bool IsIntConstant()
