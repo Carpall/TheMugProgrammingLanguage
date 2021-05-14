@@ -30,6 +30,7 @@ try
     //       - fix positions
     //       - fix crash when error's position is on different lines
     //       - add implicit new operator with type inference 'new { }' and '[]', with context type
+    //       - fix 'x *' 'x /'
     
     var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
     

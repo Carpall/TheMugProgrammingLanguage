@@ -52,7 +52,7 @@ namespace Zap.Models.Generator.IR
             return new ZARValue(ZARValueKind.StaticMemoryAddress, type, address);
         }
 
-        internal ulong ConstantIntValue => (ulong)Value;
+        internal long ConstantIntValue => (long)Value;
         internal ZARValue ParameterValue => (ZARValue)Value;
 
         public override string ToString()
@@ -61,6 +61,11 @@ namespace Zap.Models.Generator.IR
                 return Value is not null ? $"~ {Value}" : "";
 
             return $"{Kind}: ({(Type is not null ? $"{Type} " : "")}{Value ?? "_"})";
+        }
+
+        public bool IsIntConstant()
+        {
+            return Value is long;
         }
     }
 }

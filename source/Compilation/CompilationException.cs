@@ -9,7 +9,10 @@ namespace Zap.Compilation
         {
             get
             {
-                return Diagnostic is null;
+                return
+                    Diagnostic is null
+                    || Diagnostic.Count == 0
+                    || Diagnostic.GetErrors()[0].Bad.Lexer is null;
             }
         }
 

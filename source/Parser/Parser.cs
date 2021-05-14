@@ -515,7 +515,13 @@ namespace Zap.Models.Parser
 
         private bool MatchTerm(out INode e, bool allowNullExpression)
         {
-            if (MatchAdvance(TokenKind.KeyTry))
+            if (Match(TokenKind.OpenBrace))
+            {
+                e = ExpectBlock();
+                return true;
+            }
+
+            else if (MatchAdvance(TokenKind.KeyTry))
             {
                 if (!MatchTerm(out e, false) || e is not CallStatement)
                 {
@@ -532,7 +538,7 @@ namespace Zap.Models.Parser
                 return true;
             }
 
-            if (MatchPrefixOperator(out var prefixOP))
+            else if (MatchPrefixOperator(out var prefixOP))
             {
                 if (!MatchTerm(out e, allowNullExpression))
                 {
@@ -630,6 +636,11 @@ namespace Zap.Models.Parser
 
             return e;
         }
+        
+        private static ModulePosition GetModulePositionRange(ModulePosition left, ModulePosition right)
+        {
+            return new(left.Lexer, new(left.Position.Start, right.Position.End));
+        }
 
         private bool MatchFactor(out INode e, bool allowNullExpression)
         {
@@ -642,7 +653,14 @@ namespace Zap.Models.Parser
                 var right = ExpectTerm(allowNullExpression);
                 do
                 {
-                    e = new BinaryExpressionNode() { Left = e, Right = right, Operator = op.Kind, Position = op.Position };
+                    e = new BinaryExpressionNode()
+                    {
+                        Left = e,
+                        Right = right,
+                        Operator = op.Kind,
+                        Position = GetModulePositionRange(e.Position, right.Position)
+                    };
+
                     if (MatchFactorOps())
                         op = Back;
                     else
@@ -743,7 +761,14 @@ namespace Zap.Models.Parser
 
                 do
                 {
-                    e = new BinaryExpressionNode() { Operator = op.Kind, Left = e, Right = right, Position = op.Position };
+                    e = new BinaryExpressionNode()
+                    {
+                        Operator = op.Kind,
+                        Left = e,
+                        Right = right,
+                        Position = GetModulePositionRange(e.Position, right.Position)
+                    };
+
                     if (MatchPlusMinus())
                         op = Back;
                     else
@@ -762,30 +787,37 @@ namespace Zap.Models.Parser
                 var boolean = new BooleanBinaryExpressionNode()
                 {
                     Operator = boolOP.Kind,
-                    Left = e,
-                    Position = boolOP.Position
+                    Left = e
                 };
 
                 if (boolOP.Kind != TokenKind.KeyIs)
+                {
                     boolean.Right = ExpectExpression(false, false, end: end);
+                    boolean.Position = GetModulePositionRange(boolean.Left.Position, boolean.Left.Position);
+                }
                 else
                 {
                     boolean.IsInstructionType = ExpectType();
                     if (MatchAdvance(TokenKind.Identifier, out var alias, true))
                         boolean.IsInstructionAlias = alias;
+
+                    boolean.Position = GetModulePositionRange(boolean.Left.Position, boolean.IsInstructionType.Position);
                 }
 
                 e = boolean;
             }
 
             while (allowLogicOP && MatchAndOrOperator())
+            {
+                var right = ExpectExpression(allowLogicOP: false, end: end);
                 e = new BooleanBinaryExpressionNode()
                 {
                     Operator = Back.Kind,
                     Left = e,
-                    Right = ExpectExpression(allowLogicOP: false, end: end),
-                    Position = Back.Position
+                    Right = right,
+                    Position = GetModulePositionRange(e.Position, right.Position)
                 };
+            }
 
             if (MatchAssigmentOperators(out var @operator))
                 e = new AssignmentStatement()
@@ -1015,7 +1047,7 @@ namespace Zap.Models.Parser
 
         private BlockNode ExpectBlock()
         {
-            Expect("", TokenKind.OpenBrace);
+            var start = Expect("", TokenKind.OpenBrace).Position;
 
             var block = new BlockNode();
 
@@ -1026,8 +1058,9 @@ namespace Zap.Models.Parser
                     block.Statements.Add(statement);
             }
 
-            Expect("", TokenKind.CloseBrace);
+            var end = Expect("", TokenKind.CloseBrace).Position;
 
+            block.Position = GetModulePositionRange(start, end);
             return block;
         }
 

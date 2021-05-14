@@ -42,12 +42,21 @@ namespace Zap.TypeResolution
                 CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "Generic parameter");
         }
 
-        private void CheckType(List<FieldNode> body, List<Token> generics, Pragmas pragmas)
+        private void CheckType(List<FunctionStatement> bodyfunctions, List<FieldNode> bodyfields, List<Token> generics, Pragmas pragmas)
         {
-            var declared = new string[body.Count];
+            var declared = new string[bodyfunctions.Count];
 
-            for (int i = 0; i < body.Count; i++)
-                CheckSingleDeclaration(body[i].Position, ref declared, i, body[i].Name, "Field");
+            for (int i = 0; i < bodyfunctions.Count; i++)
+            {
+                var function = bodyfunctions[i];
+                CheckFunc(function.ParameterList, function.Generics, function.Pragmas);
+                CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Function");
+            }
+
+            declared = new string[bodyfields.Count];
+
+            for (int i = 0; i < bodyfields.Count; i++)
+                CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Field");
 
             declared = new string[generics.Count];
 
@@ -66,7 +75,7 @@ namespace Zap.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
-            CheckType(type.BodyFields, type.Generics, type.Pragmas);
+            CheckType(type.BodyFunctions, type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, new StructSymbol(type));
         }
 
