@@ -1,9 +1,9 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser
+namespace Nylon.Models.Parser
 {
   public class Pragmas
     {

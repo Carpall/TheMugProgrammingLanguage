@@ -1,4 +1,4 @@
-﻿using Zap.TypeSystem;
+﻿using Nylon.TypeSystem;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -7,10 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.Models.Generator.IR
+namespace Nylon.Models.Generator.IR
 {
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum ZARValueKind
+    public enum NIRValueKind
     {
         Return,
         Constant,
@@ -32,40 +32,40 @@ namespace Zap.Models.Generator.IR
         Pop,
     }
 
-    public struct ZARValue
+    public struct NIRValue
     {
-        public ZARValueKind Kind { get; internal set; }
-        public ZapType Type { get; }
+        public NIRValueKind Kind { get; internal set; }
+        public DataType Type { get; }
         public object Value { get; }
 
-        internal ZARValue(ZARValueKind kind, ZapType type = null, object value = null)
+        internal NIRValue(NIRValueKind kind, DataType type = null, object value = null)
         {
             Kind = kind;
             Type = type;
             Value = value;
         }
 
-        internal static ZARValue Constant(ZapType type, object value)
+        internal static NIRValue Constant(DataType type, object value)
         {
-            return new(ZARValueKind.Constant, type, value);
+            return new(NIRValueKind.Constant, type, value);
         }
 
-        internal static ZARValue StaticMemoryAddress(int address, ZapType type)
+        internal static NIRValue StaticMemoryAddress(int address, DataType type)
         {
-            return new(ZARValueKind.StaticMemoryAddress, type, address);
+            return new(NIRValueKind.StaticMemoryAddress, type, address);
         }
 
-        internal static ZARValue MemberIdentifier(string name, ZapType type)
+        internal static NIRValue MemberIdentifier(string name, DataType type)
         {
-            return new(ZARValueKind.MemberIdentifer, type, name);
+            return new(NIRValueKind.MemberIdentifer, type, name);
         }
 
         internal long ConstantIntValue => (long)Value;
-        internal ZARValue ParameterValue => (ZARValue)Value;
+        internal NIRValue ParameterValue => (NIRValue)Value;
 
         public override string ToString()
         {
-            if (Kind == ZARValueKind.Comment)
+            if (Kind == NIRValueKind.Comment)
                 return Value is not null ? $"~ {Value}" : "";
 
             return $"{Kind}: ({(Type is not null ? $"{Type} " : "")}{Value ?? "_"})";

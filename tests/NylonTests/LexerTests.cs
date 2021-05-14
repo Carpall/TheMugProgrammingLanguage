@@ -1,11 +1,11 @@
-using Zap.Compilation;
-using Zap.Models.Lexer;
+using Nylon.Compilation;
+using Nylon.Models.Lexer;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Zap.Tests
+namespace Nylon.Tests
 {
     public class LexerTests
     {
@@ -328,7 +328,7 @@ namespace Zap.Tests
         public void TestStrings02_ExceptionCaught()
         {
             Lexer lexer = new MugLexer("test", STRINGS02);
-            var ex = Assert.Throws<Zap.Compilation.CompilationException>(() => lexer.Tokenize());
+            var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
 
             Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }
@@ -553,7 +553,7 @@ namespace Zap.Tests
         public void TestChars02_OneChar()
         {
             Lexer lexer = new MugLexer("test", CHARS02);
-            var ex = Assert.Throws<Zap.Compilation.CompilationException>(() => lexer.Tokenize());
+            var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
 
             Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
         }

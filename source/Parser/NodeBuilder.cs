@@ -1,9 +1,9 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 using System.Collections;
 using System.Collections.Generic;
 using System;
 
-namespace Zap.Models.Parser
+namespace Nylon.Models.Parser
 {
     public class NodeBuilder : INode, ICollection<INode>
     {
@@ -52,6 +52,11 @@ namespace Zap.Models.Parser
         public void AddRange(NodeBuilder members)
         {
             _nodes.AddRange(members);
+        }
+
+        public void Prepend(INode node)
+        {
+            _nodes.Insert(0, node);
         }
     }
 }

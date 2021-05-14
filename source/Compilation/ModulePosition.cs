@@ -1,7 +1,7 @@
-﻿using Zap.Models.Lexer;
+﻿using Nylon.Models.Lexer;
 using System;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
   public struct ModulePosition
     {

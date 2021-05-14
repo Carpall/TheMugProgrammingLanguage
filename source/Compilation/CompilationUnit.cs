@@ -1,18 +1,18 @@
 ﻿using LLVMSharp.Interop;
-using Zap.Models.Generator.IR;
-using Zap.Models.Lexer;
-using Zap.Models.Parser;
-using Zap.Models.Parser.AST;
+using Nylon.Models.Generator.IR;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser;
+using Nylon.Models.Parser.AST;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
-    public class CompilationUnit : ZapComponent
+    public class CompilationUnit : CompilerComponent
     {
-        public static readonly string[] AllowedExtensions = new[] { ".zap", ".zp" , ".z" };
+        public static readonly string[] AllowedExtensions = new[] { ".n", ".nyl" , ".ny" };
 
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
@@ -36,7 +36,7 @@ namespace Zap.Compilation
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             // generates the bytecode
-            GenerateZAR();
+            GenerateNIR();
 
             CompileModule(optimizazioneLevel, output, onlyBitcode, optionalFlag);
         }
@@ -124,7 +124,6 @@ namespace Zap.Compilation
                 if (!File.Exists(path))
                     CompilationTower.Throw($"Invalid path '{path}'");
 
-                // only zap files
                 if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
@@ -145,7 +144,7 @@ namespace Zap.Compilation
             return Tower.Solver.Solve();
         }
 
-        public ZAR GenerateZAR()
+        public NIR GenerateNIR()
         {
             GenerateTAST();
             return Tower.Generator.Generate();

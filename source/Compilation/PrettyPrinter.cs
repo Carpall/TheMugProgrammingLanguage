@@ -1,10 +1,10 @@
-﻿using Zap.Models.Lexer;
+﻿using Nylon.Models.Lexer;
 using Pastel;
 using System;
 using System.Drawing;
 using System.IO;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
     public static class PrettyPrinter
     {

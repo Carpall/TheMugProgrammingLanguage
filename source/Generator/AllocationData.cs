@@ -1,12 +1,6 @@
-﻿using Zap.Models.Generator.IR;
-using Zap.TypeSystem;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Nylon.TypeSystem;
 
-namespace Zap.Models.Generator
+namespace Nylon.Models.Generator
 {
-    public record AllocationData(int StackIndex, ZapType Type, bool IsConst);
+    public record AllocationData(int StackIndex, DataType Type, bool IsConst);
 }

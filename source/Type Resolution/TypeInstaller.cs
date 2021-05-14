@@ -1,18 +1,18 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.Models.Parser;
-using Zap.Models.Parser.AST;
-using Zap.Models.Parser.AST.Statements;
-using Zap.Symbols;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser;
+using Nylon.Models.Parser.AST;
+using Nylon.Models.Parser.AST.Statements;
+using Nylon.Symbols;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.TypeResolution
+namespace Nylon.TypeResolution
 {
-    public class TypeInstaller : ZapComponent
+    public class TypeInstaller : CompilerComponent
     {
         public TypeInstaller(CompilationTower tower) : base(tower)
         {

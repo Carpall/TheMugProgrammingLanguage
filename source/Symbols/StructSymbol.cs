@@ -1,13 +1,13 @@
-﻿using Zap.Compilation;
-using Zap.Models.Parser.AST.Statements;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Parser.AST.Statements;
+using Nylon.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.Symbols
+namespace Nylon.Symbols
 {
     public class StructSymbol : ISymbol
     {

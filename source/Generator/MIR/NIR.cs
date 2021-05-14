@@ -6,13 +6,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.Models.Generator.IR
+namespace Nylon.Models.Generator.IR
 {
-    public struct ZAR
+    public struct NIR
     {
-        public ZARFunction[] Functions { get; }
+        public NIRFunction[] Functions { get; }
 
-        public ZAR(ZARFunction[] functions)
+        public NIR(NIRFunction[] functions)
         {
             Functions = functions;
         }

@@ -1,7 +1,7 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 using Newtonsoft.Json;
 
-namespace Zap.Models.Parser
+namespace Nylon.Models.Parser
 {
     public interface INode
     {

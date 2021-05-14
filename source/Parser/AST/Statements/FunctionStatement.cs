@@ -1,16 +1,16 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.TypeSystem;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST.Statements
+namespace Nylon.Models.Parser.AST.Statements
 {
     public class FunctionStatement : INode
     {
         public string NodeKind => "Function";
         public Pragmas Pragmas { get; set; }
         public string Name { get; set; }
-        public ZapType ReturnType { get; set; }
+        public DataType ReturnType { get; set; }
         public ParameterListNode ParameterList { get; set; } = new();
         public List<Token> Generics { get; set; } = new();
         public BlockNode Body { get; set; } = new();

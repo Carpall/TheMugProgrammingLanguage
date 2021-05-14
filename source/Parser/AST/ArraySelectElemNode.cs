@@ -1,6 +1,6 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 
-namespace Zap.Models.Parser.AST
+namespace Nylon.Models.Parser.AST
 {
     public class ArraySelectElemNode : INode
     {

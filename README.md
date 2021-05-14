@@ -1,3 +1,3 @@
-<img width="200" height="200" src="other/zapico.png" align="right" />
+<img width="200" height="200" src="other/nylonico.png" align="right" />
 
-# Zap is a toy language
+# Nylon is a toy language

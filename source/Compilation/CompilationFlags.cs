@@ -1,6 +1,6 @@
 ﻿using LLVMSharp.Interop;
-using Zap.Models.Generator.IR;
-using Zap.Models.Parser;
+using Nylon.Models.Generator.IR;
+using Nylon.Models.Parser;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
     public enum CompilationMode
     {
@@ -26,15 +26,15 @@ namespace Zap.Compilation
         AST,
         LL,
         TAST,
-        ZAR,
-        ZARJSON
+        NIR,
+        NIRJSON
     }
 
     public class CompilationFlags
     {
-        private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "zar", "zar-json" };
+        private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "nir", "nir-json" };
 
-        private const string USAGE = "\nUSAGE: zap <action> <file> <options>\n";
+        private const string USAGE = "\nUSAGE: nyl <action> <file> <options>\n";
         private static readonly string HELP = @$"
 Compilation Actions:
   - build: to compile a program, with the following default options: {{target: exe, mode: debug, output: <file>.exe}}
@@ -54,19 +54,19 @@ How To Use:
   - compilation flag: it's a directive to give to the compilatio action, each compilation flag must be preceded by *
 ";
         private const string SRC_HELP = @"
-USAGE: zap <action> <options> *src <file>
+USAGE: nyl <action> <options> *src <file>
 
 HELP: uses the next argument as source file to compile, curretly only one file at compilation supported
 ";
         private const string MODE_HELP = @"
-USAGE: zap <action> <file> <options> *mode (debug | release)
+USAGE: nyl <action> <file> <options> *mode (debug | release)
 
 HELP: uses the next argument as compilation mode:
   - debug: for a faster compilation, allows debugging with llvmdbg
   - release: for a faster runtime execution, supports code optiminzation
 ";
         private static readonly string TARGET_HELP = @$"
-USAGE: zap build <file> <options> *target ( {string.Join(" | ", _targets)} )
+USAGE: nyl build <file> <options> *target ( {string.Join(" | ", _targets)} )
 
 HELP: uses the next argument as compilation target:
   - exe: executable with platform specific extension
@@ -76,21 +76,21 @@ HELP: uses the next argument as compilation target:
   - ast: abstract syntax tree
   - tast: ast with types resolved
   - ll: llvm bytecode
-  - zar: internal ir
-  - zar-json: internal ir in json format
+  - nir: internal ir
+  - nir-json: internal ir in json format
 ";
         private const string DEC_HELP = @"
-USAGE: zap <action> <file> <options> *dec symbol
+USAGE: nyl <action> <file> <options> *dec symbol
 
 HELP: uses the next argument as symbol to declare before the compilation:
 ";
         private const string OUTPUT_HELP = @"
-USAGE: zap <action> <file> <options> *output <name>
+USAGE: nyl <action> <file> <options> *output <name>
 
 HELP: uses the next argument as output file name. The extension is not required
 ";
         private const string ARGS_HELP = @"
-USAGE: zap run <file> <options> *args ""<arg1> <arg2> ...""
+USAGE: nyl run <file> <options> *args ""<arg1> <arg2> ...""
 
 HELP: uses the next argument as arguments to pass to the compiled program, available only whe compilation action is 'run'
 ";
@@ -221,9 +221,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case CompilationTarget.EXE:
                     Compile();
                     break;
-                case CompilationTarget.ZARJSON:
-                case CompilationTarget.ZAR:
-                    DumpZAR(_unit.GenerateZAR(), target == CompilationTarget.ZARJSON);
+                case CompilationTarget.NIRJSON:
+                case CompilationTarget.NIR:
+                    DumpNIR(_unit.GenerateNIR(), target == CompilationTarget.NIRJSON);
                     break;
                 default:
                     CompilationTower.Throw("Unsupported target, try with another");
@@ -245,9 +245,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     CompilationTower.Throw($"Unable to use flag '{unusable}' when compilation action is '{compilationAction}'");
         }
 
-        private void DumpZAR(ZAR zar, bool generatejson)
+        private void DumpNIR(NIR nir, bool generatejson)
         {
-            File.WriteAllText(GetOutputPath(), generatejson ? zar.DumpJSON() : zar.Dump());
+            File.WriteAllText(GetOutputPath(), generatejson ? nir.DumpJSON() : nir.Dump());
         }
 
         private void DeclareSymbol(string name)
@@ -288,15 +288,15 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return path;
         }
 
-        private static string[] CheckZapFiles(string[] sources)
+        private static string[] CheckNylonFiles(string[] sources)
         {
             foreach (var source in sources)
-                CheckZapFile(source);
+                CheckNylonFile(source);
 
             return sources;
         }
 
-        private static string CheckZapFile(string source)
+        private static string CheckNylonFile(string source)
         {
             if (source == ".")
                 return source;
@@ -378,7 +378,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 switch (arg)
                 {
                     case "src":
-                        ConfigureFlag(arg, CheckZapFiles(NextArgument().Split(' ')));
+                        ConfigureFlag(arg, CheckNylonFiles(NextArgument().Split(' ')));
                         break;
                     case "mode":
                         ConfigureFlag(arg, GetMode(NextArgument()));
@@ -404,7 +404,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 }
             }
             else
-                AddSourceFilename(CheckZapFile(argument));
+                AddSourceFilename(CheckNylonFile(argument));
         }
 
         private void Check()
@@ -414,7 +414,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", GetFiles());
-            _unit.GenerateZAR();
+            _unit.GenerateNIR();
         }
 
         private void AddSourceFilename(string source)

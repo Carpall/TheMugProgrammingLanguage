@@ -1,16 +1,16 @@
 ﻿using LLVMSharp.Interop;
-using Zap.Models.Generator;
-using Zap.Models.Lexer;
-using Zap.Models.Parser;
-using Zap.Models.Parser.AST;
-using Zap.Symbols;
-using Zap.TypeResolution;
-using Zap.TypeSystem;
+using Nylon.Models.Generator;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser;
+using Nylon.Models.Parser.AST;
+using Nylon.Symbols;
+using Nylon.TypeResolution;
+using Nylon.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
     public class CompilationTower
     {
@@ -19,9 +19,9 @@ namespace Zap.Compilation
         public Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
-        public ZARGenerator Generator { get; }
+        public NIRGenerator Generator { get; }
         public SymbolTable Symbols { get; }
-        public List<ZapType> Types { get; }
+        public List<DataType> Types { get; }
         public string OutputFilename { get; internal set; }
         public LLVMModuleRef LLVMModule { get; internal set; }
 

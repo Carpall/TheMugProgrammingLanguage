@@ -1,7 +1,7 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST
+namespace Nylon.Models.Parser.AST
 {
     public class BlockNode : INode
     {

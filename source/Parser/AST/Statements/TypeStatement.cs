@@ -1,8 +1,8 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST.Statements
+namespace Nylon.Models.Parser.AST.Statements
 {
     public class TypeStatement : INode
     {

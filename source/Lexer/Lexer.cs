@@ -1,13 +1,13 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Zap.Models.Lexer
+namespace Nylon.Models.Lexer
 {
-    public class Lexer : ZapComponent
+    public class Lexer : CompilerComponent
     {
         public List<Token> TokenCollection { get; set; }
 

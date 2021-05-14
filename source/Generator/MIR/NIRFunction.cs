@@ -1,21 +1,21 @@
-﻿using Zap.TypeSystem;
+﻿using Nylon.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.Models.Generator.IR
+namespace Nylon.Models.Generator.IR
 {
-    public struct ZARFunction
+    public struct NIRFunction
     {
         public string Name { get; }
-        public ZapType ReturnType { get; }
-        public ZapType[] ParameterTypes { get; }
-        public ZARValue[] Body { get; }
-        public ZapType[] Allocations { get; }
+        public DataType ReturnType { get; }
+        public DataType[] ParameterTypes { get; }
+        public NIRValue[] Body { get; }
+        public DataType[] Allocations { get; }
 
-        public ZARFunction(string name, ZapType returntype, ZapType[] parametertypes, ZARValue[] body, ZapType[] allocations)
+        public NIRFunction(string name, DataType returntype, DataType[] parametertypes, NIRValue[] body, DataType[] allocations)
         {
             Name = name;
             ReturnType = returntype;
@@ -34,7 +34,7 @@ namespace Zap.Models.Generator.IR
             for (int i = 0; i < Allocations.Length; i++)
                 locals.AppendFormat(".[{0}] {1}{2}", i, Allocations[i], i < Allocations.Length - 1 ? "\n    " : "");
 
-            return $@".fn {Name}({string.Join<ZapType>(", ", ParameterTypes)}) {ReturnType}:
+            return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}:
   .locals:
     {locals}
 

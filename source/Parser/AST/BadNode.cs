@@ -1,7 +1,7 @@
-﻿using Zap.Compilation;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.TypeSystem;
 
-namespace Zap.Models.Parser.AST
+namespace Nylon.Models.Parser.AST
 {
     public class BadNode : INode
     {

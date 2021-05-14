@@ -1,11 +1,11 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Zap.Symbols
+namespace Nylon.Symbols
 {
-    public class SymbolTable : ZapComponent
+    public class SymbolTable : CompilerComponent
     {
         private Dictionary<string, ISymbol> _symbols = new();
 

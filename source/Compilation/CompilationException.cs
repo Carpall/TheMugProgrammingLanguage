@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
   public class CompilationException : Exception
     {

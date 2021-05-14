@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
-    public class ZapComponent
+    public class CompilerComponent
     {
         public CompilationTower Tower { get; }
 
-        public ZapComponent(CompilationTower tower)
+        public CompilerComponent(CompilationTower tower)
         {
             Tower = tower;
         }

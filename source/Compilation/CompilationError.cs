@@ -1,4 +1,4 @@
-﻿namespace Zap.Compilation
+﻿namespace Nylon.Compilation
 {
   public struct CompilationError
     {

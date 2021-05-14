@@ -69,7 +69,7 @@ CHECK TODOS
 - implement destructors `~`
 - fix export pragmas
 - fix constant floats: llvmsharp does not expose any function for constant float creation
-- expose builtin functions for function and type's infos -> 'const fn: FuncInfo! = fninfo!(main) const types: ZapType! = fn.param_types'
+- expose builtin functions for function and type's infos -> 'const fn: FuncInfo! = fninfo!(main) const types: InternalCompilerType! = fn.param_types'
 - add runtime checks
 - implement for in 
 - consider removing 'break' in catch blocks

@@ -1,14 +1,14 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.Models.Parser;
-using Zap.Symbols;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser;
+using Nylon.Symbols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Zap.TypeSystem
+namespace Nylon.TypeSystem
 {
     public struct SolvedType
     {
@@ -22,7 +22,7 @@ namespace Zap.TypeSystem
             return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
         }
 
-        public static SolvedType WithBase(TypeKind kind, ZapType baseElementType)
+        public static SolvedType WithBase(TypeKind kind, DataType baseElementType)
         {
             return new SolvedType { Kind = kind, Base = baseElementType };
         }
@@ -32,7 +32,7 @@ namespace Zap.TypeSystem
             return new SolvedType { Kind = kind };
         }
 
-        public static SolvedType EnumError(ZapType errorType, ZapType successType)
+        public static SolvedType EnumError(DataType errorType, DataType successType)
         {
             return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
         }
@@ -47,9 +47,9 @@ namespace Zap.TypeSystem
             return Kind == TypeKind.DefinedType || Kind == TypeKind.GenericDefinedType;
         }
 
-        public ZapType GetBaseElementType()
+        public DataType GetBaseElementType()
         {
-            return (ZapType)Base;
+            return (DataType)Base;
         }
 
         public bool IsArray()
@@ -57,9 +57,9 @@ namespace Zap.TypeSystem
             return Kind == TypeKind.Array;
         }
 
-        public (ZapType ErrorType, ZapType SuccessType) GetEnumError()
+        public (DataType ErrorType, DataType SuccessType) GetEnumError()
         {
-            return ((ZapType, ZapType))Base;
+            return ((DataType, DataType))Base;
         }
 
         public override string ToString()

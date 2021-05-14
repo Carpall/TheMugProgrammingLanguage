@@ -1,7 +1,7 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
 
-namespace Zap.Models.Parser.AST.Directives
+namespace Nylon.Models.Parser.AST.Directives
 {
     public class UseDirective : INode
     {

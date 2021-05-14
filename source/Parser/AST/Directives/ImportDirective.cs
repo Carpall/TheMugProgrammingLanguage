@@ -1,6 +1,6 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 
-namespace Zap.Models.Parser.AST.Directives
+namespace Nylon.Models.Parser.AST.Directives
 {
   public enum ImportMode
     {

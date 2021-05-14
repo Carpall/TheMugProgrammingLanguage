@@ -1,20 +1,20 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.TypeSystem;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST
+namespace Nylon.Models.Parser.AST
 {
     public struct ParameterNode : INode
     {
         public string NodeKind => "Parameter";
-        public ZapType Type { get; }
+        public DataType Type { get; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
         public bool IsPassedAsReference { get; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(ZapType type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
+        public ParameterNode(DataType type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
         {
             Type = type;
             Name = name;

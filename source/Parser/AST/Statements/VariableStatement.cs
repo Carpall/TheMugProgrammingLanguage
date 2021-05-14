@@ -1,14 +1,14 @@
-﻿using Zap.Compilation;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.TypeSystem;
 using System;
 
-namespace Zap.Models.Parser.AST.Statements
+namespace Nylon.Models.Parser.AST.Statements
 {
     public class VariableStatement : INode
     {
         public string NodeKind => "Var";
         public string Name { get; set; }
-        public ZapType Type { get; set; }
+        public DataType Type { get; set; }
         public bool IsAssigned
         {
             get

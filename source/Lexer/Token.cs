@@ -1,9 +1,9 @@
-﻿using Zap.Compilation;
-using Zap.Models.Parser;
+﻿using Nylon.Compilation;
+using Nylon.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Zap.Models.Lexer
+namespace Nylon.Models.Lexer
 {
     public struct Token : INode
     {

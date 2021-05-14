@@ -1,15 +1,15 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.TypeSystem;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST.Statements
+namespace Nylon.Models.Parser.AST.Statements
 {
     public class EnumStatement : INode
     {
         public string NodeKind => "Enum";
         public Pragmas Pragmas { get; set; }
-        public ZapType BaseType { get; set; }
+        public DataType BaseType { get; set; }
         public string Name { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         public TokenKind Modifier { get; set; }

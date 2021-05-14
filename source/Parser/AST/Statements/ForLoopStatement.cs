@@ -1,6 +1,6 @@
-﻿using Zap.Compilation;
+﻿using Nylon.Compilation;
 
-namespace Zap.Models.Parser.AST.Statements
+namespace Nylon.Models.Parser.AST.Statements
 {
   public struct ForLoopStatement : INode
     {

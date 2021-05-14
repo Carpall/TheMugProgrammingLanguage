@@ -1,5 +1,5 @@
-﻿using Zap.Compilation;
-using Zap.Models.Parser;
+﻿using Nylon.Compilation;
+using Nylon.Models.Parser;
 using System;
 using System.Collections.Immutable;
 using System.IO;
@@ -27,16 +27,16 @@ try
     //       - fix '//' at the start of the line is not recognized as comment by the lexer
     //       - rename project in nylon
     //       - consider changing generic parameters from '<>' to '[]'
-    //       - add attributes to ZAR._allocations 'const', 'hiddenbuf'
+    //       - add attributes to NIR._allocations 'const', 'hiddenbuf'
     //       - add check for uninitialized memory
     //       - add warnings
     
-    var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
+    var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.nyl");
     
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());
     // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
-    Console.WriteLine(unit.GenerateZAR().Dump());
+    Console.WriteLine(unit.GenerateNIR().Dump());
 
 #else
 

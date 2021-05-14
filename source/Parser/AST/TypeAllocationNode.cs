@@ -1,13 +1,13 @@
-﻿using Zap.Compilation;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.TypeSystem;
 using System.Collections.Generic;
 
-namespace Zap.Models.Parser.AST
+namespace Nylon.Models.Parser.AST
 {
   public class TypeAllocationNode : INode
     {
         public string NodeKind => "StructAllocation";
-        public ZapType Name { get; set; }
+        public DataType Name { get; set; }
         public List<FieldAssignmentNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
     }

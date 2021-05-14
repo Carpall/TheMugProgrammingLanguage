@@ -1,17 +1,17 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.Models.Parser.AST;
-using Zap.Models.Parser.AST.Directives;
-using Zap.Models.Parser.AST.Statements;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser.AST;
+using Nylon.Models.Parser.AST.Directives;
+using Nylon.Models.Parser.AST.Statements;
+using Nylon.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System;
 
-namespace Zap.Models.Parser
+namespace Nylon.Models.Parser
 {
-    public class Parser : ZapComponent
+    public class Parser : CompilerComponent
     {
         public NamespaceNode Module { get; } = new();
         private int CurrentIndex { get; set; }
@@ -136,11 +136,11 @@ namespace Zap.Models.Parser
             return match;
         }
 
-        private ZapType ExpectType(bool allowEnumError = false)
+        private DataType ExpectType(bool allowEnumError = false)
         {
             if (MatchAdvance(TokenKind.OpenPar, out var token, true))
             {
-                var types = new List<ZapType>();
+                var types = new List<DataType>();
                 do
                     types.Add(ExpectType());
                 while (MatchAdvance(TokenKind.Comma));
@@ -180,7 +180,7 @@ namespace Zap.Models.Parser
                     ParseError($"Generic parameters cannot be passed to type '{find}'");
                 }
 
-                var genericTypes = new List<ZapType>();
+                var genericTypes = new List<DataType>();
 
                 do
                     genericTypes.Add(ExpectType());
@@ -201,10 +201,10 @@ namespace Zap.Models.Parser
             return find;
         }
 
-        private bool MatchType(out ZapType type)
+        private bool MatchType(out DataType type)
         {
             type = null;
-            ZapType t = null;
+            DataType t = null;
 
             if (!Match(TokenKind.OpenBracket) && !Match(TokenKind.Star) && !MatchBaseType(out t))
                 return false;
@@ -257,7 +257,7 @@ namespace Zap.Models.Parser
             return new ParameterNode(type, name.Value, defaultvalue, isPassedAsReference, name.Position);
         }
 
-        private ZapType ExpectBaseType()
+        private DataType ExpectBaseType()
         {
             if (!MatchBaseType(out var type))
                 ParseError("Expected a type, but found '" + Current.Value + "'");
@@ -265,7 +265,7 @@ namespace Zap.Models.Parser
             return type;
         }
 
-        private bool MatchBaseType(out ZapType type)
+        private bool MatchBaseType(out DataType type)
         {
             type = null;
             
@@ -388,7 +388,7 @@ namespace Zap.Models.Parser
             return parameters;
         }
 
-        private List<ZapType> CollectGenericParameters(ref bool builtin)
+        private List<DataType> CollectGenericParameters(ref bool builtin)
         {
             var oldindex = CurrentIndex;
 
@@ -399,7 +399,7 @@ namespace Zap.Models.Parser
 
                 if (MatchType(out var type))
                 {
-                    var generics = new List<ZapType>() { type };
+                    var generics = new List<DataType>() { type };
 
                     while (MatchAdvance(TokenKind.Comma))
                         generics.Add(ExpectType());
@@ -413,7 +413,7 @@ namespace Zap.Models.Parser
             }
 
             CurrentIndex = oldindex;
-            return new List<ZapType>();
+            return new List<DataType>();
         }
 
         private bool CollectBuiltInSymbol()
@@ -844,7 +844,7 @@ namespace Zap.Models.Parser
                 e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
-        private ZapType ExpectVariableType()
+        private DataType ExpectVariableType()
         {
             return MatchAdvance(TokenKind.Colon) ? ExpectType() : UnsolvedType.Automatic(Tower, Back.Position);
         }
@@ -1123,7 +1123,7 @@ namespace Zap.Models.Parser
 
             var parameters = ExpectParameterListDeclaration(); // func name<(..)>
 
-            ZapType type;
+            DataType type;
 
             if (MatchAdvance(TokenKind.Colon))
                 type = ExpectType(true);
@@ -1211,7 +1211,7 @@ namespace Zap.Models.Parser
             if (!MatchAdvance(TokenKind.Colon))
             {
                 Report(UnexpectedToken);
-                return new FieldNode { Name = "", Type = ZapType.Void };
+                return new FieldNode { Name = "", Type = DataType.Void };
             }
 
             var type = ExpectType(); // field: <error>
@@ -1335,7 +1335,7 @@ namespace Zap.Models.Parser
             };
         }
 
-        private ZapType ExpectPrimitiveType(bool allowErr)
+        private DataType ExpectPrimitiveType(bool allowErr)
         {
             if (!MatchPrimitiveType(out var type, allowErr))
             {
@@ -1370,7 +1370,7 @@ namespace Zap.Models.Parser
                 return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
         }
 
-        private ZapType ExpectEnumBaseType()
+        private DataType ExpectEnumBaseType()
         {
             return ExpectPrimitiveType(true);
         }

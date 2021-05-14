@@ -1,8 +1,8 @@
-﻿using Zap.Models.Lexer;
+﻿using Nylon.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Zap.Compilation
+namespace Nylon.Compilation
 {
   public class Diagnostic
     {

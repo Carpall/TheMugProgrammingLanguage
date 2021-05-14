@@ -1,12 +1,12 @@
-﻿using Zap.Compilation;
-using Zap.Models.Lexer;
-using Zap.Models.Parser;
+﻿using Nylon.Compilation;
+using Nylon.Models.Lexer;
+using Nylon.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 
-namespace Zap.TypeSystem
+namespace Nylon.TypeSystem
 {
     public struct UnsolvedType : INode
     {
@@ -15,7 +15,7 @@ namespace Zap.TypeSystem
         public object BaseType { get; set; }
         public ModulePosition Position { get; set; }
 
-        public static ZapType Create(CompilationTower tower, ModulePosition position, TypeKind type, object baseType = null)
+        public static DataType Create(CompilationTower tower, ModulePosition position, TypeKind type, object baseType = null)
         {
             var result = new UnsolvedType
             {
@@ -24,14 +24,14 @@ namespace Zap.TypeSystem
                 Position = position
             };
 
-            tower.Types.Add(ZapType.Unsolved(result));
+            tower.Types.Add(DataType.Unsolved(result));
             return tower.Types[^1];
         }
 
         /// <summary>
         /// converts a keyword token into a type
         /// </summary>
-        public static ZapType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
+        public static DataType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
         {
             TypeKind type = t.Value switch
             {
@@ -59,7 +59,7 @@ namespace Zap.TypeSystem
         /// <summary>
         /// a short way of allocating with new operator
         /// </summary>
-        public static ZapType Automatic(CompilationTower tower, ModulePosition position)
+        public static DataType Automatic(CompilationTower tower, ModulePosition position)
         {
             return Create(tower, position, TypeKind.Auto);
         }
@@ -139,9 +139,9 @@ namespace Zap.TypeSystem
                 Kind == TypeKind.UInt64;
         }
 
-        public (ZapType ErrorType, ZapType SuccessType) GetEnumError()
+        public (DataType ErrorType, DataType SuccessType) GetEnumError()
         {
-            return ((ZapType, ZapType))BaseType;
+            return ((DataType, DataType))BaseType;
         }
 
         public override bool Equals(object obj)

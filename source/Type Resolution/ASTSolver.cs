@@ -1,17 +1,17 @@
-﻿using Zap.Compilation;
-using Zap.Models.Parser.AST;
-using Zap.Symbols;
-using Zap.TypeSystem;
+﻿using Nylon.Compilation;
+using Nylon.Models.Parser.AST;
+using Nylon.Symbols;
+using Nylon.TypeSystem;
 
-namespace Zap.TypeResolution
+namespace Nylon.TypeResolution
 {
-    public class ASTSolver : ZapComponent
+    public class ASTSolver : CompilerComponent
     {
         public ASTSolver(CompilationTower tower) : base(tower)
         {   
         }
 
-        private SolvedType ResolveType(ZapType type)
+        private SolvedType ResolveType(DataType type)
         {
             if (type.IsSolved)
                 return type.SolvedType;
@@ -22,11 +22,11 @@ namespace Zap.TypeResolution
             {
                 TypeKind.Array or
                 TypeKind.Option or
-                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, ZapType.Solved(ResolveType(unsolvedtype.BaseType as ZapType))),
+                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, DataType.Solved(ResolveType(unsolvedtype.BaseType as DataType))),
 
                 TypeKind.EnumError => SolvedType.EnumError(
-                    ZapType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
-                    ZapType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
+                    DataType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
+                    DataType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
 
                 TypeKind.DefinedType => SolvedType.Struct(
                     Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type")),
