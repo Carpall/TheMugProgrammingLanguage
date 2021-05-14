@@ -50,7 +50,7 @@ namespace Zap.TypeResolution
             {
                 var function = bodyfunctions[i];
                 CheckFunc(function.ParameterList, function.Generics, function.Pragmas);
-                CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Function");
+                CheckSingleDeclaration(bodyfunctions[i].Position, ref declared, i, bodyfunctions[i].Name, "Method");
             }
 
             declared = new string[bodyfields.Count];

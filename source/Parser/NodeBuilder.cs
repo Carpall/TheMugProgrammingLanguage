@@ -1,52 +1,57 @@
 ﻿using Zap.Compilation;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 namespace Zap.Models.Parser
 {
     public class NodeBuilder : INode, ICollection<INode>
     {
         public string NodeKind => "NodeBuilder";
-        public List<INode> Nodes = new();
+        private readonly List<INode> _nodes = new();
         public ModulePosition Position { get; set; }
-
-        public int Count => throw new System.NotImplementedException();
-
-        public bool IsReadOnly => throw new System.NotImplementedException();
+        public int Count => _nodes.Count;
+        public bool IsReadOnly => false;
+        public INode this[int index] => _nodes[index];
 
         public void Add(INode item)
         {
-            Nodes.Add(item);
+            _nodes.Add(item);
         }
 
         public void Clear()
         {
-            Nodes.Clear();
+            _nodes.Clear();
         }
 
         public bool Contains(INode item)
         {
-            return Nodes.Contains(item);
+            return _nodes.Contains(item);
         }
 
         public void CopyTo(INode[] array, int arrayIndex)
         {
-            Nodes.CopyTo(array, arrayIndex);
+            _nodes.CopyTo(array, arrayIndex);
         }
 
         public bool Remove(INode item)
         {
-            return Nodes.Remove(item);
+            return _nodes.Remove(item);
         }
 
         public IEnumerator<INode> GetEnumerator()
         {
-            return Nodes.GetEnumerator();
+            return _nodes.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return Nodes.GetEnumerator();
+            return _nodes.GetEnumerator();
+        }
+
+        public void AddRange(NodeBuilder members)
+        {
+            _nodes.AddRange(members);
         }
     }
 }

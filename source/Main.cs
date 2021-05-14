@@ -32,6 +32,8 @@ try
     //       - add implicit new operator with type inference 'new { }' and '[]', with context type
     //       - fix 'x *' 'x /'
     //       - fix '//' at the start of the line makes the compiler throws error
+    //       - rename project in nylon
+    //       - consider changing generic parameters from '<>' to '[]'
     
     var unit = new CompilationUnit("test.zar", @"../../../../tests/main_test.zap");
     

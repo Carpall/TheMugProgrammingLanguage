@@ -362,12 +362,15 @@ namespace Zap.Models.Parser
             return true;
         }
 
-        private void CollectParameters(ref NodeBuilder parameters)
+        private NodeBuilder CollectParameters()
         {
+            var parameters = new NodeBuilder();
             var lastiscomma = false;
+            var start = Back.Position;
+
             while (!MatchAdvance(TokenKind.ClosePar))
             {
-                parameters.Nodes.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar}));
+                parameters.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar}));
 
                 lastiscomma = Back.Kind == TokenKind.Comma;
                 if (Back.Kind == TokenKind.ClosePar)
@@ -377,8 +380,12 @@ namespace Zap.Models.Parser
                 }
             }
 
+            var end = Back.Position;
             if (lastiscomma)
                 Report(Back.Position, "Expected parameter's expression");
+
+            parameters.Position = GetModulePositionRange(start, end);
+            return parameters;
         }
 
         private List<ZapType> CollectGenericParameters(ref bool builtin)
@@ -433,8 +440,7 @@ namespace Zap.Models.Parser
                 return false;
             }
 
-            var parameters = new NodeBuilder();
-            CollectParameters(ref parameters);
+            var parameters = CollectParameters();
 
             e = new CallStatement()
             {
@@ -476,9 +482,7 @@ namespace Zap.Models.Parser
 
             if (MatchAdvance(TokenKind.OpenPar, true))
             {
-                var parameters = new NodeBuilder();
-
-                CollectParameters(ref parameters);
+                var parameters = CollectParameters();
 
                 e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
             }
@@ -1487,7 +1491,7 @@ namespace Zap.Models.Parser
                     }
 
                 // adds the statement to the members
-                nodes.Nodes.Add(statement);
+                nodes.Add(statement);
             }
 
             return nodes;

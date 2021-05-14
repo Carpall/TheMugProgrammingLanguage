@@ -1,16 +1,16 @@
 type A {
   field: i32
 
-  func create(field: i32): A { new { field: field } }
+  func is_ready(self: A): bool {
+    return true
+  }
 }
 
+func add(a: i32, b: i32): i32 { a + b }
+
 func b() {
-  const y: u8 = 2
-  const x = y + {
-    var result: u8 = 0
-    
-    result
-  }
+  // fix const x: void = callvoid()
+  const x = add(1, 2)
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

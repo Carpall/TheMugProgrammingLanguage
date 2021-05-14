@@ -134,5 +134,10 @@ namespace Zap.Models.Generator.IR.Builder
                 EmitReturn();
             }
         }
+
+        public void EmitCall(string name, ZapType type)
+        {
+            EmitInstruction(ZARValueKind.Call, ZARValue.MemberIdentifier(name, type));
+        }
     }
 }

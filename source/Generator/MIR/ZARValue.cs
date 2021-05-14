@@ -27,6 +27,8 @@ namespace Zap.Models.Generator.IR
         Add,
         Sub,
         Mul,
+        Call,
+        MemberIdentifer,
     }
 
     public struct ZARValue
@@ -49,7 +51,12 @@ namespace Zap.Models.Generator.IR
 
         internal static ZARValue StaticMemoryAddress(int address, ZapType type)
         {
-            return new ZARValue(ZARValueKind.StaticMemoryAddress, type, address);
+            return new(ZARValueKind.StaticMemoryAddress, type, address);
+        }
+
+        internal static ZARValue MemberIdentifier(string name, ZapType type)
+        {
+            return new(ZARValueKind.MemberIdentifer, type, name);
         }
 
         internal long ConstantIntValue => (long)Value;

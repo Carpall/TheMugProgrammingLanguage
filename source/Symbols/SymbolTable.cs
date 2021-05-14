@@ -23,7 +23,6 @@ namespace Zap.Symbols
                 return (T)symbol;
 
             return default;
-
         }
 
         public void SetSymbol(string name, ISymbol symbol)

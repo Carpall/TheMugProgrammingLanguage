@@ -134,7 +134,7 @@ namespace Zap.Compilation
                 var head = subtower.Parser.Parse();
 
                 Tower.Types.AddRange(subtower.Types);
-                Tower.Parser.Module.Members.Nodes.AddRange(head.Members.Nodes);
+                Tower.Parser.Module.Members.AddRange(head.Members);
                 Tower.Diagnostic.AddRange(subtower.Diagnostic);
             }
         }
