@@ -71,6 +71,11 @@ namespace Zap.Models.Generator
                 case ReturnStatement statement:
                     GenerateReturnStatement(statement);
                     break;
+                case CallStatement statement:
+                    if (!EvaluateNodeCall(statement).SolvedType.IsVoid())
+                        FunctionBuilder.EmitPop();
+
+                    break;
                 default:
                     if (!isLastNodeOfBlock)
                         Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
@@ -256,6 +261,9 @@ namespace Zap.Models.Generator
                     break;
             }
 
+            if (type.SolvedType.IsVoid())
+                Tower.Report(body.Position, "Expected a non-void expression");
+
             return type;
         }
 
@@ -273,27 +281,42 @@ namespace Zap.Models.Generator
                 return ZapType.Void;
 
             var func = funcSymbol.Func;
+            EvaluateCallParameters(expression, func);
+
+            return func.ReturnType;
+        }
+
+        private void EvaluateCallParameters(CallStatement expression, FunctionStatement func)
+        {
+            ReportFewParameters(expression, func);
+
+            for (int i = 0; i < expression.Parameters.Count; i++)
+                CheckAndEvaluateParameter(func, i, expression.Parameters[i]);
+
+            FunctionBuilder.EmitCall(func.Name, func.ReturnType);
+        }
+
+        private void CheckAndEvaluateParameter(FunctionStatement func, int i, INode parameter)
+        {
+            if (func.ParameterList.Length <= i)
+            {
+                Tower.Report(parameter.Position, "Unexpected extra function parameter");
+                EvaluateParameter(ZapType.Auto, parameter);
+            }
+            else
+            {
+                var prototypeParameterType = func.ParameterList.Parameters[i].Type;
+                var expressionType = EvaluateParameter(prototypeParameterType, parameter);
+                FixAndCheckTypes(prototypeParameterType, expressionType, parameter.Position);
+            }
+        }
+
+        private void ReportFewParameters(CallStatement expression, FunctionStatement func)
+        {
             if (func.ParameterList.Length > expression.Parameters.Count)
                 Tower.Report(
                     expression.Parameters.Position,
                     $"Expected '{func.ParameterList.Length}' function parameter{GetPlural(func.ParameterList.Length)}");
-            
-            for (int i = 0; i < expression.Parameters.Count; i++)
-            {
-                var parameter = expression.Parameters[i];
-
-                if (func.ParameterList.Length < i)
-                {
-                    Tower.Report(parameter.Position, "Unexpected extra function parameter");
-                    continue;
-                }
-
-                EvaluateParameter(func.ParameterList.Parameters[i], parameter);
-            }
-
-            FunctionBuilder.EmitCall(func.Name, func.ReturnType);
-
-            return func.ReturnType;
         }
 
         private static char GetPlural(int count)
@@ -302,13 +325,15 @@ namespace Zap.Models.Generator
             return count != 1 ? 's' : '\0';
         }
 
-        private void EvaluateParameter(ParameterNode prototypeParameter, INode passedParameter)
+        private ZapType EvaluateParameter(ZapType prototypeParameterType, INode passedParameter)
         {
-            ContextTypes.Push(prototypeParameter.Type);
+            ContextTypes.Push(prototypeParameterType);
 
-            EvaluateExpression(passedParameter);
+            var type = EvaluateExpression(passedParameter);
 
             ContextTypes.Pop();
+
+            return type;
         }
 
         private FuncSymbol SearchForFunction(Token name)

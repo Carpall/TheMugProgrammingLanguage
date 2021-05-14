@@ -92,6 +92,11 @@ namespace Zap.Models.Generator.IR.Builder
             EmitInstruction(ZARValueKind.LoadField, fieldaddress);
         }
 
+        public void EmitPop()
+        {
+            EmitInstruction(ZARValueKind.Pop);
+        }
+
         public ZARValue PopLastInstruction()
         {
             var value = _body[^1];

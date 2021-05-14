@@ -22,21 +22,27 @@ namespace Zap.TypeSystem
             IsSolved = issolved;
         }
 
-        internal static ZapType Bool => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Bool));
-        internal static ZapType Int32 => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Int32));
-        internal static ZapType Void => Solved(TypeSystem.SolvedType.Primitive(TypeKind.Void));
+        internal static ZapType Bool => Primitive(TypeKind.Bool);
+        internal static ZapType Int32 => Primitive(TypeKind.Int32);
+        internal static ZapType Void => Primitive(TypeKind.Void);
+        internal static ZapType Auto => Primitive(TypeKind.Auto);
 
-        public static ZapType Unsolved(UnsolvedType unsolvedtype)
+        internal static ZapType Primitive(TypeKind typekind)
+        {
+            return Solved(TypeSystem.SolvedType.Primitive(typekind));
+        }
+
+        internal static ZapType Unsolved(UnsolvedType unsolvedtype)
         {
             return new(unsolvedtype, default, false);
         }
 
-        public static ZapType Solved(SolvedType solvedtype)
+        internal static ZapType Solved(SolvedType solvedtype)
         {
             return new(default, solvedtype, true);
         }
 
-        public void Solve(SolvedType solvedtype)
+        internal void Solve(SolvedType solvedtype)
         {
             SolvedType = solvedtype;
             IsSolved = true;

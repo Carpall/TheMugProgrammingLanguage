@@ -29,6 +29,7 @@ namespace Zap.Models.Generator.IR
         Mul,
         Call,
         MemberIdentifer,
+        Pop,
     }
 
     public struct ZARValue

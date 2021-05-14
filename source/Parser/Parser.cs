@@ -448,7 +448,7 @@ namespace Zap.Models.Parser
                 IsBuiltIn = builtin,
                 Name = name,
                 Parameters = parameters,
-                Position = name is BadNode ? name.Position : name.Position
+                Position = GetModulePositionRange(name.Position, Back.Position)
             };
 
             CollectCatchExpression(ref e);
