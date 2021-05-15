@@ -23,15 +23,14 @@ try
     //       - fix tests
     //       - fix crash when error's position is on different lines
     //       - add implicit new operator with type inference 'new { }' and '[]', with context type
-    //       - fix 'x *' 'x /'
     //       - fix '//' at the start of the line is not recognized as comment by the lexer
     //       - rename project in nylon
     //       - consider changing generic parameters from '<>' to '[]'
     //       - add attributes to NIR._allocations 'const', 'hiddenbuf'
     //       - add check for uninitialized memory
     //       - add warnings
-    
-    var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.nyl");
+
+    var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.n");
     
     // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
     // Console.WriteLine((unit.GenerateAST() as INode).Dump());

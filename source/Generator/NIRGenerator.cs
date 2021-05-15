@@ -235,40 +235,30 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateExpression(INode body)
         {
-            var type = ContextType;
-
-            switch (body)
+            var type = body switch
             {
-                case BadNode: break;
-                case Token expression:
-                    type = expression.Kind == TokenKind.Identifier ?
-                        EvaluateIdentifier(expression.Value, expression.Position) :
-                        EvaluateConstant(expression);
-                    break;
-                case TypeAllocationNode expression:
-                    type = EvaluateNodeTypeAllocation(expression);
-                    break;
-                case MemberNode expression:
-                    type = EvaluateMemberNode(expression);
-                    break;
-                case BinaryExpressionNode expression:
-                    type = EvaluateNodeBinaryExpression(expression);
-                    break;
-                case BlockNode expression:
-                    type = EvaluateNodeBlock(expression);
-                    break;
-                case CallStatement expression:
-                    type = EvaluateNodeCall(expression);
-                    break;
-                default:
-                    CompilationTower.Todo($"implement {body} in NIRGenerator.EvaluateExpression");
-                    break;
-            }
+                BadNode => ContextType,
+                Token expression => expression.Kind == TokenKind.Identifier ?
+                    EvaluateIdentifier(expression.Value, expression.Position) :
+                    EvaluateConstant(expression),
+                TypeAllocationNode expression => EvaluateNodeTypeAllocation(expression),
+                MemberNode expression => EvaluateMemberNode(expression),
+                BinaryExpressionNode expression => EvaluateNodeBinaryExpression(expression),
+                BlockNode expression => EvaluateNodeBlock(expression),
+                CallStatement expression => EvaluateNodeCall(expression),
+                _ => ToImplement<DataType>(body.ToString(), "EvaluateExpression"),
+            };
 
             if (type.SolvedType.IsVoid())
                 Tower.Report(body.Position, "Expected a non-void expression");
 
             return type;
+        }
+
+        private static T ToImplement<T>(string value, string function)
+        {
+            CompilationTower.Todo($"implement {value} in NIRGenerator.{function}");
+            return default;
         }
 
         private DataType EvaluateNodeCall(CallStatement expression)
@@ -298,7 +288,7 @@ namespace Nylon.Models.Generator
                     funcSymbol = EvaluateBaseFunctionName(name, ref parameters);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {functioName} in NIRGenerator.EvaluateNodeCall");
+                    ToImplement<object>(functioName.ToString(), "EvaluateNodeCall");
                     throw new();
             }
 
@@ -461,11 +451,13 @@ namespace Nylon.Models.Generator
                 {
                     var index = FunctionBuilder.CurrentIndex();
                     var left = FoldConstantIntoToken(expression.Left);
+                    ContextTypesPushUndefined();
 
                     FunctionBuilder.EmitLoadConstantValue(
                         long.Parse(left.Value),
                         type = EvaluateExpression(expression.Right));
 
+                    ContextTypes.Pop();
                     FunctionBuilder.MoveLastInstructionTo(index);
                 }
                 else if (rightisconstant)
@@ -501,36 +493,52 @@ namespace Nylon.Models.Generator
             }, type);
         }
 
-        private static Token FoldConstantIntoToken(INode opaque)
+        private Token FoldConstantIntoToken(INode opaque)
         {
             // make it better when introduce floating points
             return opaque switch
             {
+                BadNode => Token.NewInfo(TokenKind.ConstantDigit, "1"),
                 Token expression => expression,
                 BinaryExpressionNode expression => new Token(
                     TokenKind.ConstantDigit,
                     FoldConstants(
                         ulong.Parse(FoldConstantIntoToken(expression.Left).Value),
                         ulong.Parse(FoldConstantIntoToken(expression.Right).Value),
-                        expression.Operator).ToString(), expression.Position, false),
+                        expression.Operator,
+                        opaque.Position).ToString(),
+                    expression.Position,
+                    false),
                 _ => Token.NewInfo(TokenKind.Bad, "")
             };
         }
 
-        private static ulong FoldConstants(ulong left, ulong right, TokenKind op)
+        private ulong FoldConstants(ulong left, ulong right, TokenKind op, ModulePosition position)
         {
             return op switch
             {
                 TokenKind.Plus => left + right,
                 TokenKind.Minus => left - right,
                 TokenKind.Star => left * right,
-                TokenKind.Slash => left / right,
+                TokenKind.Slash => EvaluateDivideConstants(left, right, position),
             };
+        }
+
+        private ulong EvaluateDivideConstants(ulong left, ulong right, ModulePosition position)
+        {
+            ulong result = 0;
+            if (right == 0)
+                Tower.Report(position, "Divided by '0' at compile time");
+            else
+                result = left / right;
+
+            return result;
         }
 
         private static bool IsConstantInt(INode node)
         {
             return
+                (node is BadNode) ||
                 (node is Token token && token.Kind == TokenKind.ConstantDigit) ||
                 (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
         }
@@ -667,7 +675,7 @@ namespace Nylon.Models.Generator
                     value = bool.Parse(expression.Value);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {expression.Kind} in NIRGenerator.EvaluateConstant");
+                    ToImplement<object>(expression.Kind.ToString(), "EvaluateConstant");
                     result = null;
                     value = new();
                     break;
@@ -789,7 +797,7 @@ namespace Nylon.Models.Generator
                     GenerateFunction(funcsymbol.Func, funcsymbol.Func.Name);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {value} in NIRGenerator.RecognizeSymbol");
+                    ToImplement<object>(value.ToString(), "RecognizeSymbol");
                     break;
             }
         }

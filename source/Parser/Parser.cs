@@ -18,7 +18,6 @@ namespace Nylon.Models.Parser
 
         private Pragmas _pragmas = null;
         private TokenKind _modifier = TokenKind.Bad;
-        private readonly BadNode _badNode = new();
 
         private void ParseError(string error)
         {
@@ -139,66 +138,80 @@ namespace Nylon.Models.Parser
         private DataType ExpectType(bool allowEnumError = false)
         {
             if (MatchAdvance(TokenKind.OpenPar, out var token, true))
-            {
-                var types = new List<DataType>();
-                do
-                    types.Add(ExpectType());
-                while (MatchAdvance(TokenKind.Comma));
-
-                Expect("", TokenKind.ClosePar);
-                var position = new ModulePosition(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End);
-                return UnsolvedType.Create(Tower, position, TypeKind.Tuple, types.ToArray());
-            }
+                return CollectTupleType(token);
             if (MatchAdvance(TokenKind.OpenBracket, out token, true))
-            {
-                var type = ExpectType();
-                Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
-                return UnsolvedType.Create(
-                    Tower,
-                    new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End),
-                    TypeKind.Array,
-                    type);
-            }
+                return CollectArrayType(token);
             else if (MatchAdvance(TokenKind.Star, out token, true) || MatchAdvance(TokenKind.QuestionMark, out token, true))
-            {
-                var type = ExpectType();
-                return UnsolvedType.Create(
-                    Tower,
-                    new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Position.Position.End),
-                    token.Kind == TokenKind.Star ? TypeKind.Pointer : TypeKind.Option,
-                    type);
-            }
+                return CollectPointerType(token);
 
             var find = ExpectBaseType();
 
             // struct generics
             if (MatchAdvance(TokenKind.BooleanLess, true))
-            {
-                if (find.UnsolvedType.Kind != TypeKind.DefinedType)
-                {
-                    CurrentIndex -= 2;
-                    ParseError($"Generic parameters cannot be passed to type '{find}'");
-                }
-
-                var genericTypes = new List<DataType>();
-
-                do
-                    genericTypes.Add(ExpectType());
-                while (MatchAdvance(TokenKind.Comma));
-
-                Expect("", TokenKind.BooleanGreater);
-
-                find = UnsolvedType.Create(
-                    Tower,
-                    new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End),
-                    TypeKind.GenericDefinedType,
-                    (find, genericTypes));
-            }
+                CollectGenericType(ref find);
 
             if (allowEnumError && MatchAdvance(TokenKind.Negation, true))
-                find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
+                CollectEnumErrorType(ref find);
 
             return find;
+        }
+
+        private void CollectEnumErrorType(ref DataType find)
+        {
+            find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
+        }
+
+        private void CollectGenericType(ref DataType find)
+        {
+            if (find.UnsolvedType.Kind != TypeKind.DefinedType)
+                ParseError(find.Position, $"Generic parameters cannot be passed to type '{find}'");
+
+            var genericTypes = new List<DataType>();
+
+            do
+                genericTypes.Add(ExpectType());
+            while (MatchAdvance(TokenKind.Comma));
+
+            Expect("", TokenKind.BooleanGreater);
+
+            find = UnsolvedType.Create(
+                Tower,
+                new(find.Position.Lexer, find.Position.Position.Start..Back.Position.Position.End),
+                TypeKind.GenericDefinedType,
+                (find, genericTypes));
+        }
+
+        private DataType CollectPointerType(Token token)
+        {
+            var type = ExpectType();
+            return UnsolvedType.Create(
+                Tower,
+                new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Position.Position.End),
+                token.Kind == TokenKind.Star ? TypeKind.Pointer : TypeKind.Option,
+                type);
+        }
+
+        private DataType CollectArrayType(Token token)
+        {
+            var type = ExpectType();
+            Expect("An array type definition must end by ']'", TokenKind.CloseBracket);
+            return UnsolvedType.Create(
+                Tower,
+                new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End),
+                TypeKind.Array,
+                type);
+        }
+
+        private DataType CollectTupleType(Token token)
+        {
+            var types = new List<DataType>();
+            do
+                types.Add(ExpectType());
+            while (MatchAdvance(TokenKind.Comma));
+
+            Expect("", TokenKind.ClosePar);
+            var position = new ModulePosition(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End);
+            return UnsolvedType.Create(Tower, position, TypeKind.Tuple, types.ToArray());
         }
 
         private bool MatchType(out DataType type)
@@ -313,15 +326,22 @@ namespace Nylon.Models.Parser
                 MatchAdvance(TokenKind.ConstantBoolean);
         }
 
+        private BadNode CreateBadNode()
+        {
+            return new(Back.Position);
+        }
+
         private bool MatchInParExpression(out INode e)
         {
-            e = _badNode;
+            e = CreateBadNode();
 
+            var start = Current.Position;
             if (!MatchAdvance(TokenKind.OpenPar))
                 return false;
+            var end = Current.Position;
 
             e = ExpectExpression(end: TokenKind.ClosePar);
-            
+            e.Position = GetModulePositionRange(start, end);
             return true;
         }
 
@@ -354,7 +374,12 @@ namespace Nylon.Models.Parser
             {
                 var id = Expect("Expected member after '.'", TokenKind.Identifier);
 
-                name = new MemberNode() { Base = name, Member = id, Position = new(name.Position.Lexer, name.Position.Position.Start.Value..id.Position.Position.End.Value) };
+                name = new MemberNode()
+                {
+                    Base = name,
+                    Member = id,
+                    Position = new(name.Position.Lexer, name.Position.Position.Start.Value..id.Position.Position.End.Value)
+                };
 
                 CollectPossibleArrayAccessNode(ref name);
             }
@@ -423,7 +448,7 @@ namespace Nylon.Models.Parser
 
         private bool MatchCallStatement(out INode e, INode name)
         {
-            e = _badNode;
+            e = CreateBadNode();
 
             var builtin = CollectBuiltInSymbol();
 
@@ -520,40 +545,11 @@ namespace Nylon.Models.Parser
         private bool MatchTerm(out INode e, bool allowNullExpression)
         {
             if (Match(TokenKind.OpenBrace))
-            {
-                e = ExpectBlock();
-                return true;
-            }
-
+                return CollectBlockExpression(out e);
             else if (MatchAdvance(TokenKind.KeyTry))
-            {
-                if (!MatchTerm(out e, false) || e is not CallStatement)
-                {
-                    Report(Back.Position, "Expected call expression after 'try'");
-                    return false;
-                }
-
-                e = new TryExpressionNode()
-                {
-                    Expression = e,
-                    Position = Back.Position
-                };
-
-                return true;
-            }
-
+                return CollectTryExpression(out e);
             else if (MatchPrefixOperator(out var prefixOP))
-            {
-                if (!MatchTerm(out e, allowNullExpression))
-                {
-                    Report("Unexpected prefix operator");
-                    return false;
-                }
-
-                e = new PrefixOperator() { Expression = e, Position = prefixOP.Position, Prefix = prefixOP.Kind };
-
-                return true;
-            }
+                return CollectPrefixOperator(out e, allowNullExpression, prefixOP);
 
             // arr[]
             // base.member
@@ -584,6 +580,42 @@ namespace Nylon.Models.Parser
             CollectPostfixOperator(ref e);
 
             CollectAsExpression(ref e);
+
+            return true;
+        }
+
+        private bool CollectBlockExpression(out INode e)
+        {
+            e = ExpectBlock();
+            return true;
+        }
+
+        private bool CollectTryExpression(out INode e)
+        {
+            if (!MatchTerm(out e, false) || e is not CallStatement)
+            {
+                Report(Back.Position, "Expected call expression after 'try'");
+                return false;
+            }
+
+            e = new TryExpressionNode()
+            {
+                Expression = e,
+                Position = Back.Position
+            };
+
+            return true;
+        }
+
+        private bool CollectPrefixOperator(out INode e, bool allowNullExpression, Token prefixOP)
+        {
+            if (!MatchTerm(out e, allowNullExpression))
+            {
+                Report("Unexpected prefix operator");
+                return false;
+            }
+
+            e = new PrefixOperator() { Expression = e, Position = prefixOP.Position, Prefix = prefixOP.Kind };
 
             return true;
         }
@@ -655,6 +687,7 @@ namespace Nylon.Models.Parser
             {
                 var op = Back;
                 var right = ExpectTerm(allowNullExpression);
+
                 do
                 {
                     e = new BinaryExpressionNode()
@@ -712,7 +745,7 @@ namespace Nylon.Models.Parser
         private INode CollectNodeNewArray()
         {
             var type = ExpectType();
-            INode size = _badNode;
+            INode size = CreateBadNode();
 
             if (MatchAdvance(TokenKind.Comma))
             {
@@ -851,14 +884,14 @@ namespace Nylon.Models.Parser
 
         private bool VariableDefinition(out INode statement)
         {
-            statement = _badNode;
+            statement = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyVar, out var token) && !MatchAdvance(TokenKind.KeyConst, out token))
                 return false;
 
             var name = Expect("Expected the variable name", TokenKind.Identifier);
             var type = ExpectVariableType();
-            INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : _badNode;
+            INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : CreateBadNode();
 
             statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type, IsConst = token.Kind == TokenKind.KeyConst };
 
@@ -872,7 +905,7 @@ namespace Nylon.Models.Parser
 
         private bool ReturnDeclaration(out INode statement)
         {
-            statement = _badNode;
+            statement = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyReturn))
                 return false;
@@ -882,7 +915,7 @@ namespace Nylon.Models.Parser
             statement = new ReturnStatement()
             {
                 Position = pos,
-                Body = !NextIsOnSameLine() ? _badNode : ExpectExpression(allowNullExpression: true)
+                Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression(allowNullExpression: true)
             };
 
             return true;
@@ -904,7 +937,7 @@ namespace Nylon.Models.Parser
 
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
-                var expression = (INode)_badNode;
+                var expression = (INode)CreateBadNode();
                 var pos = Current.Position;
 
                 if (!MatchAdvance(TokenKind.KeyElse))
@@ -928,7 +961,7 @@ namespace Nylon.Models.Parser
 
         private bool ConditionDefinition(out INode statement, bool isFirstCondition = true)
         {
-            statement = _badNode;
+            statement = CreateBadNode();
 
             if (isFirstCondition && MatchAdvance(TokenKind.KeySwitch, out var matchtoken))
                 return CollectMatchExpression(out statement, matchtoken.Position);
@@ -946,7 +979,7 @@ namespace Nylon.Models.Parser
                 return false;
             }
 
-            INode expression = _badNode;
+            INode expression = CreateBadNode();
             if (key.Kind != TokenKind.KeyElse)
             {
                 expression = ExpectExpression(end: TokenKind.OpenBrace);
@@ -1002,7 +1035,7 @@ namespace Nylon.Models.Parser
 
         private bool ForLoopDefinition(out INode statement)
         {
-            statement = _badNode;
+            statement = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyFor, out Token key))
                 return false;
@@ -1027,7 +1060,7 @@ namespace Nylon.Models.Parser
 
         private bool LoopManagerDefintion(out INode statement)
         {
-            statement = _badNode;
+            statement = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyContinue) &&
                 !MatchAdvance(TokenKind.KeyBreak))
@@ -1108,7 +1141,7 @@ namespace Nylon.Models.Parser
 
         private bool FunctionDefinition(out INode node)
         {
-            node = _badNode;
+            node = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyFunc)) // <func>
                 return false;
@@ -1159,7 +1192,7 @@ namespace Nylon.Models.Parser
 
         private bool MatchImportDirective(out INode directive)
         {
-            directive = _badNode;
+            directive = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyImport, out var token)) // <import>
                 return false;
@@ -1182,7 +1215,7 @@ namespace Nylon.Models.Parser
 
         private bool MatchUseDirective(out INode directive)
         {
-            directive = _badNode;
+            directive = CreateBadNode();
 
             if (!MatchAdvance(TokenKind.KeyUse, out var token)) // <use>
                 return false;
@@ -1233,7 +1266,7 @@ namespace Nylon.Models.Parser
 
         private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
         {
-            node = _badNode;
+            node = CreateBadNode();
             var variant = new VariantStatement()
             {
                 Pragmas = pragmas,
@@ -1261,7 +1294,7 @@ namespace Nylon.Models.Parser
         /// </summary>
         private bool TypeDefinition(out INode node)
         {
-            node = _badNode;
+            node = CreateBadNode();
 
             // returns if does not match a type keyword
             if (!MatchAdvance(TokenKind.KeyType))
@@ -1377,7 +1410,7 @@ namespace Nylon.Models.Parser
 
         private bool EnumDefinition(out INode node)
         {
-            node = _badNode;
+            node = CreateBadNode();
 
             // returns if does not match a type keyword
             if (!MatchAdvance(TokenKind.KeyEnum))

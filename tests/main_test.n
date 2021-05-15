@@ -1,11 +1,14 @@
 type Math {
   result: i32
 
-  func add(self: Math, a: i32, b: i32) { self.result = a + b }
+  func add(self: Math, a: i32, b: i32): Math {
+    self.result = a + b
+    self
+  }
 }
 
-func main() {
-  (new Math { }).add(1, 2)
+func main(): i32 {
+  (new Math { }).add(1, 2).result
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

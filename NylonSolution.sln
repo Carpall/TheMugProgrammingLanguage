@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nylon", "source\Nylon.cspro
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EB65E52F-0250-4B07-A2EE-3F15EED165BA}"
 	ProjectSection(SolutionItems) = preProject
-		tests\main_test.nyl = tests\main_test.nyl
+		tests\main_test.n = tests\main_test.n
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NylonTests", "tests\NylonTests\NylonTests.csproj", "{FC5559A8-FF84-4D1E-81EA-95871F8DEC87}"

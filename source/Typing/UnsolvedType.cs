@@ -125,7 +125,8 @@ namespace Nylon.TypeSystem
                 TypeKind.Void => "void",
                 TypeKind.Err => "err",
                 TypeKind.EnumError => $"{enumerror.Item1}!{enumerror.Item2}",
-                TypeKind.Option => $"?{basetype}"
+                TypeKind.Option => $"?{basetype}",
+                TypeKind.Undefined => "undefined",
             };
         }
 
