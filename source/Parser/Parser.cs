@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System;
+using System.Data;
 
 namespace Nylon.Models.Parser
 {
@@ -1248,7 +1249,7 @@ namespace Nylon.Models.Parser
             }
 
             var type = ExpectType(); // field: <error>
-            MatchAdvance(TokenKind.Comma);
+            EatComma();
 
             return new FieldNode()
             {
@@ -1353,6 +1354,7 @@ namespace Nylon.Models.Parser
         private EnumMemberNode ExpectMemberDefinition(bool basetypeisint, int lastvalue)
         {
             var name = Expect("Expected enum's member name", TokenKind.Identifier);
+            EatComma();
             var usedimplicitconstant = false;
 
             if (!MatchAdvance(TokenKind.Colon))
@@ -1374,6 +1376,11 @@ namespace Nylon.Models.Parser
                 Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false) : Back,
                 Position = name.Position
             };
+        }
+
+        private void EatComma()
+        {
+            MatchAdvance(TokenKind.Comma);
         }
 
         private DataType ExpectPrimitiveType(bool allowErr)
@@ -1408,39 +1415,47 @@ namespace Nylon.Models.Parser
                 return match;
             }
             else
-                return false;// MatchAdvance(TokenKind.Identifier, linesensitive) && Back.Value == value;
+                return false;
         }
 
         private DataType ExpectEnumBaseType()
         {
-            return ExpectPrimitiveType(true);
+            if (!MatchAdvance(TokenKind.OpenPar))
+                return UnsolvedType.Create(Tower, Back.Position, TypeKind.UInt8);
+
+            var type = ExpectPrimitiveType(true);
+            Expect("", TokenKind.ClosePar);
+            return type;
         }
 
         private bool EnumDefinition(out INode node)
         {
             node = CreateBadNode();
 
-            // returns if does not match a type keyword
             if (!MatchAdvance(TokenKind.KeyEnum))
                 return false;
 
-            var errorsNum = Tower.Diagnostic.Count;
-
-            // required an identifier
-            var modifier = GetModifier();
-            var pragmas = GetPramas();
             var name = Expect("Expected the type name after 'enum' keyword", TokenKind.Identifier);
-            var statement = new EnumStatement() { Modifier = modifier, Pragmas = pragmas, Name = name.Value.ToString(), Position = name.Position };
-
-            // base type
-            Expect("An enum must have a primitive base type", TokenKind.Colon);
-
-            if (errorsNum != Tower.Diagnostic.Count)
-                return false;
+            var statement = new EnumStatement()
+            {
+                Modifier = GetModifier(),
+                Pragmas = GetPramas(),
+                Name = name.Value.ToString(),
+                Position = name.Position
+            };
 
             statement.BaseType = ExpectEnumBaseType();
 
             // enum body
+            CollectEnumBody(statement);
+
+            node = statement;
+
+            return true;
+        }
+
+        private void CollectEnumBody(EnumStatement statement)
+        {
             Expect(UnexpectedToken, TokenKind.OpenBrace);
 
             while (Match(TokenKind.Identifier))
@@ -1449,21 +1464,14 @@ namespace Nylon.Models.Parser
                 if (statement.Body.Count > 0)
                     _ = int.TryParse(statement.Body.Last().Value.Value, out value);
 
-                var member =
-                    ExpectMemberDefinition(statement.BaseType.UnsolvedType.IsInt() ||
-                    statement.BaseType.UnsolvedType.Kind == TypeKind.Err, value);
-
-                if (member is null)
-                    return false;
+                var member = ExpectMemberDefinition(
+                    statement.BaseType.UnsolvedType.IsInt() || statement.BaseType.UnsolvedType.Kind == TypeKind.Err,
+                    value);
 
                 statement.Body.Add(member);
             }
 
             Expect(UnexpectedToken, TokenKind.CloseBrace); // expected close body
-
-            node = statement;
-
-            return true;
         }
 
         private void CollectPragmas()

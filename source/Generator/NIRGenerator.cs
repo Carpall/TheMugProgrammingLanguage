@@ -72,8 +72,7 @@ namespace Nylon.Models.Generator
                     GenerateReturnStatement(statement);
                     break;
                 case CallStatement statement:
-                    if (!EvaluateNodeCall(statement).SolvedType.IsVoid())
-                        FunctionBuilder.EmitPop();
+                    GenerateCallStatement(statement, isLastNodeOfBlock);
                     break;
                 default:
                     if (!isLastNodeOfBlock)
@@ -84,28 +83,50 @@ namespace Nylon.Models.Generator
             }
         }
 
+        private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
+        {
+            var call = EvaluateNodeCall(statement);
+
+            if (!call.SolvedType.IsVoid())
+            {
+                if (!isLastOfBlock)
+                    FunctionBuilder.EmitPop();
+                else
+                {
+                    StoreInHiddenBuffer(call, statement.Position);
+                    if (CurrentScope.IsInFunctionBlock)
+                        FunctionBuilder.EmitAutoReturn();
+                }
+            }
+        }
+
+        private void StoreInHiddenBuffer(DataType type, ModulePosition position)
+        {
+            var allocation = TryAllocateHiddenBuffer(type);
+            FixAndCheckTypes(allocation.Type, allocation.Type, position);
+
+            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
+        }
+
         private void EvaluateExpressionInHiddenBuffer(INode expression)
         {
             if (CurrentScope.IsInFunctionBlock)
-                EvaluateLastExpressionOfFunctionBlock(expression);
+                EvaluateHiddenBufferInFunctionBlock(expression);
             else
-                EvaluateHiddenBuffer(expression);
+                EvaluateHiddenBufferInSubBlock(expression);
         }
 
-        private void EvaluateHiddenBuffer(INode expression)
+        private void EvaluateHiddenBufferInSubBlock(INode expression)
         {
             if (CurrentScope.HiddenAllocationBuffer is null)
                 ContextTypesPushUndefined();
             else
                 ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
 
-            var allocation = TryAllocateHiddenBuffer(EvaluateExpression(expression));
-            FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
-
-            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
+            StoreInHiddenBuffer(EvaluateExpression(expression), expression.Position);
         }
 
-        private void EvaluateLastExpressionOfFunctionBlock(INode expression)
+        private void EvaluateHiddenBufferInFunctionBlock(INode expression)
         {
             ContextTypes.Push(CurrentFunction.ReturnType);
             FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
@@ -530,9 +551,22 @@ namespace Nylon.Models.Generator
             var right = FoldConstantIntoToken(expression.Right);
 
             var type = EvaluateExpression(expression.Left);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(right.Value), type);
+            var constantRight = ulong.Parse(right.Value);
+            ReportWhenDividingByZero(constantRight, expression.Operator == TokenKind.Slash, expression.Position);
+
+            FunctionBuilder.EmitLoadConstantValue(constantRight, type);
 
             return type;
+        }
+
+        private bool ReportWhenDividingByZero(ulong right, bool isDividing, ModulePosition position)
+        {
+            var dividingByZero = right == 0 && isDividing;
+
+            if (dividingByZero)
+                Tower.Report(position, "Divided by '0' at compile time");
+
+            return dividingByZero;
         }
 
         private DataType EvaluateLeftIsConstant(BinaryExpressionNode expression)
@@ -597,9 +631,7 @@ namespace Nylon.Models.Generator
         private ulong EvaluateDivideConstants(ulong left, ulong right, ModulePosition position)
         {
             ulong result = 0;
-            if (right == 0)
-                Tower.Report(position, "Divided by '0' at compile time");
-            else
+            if (!ReportWhenDividingByZero(right, true, position))
                 result = left / right;
 
             return result;

@@ -118,6 +118,11 @@ namespace Nylon.Models.Generator.IR.Builder
             return value;
         }
 
+        public void EmitAutoReturn()
+        {
+            EmitReturn(_returnType);
+        }
+
         public void EmitComment(string text, bool first = true)
         {
             if (first) EmitComment(null, false);

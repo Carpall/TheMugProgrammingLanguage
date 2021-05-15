@@ -1,15 +1,18 @@
 type Math {
-  pub a: i32,
+  a: i32,
   b: i32
 
   pub func create(a: i32, b: i32): Math { new { a: a, b: b } }
+
   pub func add(self: Math): i32 { self.a + self.b }
+  pub func sub(self: Math): i32 { self.a - self.b }
+  pub func mul(self: Math): i32 { self.a * self.b }
+  pub func div(self: Math): i32 { self.a / self.b }
 }
 
-func main() {
+func main(): i32 {
   var x = Math.create(1, 2)
   x.add()
-  const a = x.a
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }
