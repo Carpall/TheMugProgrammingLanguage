@@ -87,24 +87,30 @@ namespace Nylon.Models.Generator
         private void EvaluateExpressionInHiddenBuffer(INode expression)
         {
             if (CurrentScope.IsInFunctionBlock)
-            {
-                ContextTypes.Push(CurrentFunction.ReturnType);
-                FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
-
-                FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
-            }
+                EvaluateLastExpressionOfFunctionBlock(expression);
             else
-            {
-                if (CurrentScope.HiddenAllocationBuffer is null)
-                    ContextTypesPushUndefined();
-                else
-                    ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
+                EvaluateHiddenBuffer(expression);
+        }
 
-                var allocation = TryAllocateHiddenBuffer(EvaluateExpression(expression));
-                FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
+        private void EvaluateHiddenBuffer(INode expression)
+        {
+            if (CurrentScope.HiddenAllocationBuffer is null)
+                ContextTypesPushUndefined();
+            else
+                ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
 
-                FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
-            }
+            var allocation = TryAllocateHiddenBuffer(EvaluateExpression(expression));
+            FixAndCheckTypes(allocation.Type, allocation.Type, expression.Position);
+
+            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
+        }
+
+        private void EvaluateLastExpressionOfFunctionBlock(INode expression)
+        {
+            ContextTypes.Push(CurrentFunction.ReturnType);
+            FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
+
+            FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
         }
 
         private AllocationData TryAllocateHiddenBuffer(DataType type)
@@ -142,15 +148,7 @@ namespace Nylon.Models.Generator
             if (variable.SolvedType.IsUndefined())
                 return;
 
-            CleanLeftValueChecker();
-            ContextTypes.Pop();
-
-            var instruction = FunctionBuilder.PopLastInstruction();
-
-            if (!IsConvertibleToLeftExpressionInstruction(instruction.Kind))
-                Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
-
-            ContextTypes.Push(variable);
+            var instruction = EvaluateLeftSideOfAssignment(statement, variable);
 
             var expressiontype = EvaluateExpression(statement.Body);
 
@@ -160,6 +158,20 @@ namespace Nylon.Models.Generator
 
             instruction.Kind = GetLeftExpressionInstruction(instruction.Kind);
             FunctionBuilder.EmitInstruction(instruction);
+        }
+
+        private NIRValue EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
+        {
+            CleanLeftValueChecker();
+            ContextTypes.Pop();
+
+            var instruction = FunctionBuilder.PopLastInstruction();
+
+            if (!IsConvertibleToLeftExpressionInstruction(instruction.Kind))
+                Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
+
+            ContextTypes.Push(variable);
+            return instruction;
         }
 
         private static bool IsConvertibleToLeftExpressionInstruction(NIRValueKind kind)
@@ -190,16 +202,9 @@ namespace Nylon.Models.Generator
 
         private void GenerateVarStatement(VariableStatement statement)
         {
+            CheckVariable(statement);
+
             ContextTypes.Push(statement.Type);
-
-            if (!statement.IsAssigned)
-            {
-                if (statement.IsConst)
-                    Tower.Report(statement.Position, "A constant declaration requires a body");
-
-                if (statement.Type.SolvedType.Kind == TypeKind.Auto)
-                    Tower.Report(statement.Position, "Type notation needed");
-            }
 
             var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type) : statement.Body);
 
@@ -209,6 +214,18 @@ namespace Nylon.Models.Generator
             FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
 
             ContextTypes.Pop();
+        }
+
+        private void CheckVariable(VariableStatement statement)
+        {
+            if (!statement.IsAssigned)
+            {
+                if (statement.IsConst)
+                    Tower.Report(statement.Position, "A constant declaration requires a body");
+
+                if (statement.Type.SolvedType.Kind == TypeKind.Auto)
+                    Tower.Report(statement.Position, "Type notation needed");
+            }
         }
 
         private static INode GetDefaultValueOf(DataType type)
@@ -282,7 +299,7 @@ namespace Nylon.Models.Generator
             switch (functioName)
             {
                 case Token name:
-                    funcSymbol = SearchForFunction(name);
+                    funcSymbol = SearchForFunctionOrStaticMethod(name);
                     break;
                 case MemberNode name:
                     funcSymbol = EvaluateBaseFunctionName(name, ref parameters);
@@ -312,7 +329,7 @@ namespace Nylon.Models.Generator
             if (!type.SolvedType.IsStruct())
                 return ReportPrimitiveCannotHaveMethods(name.Base.Position);
 
-            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct().Type);
+            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct().Type, name.Member.Position);
         }
 
         private DataType GetExpressionType(INode expression)
@@ -346,7 +363,7 @@ namespace Nylon.Models.Generator
 
             var type = Tower.Symbols.GetSymbol<StructSymbol>(typeName, baseToken.Position, "type");
 
-            return type is null ? null : SearchForMethod(name.Member.Value, type.Type);
+            return type is null ? null : SearchForMethod(name.Member.Value, type.Type, name.Member.Position);
         }
 
         private FuncSymbol ReportPrimitiveCannotHaveMethods(ModulePosition position)
@@ -355,14 +372,23 @@ namespace Nylon.Models.Generator
             return null;
         }
 
-        private FuncSymbol SearchForMethod(string value, TypeStatement type)
+        private FuncSymbol SearchForMethod(string value, TypeStatement type, ModulePosition position)
         {
             foreach (var method in type.BodyMethods)
                 if (value == method.Name)
+                {
+                    ExpectPublicMethodOrInternal(method, type, position);
                     return new(method);
+                }
 
             Tower.Report(type.Position, $"No method '{value}' declared in type '{type.Name}'");
             return null;
+        }
+
+        private void ExpectPublicMethodOrInternal(FunctionStatement method, TypeStatement type, ModulePosition position)
+        {
+            if (method.Modifier != TokenKind.KeyPub && !ProcessingMethodOf(type))
+                Tower.Report(position, $"Method '{method.Name}' is a private member of type '{type.Name}'");
         }
 
         private void EvaluateCallParameters(CallStatement expression, FunctionStatement func)
@@ -378,16 +404,22 @@ namespace Nylon.Models.Generator
         private void CheckAndEvaluateParameter(FunctionStatement func, int i, INode parameter)
         {
             if (func.ParameterList.Length <= i)
-            {
-                Tower.Report(parameter.Position, "Unexpected extra function parameter");
-                EvaluateParameter(DataType.Auto, parameter);
-            }
+                ReportExtraParameter(parameter);
             else
-            {
-                var prototypeParameterType = func.ParameterList.Parameters[i].Type;
-                var expressionType = EvaluateParameter(prototypeParameterType, parameter);
-                FixAndCheckTypes(prototypeParameterType, expressionType, parameter.Position);
-            }
+                EvaluateExpressionParameter(func, i, parameter);
+        }
+
+        private void EvaluateExpressionParameter(FunctionStatement func, int i, INode parameter)
+        {
+            var prototypeParameterType = func.ParameterList.Parameters[i].Type;
+            var expressionType = EvaluateParameter(prototypeParameterType, parameter);
+            FixAndCheckTypes(prototypeParameterType, expressionType, parameter.Position);
+        }
+
+        private void ReportExtraParameter(INode parameter)
+        {
+            Tower.Report(parameter.Position, "Unexpected extra function parameter");
+            EvaluateParameter(DataType.Auto, parameter);
         }
 
         private void ReportFewParameters(CallStatement expression, FunctionStatement func)
@@ -415,9 +447,23 @@ namespace Nylon.Models.Generator
             return type;
         }
 
-        private FuncSymbol SearchForFunction(Token name)
+        private FuncSymbol SearchForFunctionOrStaticMethod(Token name)
         {
+            if (ProcessingMethod() && IsInternalMethod(name.Value, out var method))
+                return new(method);
+
             return Tower.Symbols.GetSymbol<FuncSymbol>(name.Value, name.Position, "function");
+        }
+
+        private bool IsInternalMethod(string value, out FunctionStatement method)
+        {
+            method = CurrentType.BodyMethods.Find(m => m.Name == value);
+            return method is not null;
+        }
+
+        private bool ProcessingMethod()
+        {
+            return CurrentType is not null;
         }
 
         private DataType EvaluateNodeBlock(BlockNode expression)
@@ -440,44 +486,73 @@ namespace Nylon.Models.Generator
 
             // make it better
             if (leftisconstant & rightisconstant)
-            {
-                var constant = long.Parse(FoldConstantIntoToken(expression).Value);
-
-                FunctionBuilder.EmitLoadConstantValue(constant, type = CoercedOr(DataType.Int32));
-            }
+                type = EvaluateBinaryConstant(expression);
             else
             {
-                if (leftisconstant)
-                {
-                    var index = FunctionBuilder.CurrentIndex();
-                    var left = FoldConstantIntoToken(expression.Left);
-                    ContextTypesPushUndefined();
-
-                    FunctionBuilder.EmitLoadConstantValue(
-                        long.Parse(left.Value),
-                        type = EvaluateExpression(expression.Right));
-
-                    ContextTypes.Pop();
-                    FunctionBuilder.MoveLastInstructionTo(index);
-                }
-                else if (rightisconstant)
-                {
-                    var right = FoldConstantIntoToken(expression.Right);
-
-                    FunctionBuilder.EmitLoadConstantValue(
-                        long.Parse(right.Value),
-                        type = EvaluateExpression(expression.Left));
-                }
-                else
-                {
-                    type = EvaluateExpression(expression.Left);
-                    FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Right.Position);
-                    // allow user defined operators
-                }
+                type = EvaluateSemiConstantBinaryOrNonConstant(expression, leftisconstant, rightisconstant);
 
                 EmitOperation(expression.Operator, type);
             }
 
+            return type;
+        }
+
+        private DataType EvaluateSemiConstantBinaryOrNonConstant(
+            BinaryExpressionNode expression,
+            bool leftisconstant,
+            bool rightisconstant)
+        {
+            DataType type;
+            if (leftisconstant)
+                type = EvaluateLeftIsConstant(expression);
+            else if (rightisconstant)
+                type = EvaluateRightIsConstant(expression);
+            else
+                type = EvaluateNoConstants(expression);
+            return type;
+        }
+
+        private DataType EvaluateBinaryConstant(BinaryExpressionNode expression)
+        {
+            var constant = long.Parse(FoldConstantIntoToken(expression).Value);
+
+            var type = CoercedOr(DataType.Int32);
+            FunctionBuilder.EmitLoadConstantValue(constant, );
+            return type;
+        }
+
+        private DataType EvaluateNoConstants(BinaryExpressionNode expression)
+        {
+            DataType type = EvaluateExpression(expression.Left);
+            FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Right.Position);
+            // allow user defined operators
+            return type;
+        }
+
+        private DataType EvaluateRightIsConstant(BinaryExpressionNode expression)
+        {
+            DataType type;
+            var right = FoldConstantIntoToken(expression.Right);
+
+            FunctionBuilder.EmitLoadConstantValue(
+                long.Parse(right.Value),
+                type = EvaluateExpression(expression.Left));
+            return type;
+        }
+
+        private DataType EvaluateLeftIsConstant(BinaryExpressionNode expression)
+        {
+            DataType type;
+            var index = FunctionBuilder.CurrentIndex();
+            var left = FoldConstantIntoToken(expression.Left);
+            ContextTypesPushUndefined();
+
+            FunctionBuilder.EmitLoadConstantValue(
+                long.Parse(left.Value),
+                type = EvaluateExpression(expression.Right));
+
+            ContextTypes.Pop();
+            FunctionBuilder.MoveLastInstructionTo(index);
             return type;
         }
 
@@ -566,7 +641,7 @@ namespace Nylon.Models.Generator
         private DataType EvaluateNodeTypeAllocation(TypeAllocationNode expression)
         {
             SolvedType type;
-            if (expression.Name is not null)
+            if (!expression.IsAuto)
                 type = expression.Name.SolvedType;
             else if (ContextTypeIsAmbiguousOrGet(expression.Position, out type))
                 return DataType.Void;
@@ -577,41 +652,57 @@ namespace Nylon.Models.Generator
                 return DataType.Solved(type);
             }
 
+            return EvaluateStruct(expression, type);
+        }
+
+        private DataType EvaluateStruct(TypeAllocationNode expression, SolvedType type)
+        {
             var result = type.GetStruct();
             var structure = result.Type;
             var assignedFields = new List<string>();
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(expression.Name);
 
-            for (int i = 0; i < expression.Body.Count; i++)
-            {
-                var field = expression.Body[i];
-
-                if (assignedFields.Contains(field.Name))
-                {
-                    Tower.Report(field.Position, $"Field '{field.Name}' assigned multiple times");
-                    continue;
-                }
-
-                assignedFields.Add(field.Name);
-
-                var fieldtype = GetFieldType(field.Name, structure.BodyFields, out var fieldindex);
-                if (fieldtype is null)
-                {
-                    Tower.Report(field.Position, $"Type '{structure.Name}' does not contain a definition for '{field.Name}'");
-                    continue;
-                }
-
-                ContextTypes.Push(fieldtype);
-
-                FunctionBuilder.EmitDupplicate();
-                FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-                FunctionBuilder.EmitStoreField(fieldindex, fieldtype);
-
-                ContextTypes.Pop();
-            }
+            EvaluateTypeInitialization(expression, structure, assignedFields);
 
             return DataType.Solved(SolvedType.Struct(result));
+        }
+
+        private void EvaluateTypeInitialization(TypeAllocationNode expression, TypeStatement structure, List<string> assignedFields)
+        {
+            for (int i = 0; i < expression.Body.Count; i++)
+                EmitFieldInitialization(expression.Body[i], structure, assignedFields);
+        }
+
+        private void EmitFieldInitialization(FieldAssignmentNode field, TypeStatement structure, List<string> assignedFields)
+        {
+            if (assignedFields.Contains(field.Name))
+            {
+                Tower.Report(field.Position, $"Field '{field.Name}' assigned multiple times");
+                return;
+            }
+
+            assignedFields.Add(field.Name);
+            var fieldtype = GetFieldType(field.Name, structure.BodyFields, out var fieldindex);
+
+            if (fieldtype is null)
+            {
+                Tower.Report(field.Position, $"Type '{structure.Name}' does not contain a definition for '{field.Name}'");
+                return;
+            }
+
+            EvaluateFieldAsignmentInInitialization(field, fieldtype, fieldindex);
+        }
+
+        private void EvaluateFieldAsignmentInInitialization(FieldAssignmentNode field, DataType fieldtype, int fieldindex)
+        {
+            ContextTypes.Push(fieldtype);
+
+            FunctionBuilder.EmitDupplicate();
+            FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
+            FunctionBuilder.EmitStoreField(fieldindex, fieldtype);
+
+            ContextTypes.Pop();
         }
 
         private bool ContextTypeIsAmbiguousOrGet(ModulePosition position, out SolvedType type)
@@ -639,19 +730,26 @@ namespace Nylon.Models.Generator
         private DataType EvaluateIdentifier(string value, ModulePosition position)
         {
             if (!GetLocalVariable(value, out var allocation))
-            {
-                allocation = new AllocationData(0, ContextType, false);
-                Tower.Report(position, $"Variable '{value}' is not declared");
-            }
+                allocation = ReportVariableNotDeclared(value, position);
             else
-            {
-                if (allocation.IsConst && LeftValueChecker.IsLeftValue)
-                    Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
-
-                FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
-            }
+                CheckForConstantAssignmentAndLoadVariable(allocation);
 
             return allocation.Type;
+        }
+
+        private void CheckForConstantAssignmentAndLoadVariable(AllocationData allocation)
+        {
+            if (allocation.IsConst && LeftValueChecker.IsLeftValue)
+                Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
+
+            FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
+        }
+
+        private AllocationData ReportVariableNotDeclared(string value, ModulePosition position)
+        {
+            AllocationData allocation = new AllocationData(0, ContextType, false);
+            Tower.Report(position, $"Variable '{value}' is not declared");
+            return allocation;
         }
 
         private bool GetLocalVariable(string value, out AllocationData allocation)
@@ -696,12 +794,17 @@ namespace Nylon.Models.Generator
         {
             var localindex = GetLocalIndex();
             var allocation = new AllocationData(localindex, type, isconst);
-            if (!CurrentScope.VirtualMemory.TryAdd(name, allocation))
-                Tower.Report(position, $"Variable '{name}' is already declared");
+            CheckForRedeclaration(name, position, allocation);
 
             FunctionBuilder.DeclareAllocation(type);
 
             return allocation;
+        }
+
+        private void CheckForRedeclaration(string name, ModulePosition position, AllocationData allocation)
+        {
+            if (!CurrentScope.VirtualMemory.TryAdd(name, allocation))
+                Tower.Report(position, $"Variable '{name}' is already declared");
         }
 
         private int GetLocalIndex()
@@ -738,9 +841,9 @@ namespace Nylon.Models.Generator
             CurrentType = null;
         }
 
-        private bool IsMethod()
+        private bool ProcessingMethodOf(TypeStatement type)
         {
-            return CurrentType is not null;
+            return CurrentType == type;
         }
 
         private void CheckRecursiveType(TypeStatement type, List<string> illegaltypes)
