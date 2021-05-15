@@ -15,5 +15,10 @@ namespace Nylon.Models.Parser.AST.Statements
         public List<FunctionStatement> BodyMethods { get; set; } = new();
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

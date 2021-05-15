@@ -1,12 +1,15 @@
 type Math {
-  result: i32
+  pub a: i32,
+  b: i32
 
-  func add(a: i32, b: i32): i32 { a + b }
-  pub func sum(a: i32, b: i32): i32 { return add(a, b) }
+  pub func create(a: i32, b: i32): Math { new { a: a, b: b } }
+  pub func add(self: Math): i32 { self.a + self.b }
 }
 
 func main() {
-  Math.sum(1, 2)
+  var x = Math.create(1, 2)
+  x.add()
+  const a = x.a
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

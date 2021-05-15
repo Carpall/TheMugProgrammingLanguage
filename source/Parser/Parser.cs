@@ -1248,8 +1248,16 @@ namespace Nylon.Models.Parser
             }
 
             var type = ExpectType(); // field: <error>
+            MatchAdvance(TokenKind.Comma);
 
-            return new FieldNode() { Name = name.Value.ToString(), Type = type, Position = name.Position };
+            return new FieldNode()
+            {
+                Pragmas = GetPramas(),
+                Modifier = GetModifier(),
+                Name = name.Value.ToString(),
+                Type = type,
+                Position = name.Position
+            };
         }
 
         private void CollectGenericParameterDefinitions(List<Token> generics)

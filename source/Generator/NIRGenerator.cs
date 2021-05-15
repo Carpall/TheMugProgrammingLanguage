@@ -624,13 +624,28 @@ namespace Nylon.Models.Generator
 
             var structure = basetype.SolvedType.GetStruct();
 
-            var type = GetFieldType(expression.Member.Value, structure.BodyFields, out var index);
-            if (type is null)
-                Tower.Report(expression.Member.Position, $"Type '{structure.Name}' does not contain a definition for '{expression.Member.Value}'");
-            else
-                FunctionBuilder.EmitLoadField(index, type);
+            var type = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
+            LoadField(expression, structure, type, index);
 
             return type ?? ContextType;
+        }
+
+        private void LoadField(MemberNode expression, TypeStatement structure, DataType type, int index)
+        {
+            if (type is null)
+            {
+                Tower.Report(
+                    expression.Member.Position,
+                    $"Type '{structure.Name}' does not contain a definition for '{expression.Member.Value}'");
+            }
+            else
+                FunctionBuilder.EmitLoadField(index, type);
+        }
+
+        private void ExpectPublicFieldOrInternal(FieldNode field, TypeStatement type, ModulePosition position)
+        {
+            if (field.Modifier != TokenKind.KeyPub && !ProcessingMethodOf(type))
+                Tower.Report(position, $"Field '{field.Name}' is a private member of type '{type.Name}'");
         }
 
         private DataType EvaluateNodeTypeAllocation(TypeAllocationNode expression)
@@ -677,7 +692,7 @@ namespace Nylon.Models.Generator
             }
 
             assignedFields.Add(field.Name);
-            var fieldtype = GetFieldType(field.Name, structure.BodyFields, out var fieldindex);
+            var fieldtype = GetFieldType(field.Name, structure, field.Position, out var fieldindex);
 
             if (fieldtype is null)
             {
@@ -709,13 +724,16 @@ namespace Nylon.Models.Generator
             return isambiguous;
         }
 
-        private static DataType GetFieldType(string name, List<FieldNode> body, out int i)
+        private DataType GetFieldType(string name, TypeStatement type, ModulePosition position, out int i)
         {
-            for (i = 0; i < body.Count; i++)
+            for (i = 0; i < type.BodyFields.Count; i++)
             {
-                var field = body[i];
+                var field = type.BodyFields[i];
                 if (name == field.Name)
+                {
+                    ExpectPublicFieldOrInternal(field, type, position);
                     return field.Type;
+                }
             }
 
             return null;

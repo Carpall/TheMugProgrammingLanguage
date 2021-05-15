@@ -29,6 +29,8 @@ try
     //       - add attributes to NIR._allocations 'const', 'hiddenbuf'
     //       - add check for uninitialized memory
     //       - add warnings
+    //       - add calls to supported hidden allocation expressions
+    //       - add implicit type for parameters 'function(a, b: i32)'
 
     var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.n");
     
