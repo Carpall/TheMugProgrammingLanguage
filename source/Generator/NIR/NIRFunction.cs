@@ -13,9 +13,14 @@ namespace Nylon.Models.Generator.IR
         public DataType ReturnType { get; }
         public DataType[] ParameterTypes { get; }
         public NIRValue[] Body { get; }
-        public DataType[] Allocations { get; }
+        public NIRAllocation[] Allocations { get; }
 
-        public NIRFunction(string name, DataType returntype, DataType[] parametertypes, NIRValue[] body, DataType[] allocations)
+        public NIRFunction(
+            string name,
+            DataType returntype,
+            DataType[] parametertypes,
+            NIRValue[] body,
+            NIRAllocation[] allocations)
         {
             Name = name;
             ReturnType = returntype;

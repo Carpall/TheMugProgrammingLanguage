@@ -1,5 +1,6 @@
 ﻿using LLVMSharp.Interop;
 using Nylon.Models.Generator;
+using Nylon.Models.Generator.IR;
 using Nylon.Models.Lexer;
 using Nylon.Models.Parser;
 using Nylon.Models.Parser.AST;
@@ -27,6 +28,7 @@ namespace Nylon.Compilation
 
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
+        public NIR NIRModule => Generator.Module.Build();
 
         public CompilationTower(string outputFilename)
         {
@@ -45,6 +47,11 @@ namespace Nylon.Compilation
             throw new CompilationException(error);
         }
 
+        public bool HasErrors()
+        {
+            return Diagnostic.Count > 0;
+        }
+
         [DoesNotReturn()]
         public void Throw(Lexer lexer, int pos, string error)
         {
@@ -57,10 +64,15 @@ namespace Nylon.Compilation
             Throw(token.Position, error);
         }
 
+        public void Warn(ModulePosition position, string message)
+        {
+            Diagnostic.Warn(position, message);
+        }
+
         [DoesNotReturn()]
         public void Throw(ModulePosition position, string error)
         {
-            Diagnostic.Report(new(position, error));
+            Diagnostic.Report(new(CompilationAlertKind.Error, position, error));
             throw new CompilationException(error, Diagnostic);
         }
 

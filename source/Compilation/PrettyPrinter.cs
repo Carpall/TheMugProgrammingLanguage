@@ -64,13 +64,54 @@ namespace Nylon.Compilation
             Console.ResetColor();
         }
 
+        public static void PrintAlerts(Diagnostic diagnostic)
+        {
+            var i = 0;
+            var alerts = diagnostic.GetAlerts();
+            try
+            {
+                for (; i < alerts.Count; i++)
+                {
+                    var alert = alerts[i];
+
+                    WriteSourceLineStyle(
+                        alert.Kind,
+                        alert.Bad.Lexer.ModuleName,
+                        alert.Bad.Position,
+                        alert.Bad.LineAt(),
+                        alert.Bad.Lexer.Source,
+                        alert.Message);
+                }
+            }
+            catch
+            {
+                WriteFail(alerts[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
+            }
+        }
+
         /// <summary>
         /// pretty module info printing
         /// </summary
-        public static void WriteModuleStyle(string moduleName, int lineAt, int column, string error = "")
+        public static void WriteModuleStyle(
+            string moduleName,
+            int lineAt,
+            int column,
+            CompilationAlertKind kind = CompilationAlertKind.Error,
+            Color alertkindColor = new(),
+            string alert = "")
         {
             Console.Write($" ---> {Path.GetRelativePath(Environment.CurrentDirectory, moduleName).Pastel(Color.GreenYellow)}{(lineAt > 0 ? $"{"(".Pastel(Color.HotPink)}{lineAt}{":".Pastel(Color.HotPink)}{column}{")".Pastel(Color.HotPink)}" : "")}");
-            Console.WriteLine(error != "" ? $": {error.Pastel(Color.Orange)}" : "");
+            Console.WriteLine(alert != "" ? $" {kind.ToString().ToLower().Pastel(alertkindColor)}: {alert.Pastel(Color.Orange)}" : "");
+        }
+
+        private static Color GetCompilationAlertKindColor(CompilationAlertKind kind)
+        {
+            return kind switch
+            {
+                CompilationAlertKind.Error => Color.OrangeRed,
+                CompilationAlertKind.Warning => Color.Plum,
+                CompilationAlertKind.Note => Color.ForestGreen
+            };
         }
 
         public static void GetColumn(Range position, ref string source, out int start, out int end)
@@ -105,20 +146,27 @@ namespace Nylon.Compilation
         /// <summary>
         /// pretty error printing
         /// </summary>
-        public static void WriteSourceLineStyle(string modulename, Range position, int lineAt, string source, string error)
+        public static void WriteSourceLineStyle(
+            CompilationAlertKind kind,
+            string modulename,
+            Range position,
+            int lineAt,
+            string source,
+            string error)
         {
             error = error.Replace("\n", "\\n");
 
             GetColumn(position, ref source, out var start, out var end);
 
-            WriteModuleStyle(modulename, lineAt, start, error);
+            var alertkindcolor = GetCompilationAlertKindColor(kind);
+            WriteModuleStyle(modulename, lineAt, start, kind, alertkindcolor, error);
 
             var space = new string(' ', lineAt.ToString().Length);
 
             Console.WriteLine($"{space}  {"|".Pastel(Color.DeepPink)}");
             Console.Write($" {lineAt} {"|".Pastel(Color.Red)}  ");
             Console.Write(source[..start].Replace("\t", " "));
-            Console.Write(source[start..end].Replace("\t", " ").Pastel(Color.Red));
+            Console.Write(source[start..end].Replace("\t", " ").Pastel(Color.OrangeRed));
             Console.Write($"{source[end..].Replace("\t", " ")}\n{space}  {"|".Pastel(Color.DeepPink)}\n\n");
             /*Console.Write(
                 @$"{source[end..].Replace("\t", " ")}

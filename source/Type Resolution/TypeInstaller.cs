@@ -42,7 +42,11 @@ namespace Nylon.TypeResolution
                 CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "Generic parameter");
         }
 
-        private void CheckType(List<FunctionStatement> bodyfunctions, List<FieldNode> bodyfields, List<Token> generics, Pragmas pragmas)
+        private void CheckType(
+            List<FunctionStatement> bodyfunctions,
+            List<FieldNode> bodyfields,
+            List<Token> generics,
+            Pragmas pragmas)
         {
             var declared = new string[bodyfunctions.Count];
 
@@ -68,7 +72,7 @@ namespace Nylon.TypeResolution
         private void CheckSingleDeclaration(ModulePosition position, ref string[] declared, int i, string name, string kind)
         {
             if (declared.Contains(name))
-                Tower.Report(position, $"{kind} '{name}' is declared multiple times");
+                Tower.Symbols.ReportRedeclaration($"{kind} '{name}' is declared multiple times", position);
 
             declared[i] = name;
         }

@@ -27,8 +27,34 @@ namespace Nylon.Symbols
 
         public void SetSymbol(string name, ISymbol symbol)
         {
-            if (!_symbols.TryAdd(name, symbol))
-                Tower.Report(symbol.Position, $"'{name}' is already declared");
+            var previouslyDeclared = GetPreviouslyDeclaredOrDeclare(name, symbol);
+            if (IsPreviouslyDeclared(previouslyDeclared))
+                ReportRedeclaration($"'{name}' is already declared", symbol.Position, previouslyDeclared.Position);
+        }
+
+        internal void ReportRedeclaration(
+            string message,
+            ModulePosition position,
+            ModulePosition previouslyDeclaredPosition = new())
+        {
+            Tower.Report(position, message);
+            if (previouslyDeclaredPosition.Position.End.Value == 0)
+                Tower.Warn(previouslyDeclaredPosition, $"Previously declared here");
+        }
+
+        private static bool IsPreviouslyDeclared(ISymbol previouslyDeclared)
+        {
+            return previouslyDeclared is not null;
+        }
+
+        private ISymbol GetPreviouslyDeclaredOrDeclare(string name, ISymbol symbol)
+        {
+            foreach (var declaredSymbol in _symbols)
+                if (declaredSymbol.Key == name)
+                    return declaredSymbol.Value;
+
+            _symbols.Add(name, symbol);
+            return null;
         }
 
         internal Dictionary<string, ISymbol> GetCache()

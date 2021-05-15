@@ -10,6 +10,9 @@ type Math {
   pub func div(self: Math): i32 { self.a / self.b }
 }
 
+func main() {
+}
+
 func main(): i32 {
   var x = Math.create(1, 2)
   x.add()

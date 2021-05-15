@@ -12,7 +12,7 @@ namespace Nylon.Compilation
                 return
                     Diagnostic is null
                     || Diagnostic.Count == 0
-                    || Diagnostic.GetErrors()[0].Bad.Lexer is null;
+                    || Diagnostic.GetAlerts()[0].Bad.Lexer is null;
             }
         }
 

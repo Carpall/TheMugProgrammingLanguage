@@ -13,7 +13,7 @@ namespace Nylon.Models.Generator.IR.Builder
         private readonly DataType _returnType;
         private readonly DataType[] _parameterTypes;
         private readonly List<NIRValue> _body = new();
-        private readonly List<DataType> _allocations = new();
+        private readonly List<NIRAllocation> _allocations = new();
 
         public NIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
         {
@@ -36,9 +36,9 @@ namespace Nylon.Models.Generator.IR.Builder
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
         }
 
-        public void DeclareAllocation(DataType type)
+        public void DeclareAllocation(NIRAllocationAttribute attributes, DataType type)
         {
-            _allocations.Add(type);
+            _allocations.Add(new(attributes, type));
         }
 
         public void EmitInstruction(NIRValue instruction)

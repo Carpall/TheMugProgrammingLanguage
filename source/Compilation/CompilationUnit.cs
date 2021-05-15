@@ -144,6 +144,12 @@ namespace Nylon.Compilation
             return Tower.Solver.Solve();
         }
 
+        public Diagnostic Generate()
+        {
+            try { GenerateNIR(); return Tower.Diagnostic; }
+            catch (CompilationException) { return Tower.Diagnostic; }
+        }
+
         public NIR GenerateNIR()
         {
             GenerateTAST();

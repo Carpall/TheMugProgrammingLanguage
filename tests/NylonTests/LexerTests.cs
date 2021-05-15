@@ -330,7 +330,7 @@ namespace Nylon.Tests
             Lexer lexer = new MugLexer("test", STRINGS02);
             var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
+            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
@@ -394,7 +394,7 @@ namespace Nylon.Tests
             Lexer lexer = new MugLexer("test", STRINGS06);
             var ex = Assert.Throws<CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
+            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
@@ -555,7 +555,7 @@ namespace Nylon.Tests
             Lexer lexer = new MugLexer("test", CHARS02);
             var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
 
-            Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetErrors().First().Message);
+            Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]

@@ -138,7 +138,7 @@ namespace Nylon.Models.Generator
         {
             if (CurrentScope.HiddenAllocationBuffer is null)
             {
-                FunctionBuilder.DeclareAllocation(type);
+                FunctionBuilder.DeclareAllocation(NIRAllocationAttribute.HiddenBuffer, type);
                 CurrentScope.HiddenAllocationBuffer = new(FunctionBuilder.GetAllocationNumber(), type, false);
             }
 
@@ -791,7 +791,7 @@ namespace Nylon.Models.Generator
 
         private AllocationData ReportVariableNotDeclared(string value, ModulePosition position)
         {
-            AllocationData allocation = new AllocationData(0, ContextType, false);
+            var allocation = new AllocationData(0, ContextType, false);
             Tower.Report(position, $"Variable '{value}' is not declared");
             return allocation;
         }
@@ -840,7 +840,7 @@ namespace Nylon.Models.Generator
             var allocation = new AllocationData(localindex, type, isconst);
             CheckForRedeclaration(name, position, allocation);
 
-            FunctionBuilder.DeclareAllocation(type);
+            FunctionBuilder.DeclareAllocation((NIRAllocationAttribute)Convert.ToInt32(isconst), type);
 
             return allocation;
         }

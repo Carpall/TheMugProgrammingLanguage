@@ -1075,7 +1075,7 @@ namespace Nylon.Models.Parser
         private INode ExpectStatement(bool isfirst)
         {
             if (!isfirst && !Current.IsOnNewLine)
-                Report(Current.Position, "Putting multiple statements on the same line is bad design");
+                Tower.Warn(Current.Position, "Putting multiple statements on the same line is bad design");
 
             if (!VariableDefinition(out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;

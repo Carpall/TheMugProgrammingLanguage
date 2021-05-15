@@ -6,39 +6,48 @@ namespace Nylon.Compilation
 {
   public class Diagnostic
     {
-        private readonly List<CompilationError> _diagnostic = new();
+        private readonly List<CompilationAlert> _diagnostic = new();
+        private int _otherAlertsCount = 0;
 
-        public int Count => _diagnostic.Count;
+        public int Count => _diagnostic.Count - _otherAlertsCount;
+
 
         public void Report(Lexer lexer, int pos, string error)
         {
-            Report(new(new(lexer, pos..(pos + 1)), error));
+            Report(new(CompilationAlertKind.Error, new(lexer, pos..(pos + 1)), error));
         }
 
         public void Report(ModulePosition position, string message)
         {
-            Report(new CompilationError(position, message));
+            Report(new(CompilationAlertKind.Error, position, message));
         }
 
-        public void Report(CompilationError error)
+        public void Report(CompilationAlert error)
         {
             if (!_diagnostic.Contains(error))
                 _diagnostic.Add(error);
         }
 
+        public void Warn(ModulePosition position, string message)
+        {
+            _otherAlertsCount++;
+            _diagnostic.Add(new(CompilationAlertKind.Warning, position, message));
+        }
+
         public void CheckDiagnostic()
         {
-            if (_diagnostic.Count > 0)
+            if (Count > 0)
                 throw new CompilationException(this);
         }
 
-        public List<CompilationError> GetErrors()
+        public List<CompilationAlert> GetAlerts()
         {
             return _diagnostic;
         }
 
         internal void AddRange(Diagnostic diagnostic)
         {
+            _otherAlertsCount += diagnostic._otherAlertsCount;
             _diagnostic.AddRange(diagnostic._diagnostic);
         }
     }
