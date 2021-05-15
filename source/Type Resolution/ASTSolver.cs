@@ -1,5 +1,6 @@
 ﻿using Nylon.Compilation;
 using Nylon.Models.Parser.AST;
+using Nylon.Models.Parser.AST.Statements;
 using Nylon.Symbols;
 using Nylon.TypeSystem;
 
@@ -29,7 +30,7 @@ namespace Nylon.TypeResolution
                     DataType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
 
                 TypeKind.DefinedType => SolvedType.Struct(
-                    Tower.Symbols.GetSymbol<StructSymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type")),
+                    Tower.Symbols.GetSymbol<TypeStatement>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type")),
 
                 _ => SolvedType.Primitive(unsolvedtype.Kind),
             };

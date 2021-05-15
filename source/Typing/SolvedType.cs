@@ -7,6 +7,7 @@ using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Nylon.Models.Parser.AST.Statements;
 
 namespace Nylon.TypeSystem
 {
@@ -17,7 +18,7 @@ namespace Nylon.TypeSystem
         public object Base { get; set; }
         public string BaseReppresentation => Base is not null ? Base.ToString() : "";
 
-        public static SolvedType Struct(StructSymbol symbol)
+        public static SolvedType Struct(TypeStatement symbol)
         {
             return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
         }
@@ -37,9 +38,9 @@ namespace Nylon.TypeSystem
             return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
         }
 
-        public StructSymbol GetStruct()
+        public TypeStatement GetStruct()
         {
-            return Base as StructSymbol;
+            return Base as TypeStatement;
         }
 
         public bool IsStruct()
@@ -66,7 +67,7 @@ namespace Nylon.TypeSystem
         {
             return UnsolvedType.TypeKindToString(
                 Kind,
-                Base is not null ? Base is ISymbol symbol ? symbol.Dump(false) : Base.ToString() : "",
+                Base is not null ? Base is ISymbol symbol ? symbol.ToString() : Base.ToString() : "",
                 Kind == TypeKind.EnumError ? (GetEnumError().ToString(), GetEnumError().ToString()) : new());
         }
 

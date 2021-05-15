@@ -281,38 +281,36 @@ namespace Nylon.Models.Generator
         private DataType EvaluateNodeCall(CallStatement expression)
         {
             var parameters = expression.Parameters;
-            var funcSymbol = EvaluateFunctionName(expression.Name, ref parameters);
+            var func = EvaluateFunctionName(expression.Name, ref parameters);
             expression.Parameters = parameters;
 
-            if (funcSymbol is null)
+            if (func is null)
                 return DataType.Void;
 
-            var func = funcSymbol.Func;
             EvaluateCallParameters(expression, func);
 
             return func.ReturnType;
         }
 
-        private FuncSymbol EvaluateFunctionName(INode functioName, ref NodeBuilder parameters)
+        private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters)
         {
-            FuncSymbol funcSymbol;
-            switch (functioName)
+            var funcSymbol = functionName switch
             {
-                case Token name:
-                    funcSymbol = SearchForFunctionOrStaticMethod(name);
-                    break;
-                case MemberNode name:
-                    funcSymbol = EvaluateBaseFunctionName(name, ref parameters);
-                    break;
-                default:
-                    ToImplement<object>(functioName.ToString(), "EvaluateNodeCall");
-                    throw new();
-            }
+                Token name => SearchForFunctionOrStaticMethod(name),
+                MemberNode name => EvaluateBaseFunctionName(name, ref parameters),
+                _ => FunctionBaseNameToImplement(functionName),
+            };
 
             return funcSymbol;
         }
 
-        private FuncSymbol EvaluateBaseFunctionName(MemberNode name, ref NodeBuilder parameters)
+        private FunctionStatement FunctionBaseNameToImplement(INode functionName)
+        {
+            Tower.Report(functionName.Position, "Invalid construction");
+            throw new();
+        }
+
+        private FunctionStatement EvaluateBaseFunctionName(MemberNode name, ref NodeBuilder parameters)
         {
             return
                 name.Base is Token baseToken ?
@@ -320,7 +318,7 @@ namespace Nylon.Models.Generator
                     EvaluateExpressionBaseFunctionName(name, parameters);
         }
 
-        private FuncSymbol EvaluateExpressionBaseFunctionName(MemberNode name, NodeBuilder parameters)
+        private FunctionStatement EvaluateExpressionBaseFunctionName(MemberNode name, NodeBuilder parameters)
         {
             parameters.Prepend(name.Base);
 
@@ -329,7 +327,7 @@ namespace Nylon.Models.Generator
             if (!type.SolvedType.IsStruct())
                 return ReportPrimitiveCannotHaveMethods(name.Base.Position);
 
-            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct().Type, name.Member.Position);
+            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct(), name.Member.Position);
         }
 
         private DataType GetExpressionType(INode expression)
@@ -344,7 +342,7 @@ namespace Nylon.Models.Generator
             return type;
         }
 
-        private FuncSymbol EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken)
+        private FunctionStatement EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken)
         {
             if (baseToken.Kind != TokenKind.Identifier)
                 return ReportPrimitiveCannotHaveMethods(baseToken.Position);
@@ -356,29 +354,29 @@ namespace Nylon.Models.Generator
                     return ReportPrimitiveCannotHaveMethods(baseToken.Position);
 
                 parameters.Prepend(baseToken);
-                typeName = allocation.Type.SolvedType.GetStruct().Type.Name;
+                typeName = allocation.Type.SolvedType.GetStruct().Name;
             }
             else
                 typeName = baseToken.Value;
 
-            var type = Tower.Symbols.GetSymbol<StructSymbol>(typeName, baseToken.Position, "type");
+            var type = Tower.Symbols.GetSymbol<TypeStatement>(typeName, baseToken.Position, "type");
 
-            return type is null ? null : SearchForMethod(name.Member.Value, type.Type, name.Member.Position);
+            return type is null ? null : SearchForMethod(name.Member.Value, type, name.Member.Position);
         }
 
-        private FuncSymbol ReportPrimitiveCannotHaveMethods(ModulePosition position)
+        private FunctionStatement ReportPrimitiveCannotHaveMethods(ModulePosition position)
         {
             Tower.Report(position, "Primitive types don't support methods");
             return null;
         }
 
-        private FuncSymbol SearchForMethod(string value, TypeStatement type, ModulePosition position)
+        private FunctionStatement SearchForMethod(string value, TypeStatement type, ModulePosition position)
         {
             foreach (var method in type.BodyMethods)
                 if (value == method.Name)
                 {
                     ExpectPublicMethodOrInternal(method, type, position);
-                    return new(method);
+                    return method;
                 }
 
             Tower.Report(type.Position, $"No method '{value}' declared in type '{type.Name}'");
@@ -447,12 +445,12 @@ namespace Nylon.Models.Generator
             return type;
         }
 
-        private FuncSymbol SearchForFunctionOrStaticMethod(Token name)
+        private FunctionStatement SearchForFunctionOrStaticMethod(Token name)
         {
             if (ProcessingMethod() && IsInternalMethod(name.Value, out var method))
-                return new(method);
+                return method;
 
-            return Tower.Symbols.GetSymbol<FuncSymbol>(name.Value, name.Position, "function");
+            return Tower.Symbols.GetSymbol<FunctionStatement>(name.Value, name.Position, "function");
         }
 
         private bool IsInternalMethod(string value, out FunctionStatement method)
@@ -502,14 +500,12 @@ namespace Nylon.Models.Generator
             bool leftisconstant,
             bool rightisconstant)
         {
-            DataType type;
-            if (leftisconstant)
-                type = EvaluateLeftIsConstant(expression);
-            else if (rightisconstant)
-                type = EvaluateRightIsConstant(expression);
-            else
-                type = EvaluateNoConstants(expression);
-            return type;
+            return
+                leftisconstant ?
+                    EvaluateLeftIsConstant(expression) :
+                    rightisconstant ?
+                        EvaluateRightIsConstant(expression) :
+                        EvaluateNoConstants(expression);
         }
 
         private DataType EvaluateBinaryConstant(BinaryExpressionNode expression)
@@ -517,7 +513,7 @@ namespace Nylon.Models.Generator
             var constant = long.Parse(FoldConstantIntoToken(expression).Value);
 
             var type = CoercedOr(DataType.Int32);
-            FunctionBuilder.EmitLoadConstantValue(constant, );
+            FunctionBuilder.EmitLoadConstantValue(constant, type);
             return type;
         }
 
@@ -531,12 +527,11 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateRightIsConstant(BinaryExpressionNode expression)
         {
-            DataType type;
             var right = FoldConstantIntoToken(expression.Right);
 
-            FunctionBuilder.EmitLoadConstantValue(
-                long.Parse(right.Value),
-                type = EvaluateExpression(expression.Left));
+            var type = EvaluateExpression(expression.Left);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(right.Value), type);
+
             return type;
         }
 
@@ -629,9 +624,9 @@ namespace Nylon.Models.Generator
 
             var structure = basetype.SolvedType.GetStruct();
 
-            var type = GetFieldType(expression.Member.Value, structure.Type.BodyFields, out var index);
+            var type = GetFieldType(expression.Member.Value, structure.BodyFields, out var index);
             if (type is null)
-                Tower.Report(expression.Member.Position, $"Type '{structure.Type.Name}' does not contain a definition for '{expression.Member.Value}'");
+                Tower.Report(expression.Member.Position, $"Type '{structure.Name}' does not contain a definition for '{expression.Member.Value}'");
             else
                 FunctionBuilder.EmitLoadField(index, type);
 
@@ -657,15 +652,14 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateStruct(TypeAllocationNode expression, SolvedType type)
         {
-            var result = type.GetStruct();
-            var structure = result.Type;
+            var structure = type.GetStruct();
             var assignedFields = new List<string>();
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(expression.Name);
 
             EvaluateTypeInitialization(expression, structure, assignedFields);
 
-            return DataType.Solved(SolvedType.Struct(result));
+            return DataType.Solved(SolvedType.Struct(structure));
         }
 
         private void EvaluateTypeInitialization(TypeAllocationNode expression, TypeStatement structure, List<string> assignedFields)
@@ -857,9 +851,11 @@ namespace Nylon.Models.Generator
                     (fieldtype.IsPointer() && fieldtype.GetBaseElementType().SolvedType.IsStruct()))
                 {
                     var fieldstructtype =
-                        (fieldtype.Kind == TypeKind.Pointer ?
-                            ((DataType)fieldtype.Base).SolvedType : fieldtype
-                        ).GetStruct().Type;
+                        (
+                            fieldtype.Kind == TypeKind.Pointer ?
+                                (fieldtype.Base as DataType).SolvedType :
+                                fieldtype
+                        ).GetStruct();
 
                     CheckIfThereIsARecursion(type, illegaltypes, field, fieldtype, fieldstructtype);
                 }
@@ -892,12 +888,12 @@ namespace Nylon.Models.Generator
         {
             switch (value)
             {
-                case StructSymbol structsymbol:
-                    CheckRecursiveType(structsymbol.Type, new());
-                    GenerateStruct(structsymbol.Type);
+                case TypeStatement structsymbol:
+                    CheckRecursiveType(structsymbol, new());
+                    GenerateStruct(structsymbol);
                     break;
-                case FuncSymbol funcsymbol:
-                    GenerateFunction(funcsymbol.Func, funcsymbol.Func.Name);
+                case FunctionStatement funcsymbol:
+                    GenerateFunction(funcsymbol, funcsymbol.Name);
                     break;
                 default:
                     ToImplement<object>(value.ToString(), "RecognizeSymbol");

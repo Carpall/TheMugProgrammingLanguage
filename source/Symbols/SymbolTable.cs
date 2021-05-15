@@ -41,7 +41,7 @@ namespace Nylon.Symbols
             var result = new StringBuilder();
 
             foreach (var symbol in _symbols)
-                result.AppendLine(symbol.Value.Dump(true));
+                result.AppendLine(symbol.Value.ToString());
 
             return result.ToString();
         }

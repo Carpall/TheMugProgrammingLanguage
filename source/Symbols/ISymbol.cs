@@ -11,6 +11,6 @@ namespace Nylon.Symbols
     {
         public ModulePosition Position { get; }
 
-        public abstract string Dump(bool dumpmodel);
+        // public abstract string Dump(bool dumpmodel);
     }
 }

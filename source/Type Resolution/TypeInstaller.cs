@@ -76,13 +76,13 @@ namespace Nylon.TypeResolution
         private void DeclareType(TypeStatement type)
         {
             CheckType(type.BodyMethods, type.BodyFields, type.Generics, type.Pragmas);
-            DeclareSymbol(type.Name, new StructSymbol(type));
+            DeclareSymbol(type.Name, type);
         }
 
         private void DeclareFunction(FunctionStatement func)
         {
             CheckFunc(func.ParameterList, func.Generics, func.Pragmas);
-            DeclareSymbol(func.Name, new FuncSymbol(func));
+            DeclareSymbol(func.Name, func);
         }
 
         private void RecognizeGlobalStatement(INode global)

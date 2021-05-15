@@ -1,10 +1,11 @@
 ﻿using Nylon.Compilation;
 using Nylon.Models.Lexer;
+using Nylon.Symbols;
 using System.Collections.Generic;
 
 namespace Nylon.Models.Parser.AST.Statements
 {
-    public class TypeStatement : INode
+    public class TypeStatement : INode, ISymbol
     {
         public string NodeKind => "Struct";
         public Pragmas Pragmas { get; set; }

@@ -1,11 +1,12 @@
 ﻿using Nylon.Compilation;
 using Nylon.Models.Lexer;
+using Nylon.Symbols;
 using Nylon.TypeSystem;
 using System.Collections.Generic;
 
 namespace Nylon.Models.Parser.AST.Statements
 {
-    public class FunctionStatement : INode
+    public class FunctionStatement : INode, ISymbol
     {
         public string NodeKind => "Function";
         public Pragmas Pragmas { get; set; }
