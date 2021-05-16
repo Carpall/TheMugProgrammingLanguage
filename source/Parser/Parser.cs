@@ -1074,14 +1074,16 @@ namespace Nylon.Models.Parser
 
         private INode ExpectStatement(bool isfirst)
         {
-            if (!isfirst && !Current.IsOnNewLine)
-                Tower.Warn(Current.Position, "Putting multiple statements on the same line is bad design");
+            var multipleStatementsOnTheSameLine = !isfirst && !Current.IsOnNewLine;
 
             if (!VariableDefinition(out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
                 statement = ExpectExpression(true);
+
+            if (multipleStatementsOnTheSameLine)
+                Tower.Warn(statement.Position, "Maintain statements on different lines");
 
             return statement;
         }

@@ -74,6 +74,9 @@ namespace Nylon.Models.Generator
                 case CallStatement statement:
                     GenerateCallStatement(statement, isLastNodeOfBlock);
                     break;
+                case ConditionalStatement statement:
+                    GenerateConditionalStatement(statement, isLastNodeOfBlock);
+                    break;
                 default:
                     if (!isLastNodeOfBlock)
                         Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
@@ -83,24 +86,62 @@ namespace Nylon.Models.Generator
             }
         }
 
-        private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
+        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock)
         {
-            var call = EvaluateNodeCall(statement);
+            var condition = EvaluateConditionExpression(statement);
+            StoreInHiddenBufferIfNeeded(condition, isLastOfBlock, statement.Position);
+        }
 
-            if (!call.SolvedType.IsVoid())
+        private DataType EvaluateConditionExpression(ConditionalStatement expression)
+        {
+            ContextTypes.Push(DataType.Bool);
+            var condition = EvaluateExpression(expression.Expression);
+            ContextTypes.Pop();
+
+            FixAndCheckTypes(DataType.Bool, condition, expression.Expression.Position);
+
+            var label = FunctionBuilder.EmitJumpFalse("if_then");
+
+            var conditionblock = EvaluateNodeBlockInExpression(expression.Body);
+
+            return conditionblock;
+        }
+
+        private AllocationData GetHiddenBufferTypeOrVoid()
+        {
+            return
+                CurrentScope.HiddenAllocationBuffer is not null ?
+                    CurrentScope.HiddenAllocationBuffer :
+                    CreateVoidAllocation();
+        }
+
+        private static AllocationData CreateVoidAllocation()
+        {
+            return new(0, DataType.Void, false);
+        }
+
+        private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
+        {
+            if (!type.SolvedType.IsVoid())
             {
                 if (!isLastOfBlock)
                     FunctionBuilder.EmitPop();
                 else
                 {
-                    StoreInHiddenBuffer(call, statement.Position);
+                    SetupOrStoreInHiddenBuffer(type, position);
                     if (CurrentScope.IsInFunctionBlock)
                         FunctionBuilder.EmitAutoReturn();
                 }
             }
         }
 
-        private void StoreInHiddenBuffer(DataType type, ModulePosition position)
+        private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
+        {
+            var call = EvaluateNodeCall(statement);
+            StoreInHiddenBufferIfNeeded(call, isLastOfBlock, statement.Position);
+        }
+
+        private void SetupOrStoreInHiddenBuffer(DataType type, ModulePosition position)
         {
             var allocation = TryAllocateHiddenBuffer(type);
             FixAndCheckTypes(allocation.Type, allocation.Type, position);
@@ -123,7 +164,7 @@ namespace Nylon.Models.Generator
             else
                 ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
 
-            StoreInHiddenBuffer(EvaluateExpression(expression), expression.Position);
+            SetupOrStoreInHiddenBuffer(EvaluateExpression(expression), expression.Position);
         }
 
         private void EvaluateHiddenBufferInFunctionBlock(INode expression)
@@ -282,7 +323,7 @@ namespace Nylon.Models.Generator
                 TypeAllocationNode expression => EvaluateNodeTypeAllocation(expression),
                 MemberNode expression => EvaluateMemberNode(expression),
                 BinaryExpressionNode expression => EvaluateNodeBinaryExpression(expression),
-                BlockNode expression => EvaluateNodeBlock(expression),
+                BlockNode expression => EvaluateNodeBlockInExpression(expression),
                 CallStatement expression => EvaluateNodeCall(expression),
                 _ => ToImplement<DataType>(body.ToString(), "EvaluateExpression"),
             };
@@ -485,16 +526,25 @@ namespace Nylon.Models.Generator
             return CurrentType is not null;
         }
 
-        private DataType EvaluateNodeBlock(BlockNode expression)
+        private AllocationData GenerateNodeBlockInExpression(BlockNode expression)
         {
             var oldScope = CurrentScope;
             CurrentScope = new(null, false, CurrentScope.VirtualMemory);
 
             GenerateBlock(expression);
 
-            var hiddentAllocation = CurrentScope.HiddenAllocationBuffer;
+            var allocation = GetHiddenBufferTypeOrVoid();
             CurrentScope = oldScope;
-            return hiddentAllocation is not null ? hiddentAllocation.Type : DataType.Void;
+            return allocation;
+        }
+
+        private DataType EvaluateNodeBlockInExpression(BlockNode expression)
+        {
+            var allocation = GenerateNodeBlockInExpression(expression);
+            if (!allocation.Type.SolvedType.IsVoid())
+                FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
+
+            return allocation.Type;
         }
 
         private DataType EvaluateNodeBinaryExpression(BinaryExpressionNode expression)
@@ -564,23 +614,23 @@ namespace Nylon.Models.Generator
             var dividingByZero = right == 0 && isDividing;
 
             if (dividingByZero)
-                Tower.Report(position, "Divided by '0' at compile time");
+                Tower.Report(position, "Dividing by '0' at compile time");
 
             return dividingByZero;
         }
 
         private DataType EvaluateLeftIsConstant(BinaryExpressionNode expression)
         {
-            DataType type;
             var index = FunctionBuilder.CurrentIndex();
             var left = FoldConstantIntoToken(expression.Left);
+
             ContextTypesPushUndefined();
 
-            FunctionBuilder.EmitLoadConstantValue(
-                long.Parse(left.Value),
-                type = EvaluateExpression(expression.Right));
+            var type = EvaluateExpression(expression.Right);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), type);
 
             ContextTypes.Pop();
+
             FunctionBuilder.MoveLastInstructionTo(index);
             return type;
         }
@@ -630,11 +680,7 @@ namespace Nylon.Models.Generator
 
         private ulong EvaluateDivideConstants(ulong left, ulong right, ModulePosition position)
         {
-            ulong result = 0;
-            if (!ReportWhenDividingByZero(right, true, position))
-                result = left / right;
-
-            return result;
+            return !ReportWhenDividingByZero(right, true, position) ? left / right : 0;
         }
 
         private static bool IsConstantInt(INode node)
@@ -836,7 +882,7 @@ namespace Nylon.Models.Generator
 
         private AllocationData DeclareVirtualMemorySymbol(string name, DataType type, ModulePosition position, bool isconst)
         {
-            var localindex = GetLocalIndex();
+            var localindex = GetAllocationsNumber();
             var allocation = new AllocationData(localindex, type, isconst);
             CheckForRedeclaration(name, position, allocation);
 
@@ -851,9 +897,9 @@ namespace Nylon.Models.Generator
                 Tower.Report(position, $"Variable '{name}' is already declared");
         }
 
-        private int GetLocalIndex()
+        private int GetAllocationsNumber()
         {
-            return CurrentScope.VirtualMemory.Count;
+            return FunctionBuilder.GetAllocationNumbers();
         }
 
         private void GenerateFunction(FunctionStatement func, string nirFunctionName)

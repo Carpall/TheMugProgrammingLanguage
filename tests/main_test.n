@@ -10,12 +10,11 @@ type Math {
   pub func div(self: Math): i32 { self.a / self.b }
 }
 
-func main() {
-}
+func a(): i32 { 1 }
 
 func main(): i32 {
-  var x = Math.create(1, 2)
-  x.add()
+  ()
+  // if true { 1 }
 }
 
 /*pub enum AllocatorErr: err { size_is_zero }

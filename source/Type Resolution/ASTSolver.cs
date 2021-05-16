@@ -23,17 +23,29 @@ namespace Nylon.TypeResolution
             {
                 TypeKind.Array or
                 TypeKind.Option or
-                TypeKind.Pointer => SolvedType.WithBase(unsolvedtype.Kind, DataType.Solved(ResolveType(unsolvedtype.BaseType as DataType))),
-
-                TypeKind.EnumError => SolvedType.EnumError(
-                    DataType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
-                    DataType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType))),
-
-                TypeKind.DefinedType => SolvedType.Struct(
-                    Tower.Symbols.GetSymbol<TypeStatement>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type")),
-
+                TypeKind.Pointer => SolvePrimitiveWithBase(unsolvedtype),
+                TypeKind.EnumError => SolveEnumError(unsolvedtype),
+                TypeKind.DefinedType => SolveStruct(unsolvedtype),
                 _ => SolvedType.Primitive(unsolvedtype.Kind),
             };
+        }
+
+        private SolvedType SolveStruct(UnsolvedType unsolvedtype)
+        {
+            return SolvedType.Struct(
+                Tower.Symbols.GetSymbol<TypeStatement>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type"));
+        }
+
+        private SolvedType SolvePrimitiveWithBase(UnsolvedType unsolvedtype)
+        {
+            return SolvedType.WithBase(unsolvedtype.Kind, DataType.Solved(ResolveType(unsolvedtype.BaseType as DataType)));
+        }
+
+        private SolvedType SolveEnumError(UnsolvedType unsolvedtype)
+        {
+            return SolvedType.EnumError(
+                DataType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
+                DataType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType)));
         }
 
         private void WalkTypes()
@@ -46,8 +58,8 @@ namespace Nylon.TypeResolution
         public NamespaceNode Solve()
         {
             var errorsnumber = Tower.Diagnostic.Count;
-            Tower.TypeInstaller.Declare();
 
+            Tower.TypeInstaller.Declare();
             WalkTypes();
 
             Tower.CheckDiagnostic(errorsnumber);

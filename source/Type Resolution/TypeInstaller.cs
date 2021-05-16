@@ -26,14 +26,18 @@ namespace Nylon.TypeResolution
         private void CheckFunc(ParameterListNode parameters, List<Token> generics, Pragmas pragmas)
         {
             var declared = new string[parameters.Length];
-            
-            for (int i = 0; i < parameters.Length; i++)
-                CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "Parameter");
+            CheckFunctionParameters(parameters, ref declared);
 
             declared = new string[generics.Count];
             CheckGenericParameters(generics, ref declared);
 
             // todo: check pragmas
+        }
+
+        private void CheckFunctionParameters(ParameterListNode parameters, ref string[] declared)
+        {
+            for (int i = 0; i < parameters.Length; i++)
+                CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "Parameter");
         }
 
         private void CheckGenericParameters(List<Token> generics, ref string[] declared)
@@ -49,24 +53,31 @@ namespace Nylon.TypeResolution
             Pragmas pragmas)
         {
             var declared = new string[bodyfunctions.Count];
+            CheckTypeMethods(bodyfunctions, ref declared);
 
+            declared = new string[bodyfields.Count];
+            CheckTypeFields(bodyfields, ref declared);
+
+            declared = new string[generics.Count];
+            CheckGenericParameters(generics, ref declared);
+
+            // todo: check pragmas
+        }
+
+        private void CheckTypeFields(List<FieldNode> bodyfields, ref string[] declared)
+        {
+            for (int i = 0; i < bodyfields.Count; i++)
+                CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Field");
+        }
+
+        private void CheckTypeMethods(List<FunctionStatement> bodyfunctions, ref string[] declared)
+        {
             for (int i = 0; i < bodyfunctions.Count; i++)
             {
                 var function = bodyfunctions[i];
                 CheckFunc(function.ParameterList, function.Generics, function.Pragmas);
                 CheckSingleDeclaration(bodyfunctions[i].Position, ref declared, i, bodyfunctions[i].Name, "Method");
             }
-
-            declared = new string[bodyfields.Count];
-
-            for (int i = 0; i < bodyfields.Count; i++)
-                CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Field");
-
-            declared = new string[generics.Count];
-
-            CheckGenericParameters(generics, ref declared);
-
-            // todo: check pragmas
         }
 
         private void CheckSingleDeclaration(ModulePosition position, ref string[] declared, int i, string name, string kind)

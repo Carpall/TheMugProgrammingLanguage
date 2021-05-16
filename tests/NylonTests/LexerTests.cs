@@ -52,10 +52,15 @@ namespace Nylon.Tests
         private const string COMMENTS04 = "/* This is a nested */ multi-line comment */";
         private const string COMMENTS05 = "/* This is a /* nested */ multi-line comment */";
 
+        private Lexer newLexer(string test)
+        {
+            return new("test", test, new(null));
+        }
+
         [Test]
         public void GetLength_EmptyCollection_ReturnZero()
         {
-            Lexer lexer = new Lexer("test", OPERATION01);
+            var lexer = newLexer(OPERATION01);
 
             Assert.AreEqual(lexer.Length, 0);
         }
@@ -63,7 +68,7 @@ namespace Nylon.Tests
         [Test]
         public void GetLength_NonEmptyCollection_ReturnLength()
         {
-            Lexer lexer = new Lexer("test", VARIABLE01);
+            var lexer = newLexer(VARIABLE01);
             lexer.Tokenize();
 
             Assert.AreEqual(lexer.Length, 5);
@@ -98,18 +103,18 @@ namespace Nylon.Tests
         [Test]
         public void Test01_CorrectTokenization()
         {
-            Lexer lexer = new Lexer("test", VARIABLE01);
+            var lexer = newLexer(VARIABLE01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.KeyVar, "var", new(lexer, 0..3)),
-                new Token(TokenKind.Identifier, "x", new(lexer, 4..5)),
-                new Token(TokenKind.Equal, "=", new(lexer, 6..7)),
-                new Token(TokenKind.ConstantDigit, "0", new(lexer, 8..9)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 10..11))
+                new(TokenKind.KeyVar, "var", new(lexer, 0..3), false),
+                new(TokenKind.Identifier, "x", new(lexer, 4..5), false),
+                new(TokenKind.Equal, "=", new(lexer, 6..7), false),
+                new(TokenKind.ConstantDigit, "0", new(lexer, 8..9), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 10..11), false)
             };
 
             AreListEqual(expected, tokens);
@@ -118,20 +123,20 @@ namespace Nylon.Tests
         [Test]
         public void Test02_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", VARIABLE02);
+            var lexer = newLexer(VARIABLE02);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.KeyVar, "var", new(lexer, 0..3)),
-                new Token(TokenKind.Identifier, "number", new(lexer, 4..10)),
-                new Token(TokenKind.Colon, ":", new(lexer, 10..11)),
-                new Token(TokenKind.KeyTi32, "i32", new(lexer, 12..15)),
-                new Token(TokenKind.Equal, "=", new(lexer, 16..17)),
-                new Token(TokenKind.ConstantDigit, "50", new(lexer, 18..20)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 21..22))
+                new(TokenKind.KeyVar, "var", new(lexer, 0..3), false),
+                new(TokenKind.Identifier, "number", new(lexer, 4..10), false),
+                new(TokenKind.Colon, ":", new(lexer, 10..11), false),
+                new(TokenKind.Identifier, "i32", new(lexer, 12..15), false),
+                new(TokenKind.Equal, "=", new(lexer, 16..17), false),
+                new(TokenKind.ConstantDigit, "50", new(lexer, 18..20), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 21..22), false)
             };
 
             AreListEqual(expected, tokens);
@@ -140,20 +145,20 @@ namespace Nylon.Tests
         [Test]
         public void Test03_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", VARIABLE03);
+            var lexer = newLexer(VARIABLE03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantDigit, "50", new(lexer, 1..3)),
-                new Token(TokenKind.Equal, "=", new(lexer, 4..5)),
-                new Token(TokenKind.KeyTi32, "i32", new(lexer, 6..9)),
-                new Token(TokenKind.Colon, ":", new(lexer, 10..11)),
-                new Token(TokenKind.Identifier, "number", new(lexer, 11..17)),
-                new Token(TokenKind.KeyVar, "var", new(lexer, 18..21)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 21..22))
+                new(TokenKind.ConstantDigit, "50", new(lexer, 1..3), false),
+                new(TokenKind.Equal, "=", new(lexer, 4..5), false),
+                new(TokenKind.Identifier, "i32", new(lexer, 6..9), false),
+                new(TokenKind.Colon, ":", new(lexer, 10..11), false),
+                new(TokenKind.Identifier, "number", new(lexer, 11..17), false),
+                new(TokenKind.KeyVar, "var", new(lexer, 18..21), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 21..22), false)
             };
 
             AreListEqual(expected, tokens);
@@ -162,15 +167,15 @@ namespace Nylon.Tests
         [Test]
         public void Test04_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", VARIABLE04);
+            var lexer = newLexer(VARIABLE04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "varnumber", new(lexer, 0..9)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 9..10))
+                new(TokenKind.Identifier, "varnumber", new(lexer, 0..9), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 9..10), false)
             };
 
             AreListEqual(expected, tokens);
@@ -179,15 +184,15 @@ namespace Nylon.Tests
         [Test]
         public void Test05_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", VARIABLE05);
+            var lexer = newLexer(VARIABLE05);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "i33", new(lexer, 0..3)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
+                new(TokenKind.Identifier, "i33", new(lexer, 0..3), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 3..4), false)
             };
 
             AreListEqual(expected, tokens);
@@ -197,14 +202,14 @@ namespace Nylon.Tests
         public void TestComments01_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            Lexer lexer = new MugLexer("test", COMMENTS01);
+            var lexer = newLexer(COMMENTS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 20..21))
+                new(TokenKind.EOF, "<EOF>", new(lexer, 20..21), false)
             };
 
             AreListEqual(expected, tokens);
@@ -214,14 +219,14 @@ namespace Nylon.Tests
         public void TestComments02_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            Lexer lexer = new MugLexer("test", COMMENTS02);
+            var lexer = newLexer(COMMENTS02);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 36..37))
+                new(TokenKind.EOF, "<EOF>", new(lexer, 36..37), false)
             };
 
             AreListEqual(expected, tokens);
@@ -231,14 +236,14 @@ namespace Nylon.Tests
         public void TestComments03_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            Lexer lexer = new MugLexer("test", COMMENTS03);
+            var lexer = newLexer(COMMENTS03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 43..44))
+                new(TokenKind.EOF, "<EOF>", new(lexer, 43..44), false)
             };
 
             AreListEqual(expected, tokens);
@@ -248,20 +253,20 @@ namespace Nylon.Tests
         public void TestComments04_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            Lexer lexer = new MugLexer("test", COMMENTS04);
+            var lexer = newLexer(COMMENTS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "multi", new(lexer, 23..28)),
-                new Token(TokenKind.Minus, "-", new(lexer, 28..29)),
-                new Token(TokenKind.Identifier, "line", new(lexer, 29..33)),
-                new Token(TokenKind.Identifier, "comment", new(lexer, 34..41)),
-                new Token(TokenKind.Star, "*", new(lexer, 42..43)),
-                new Token(TokenKind.Slash, "/", new(lexer, 43..44)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 44..45))
+                new(TokenKind.Identifier, "multi", new(lexer, 23..28), false),
+                new(TokenKind.Minus, "-", new(lexer, 28..29), false),
+                new(TokenKind.Identifier, "line", new(lexer, 29..33), false),
+                new(TokenKind.Identifier, "comment", new(lexer, 34..41), false),
+                new(TokenKind.Star, "*", new(lexer, 42..43), false),
+                new(TokenKind.Slash, "/", new(lexer, 43..44), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 44..45), false)
             };
 
             AreListEqual(expected, tokens);
@@ -271,20 +276,20 @@ namespace Nylon.Tests
         public void TestComments05_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            Lexer lexer = new MugLexer("test", COMMENTS05);
+            var lexer = newLexer(COMMENTS05);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "multi", new(lexer, 26..31)),
-                new Token(TokenKind.Minus, "-", new(lexer, 31..32)),
-                new Token(TokenKind.Identifier, "line", new(lexer, 32..36)),
-                new Token(TokenKind.Identifier, "comment", new(lexer, 37..44)),
-                new Token(TokenKind.Star, "*", new(lexer, 45..46)),
-                new Token(TokenKind.Slash, "/", new(lexer, 46..47)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 47..48))
+                new(TokenKind.Identifier, "multi", new(lexer, 26..31), false),
+                new(TokenKind.Minus, "-", new(lexer, 31..32), false),
+                new(TokenKind.Identifier, "line", new(lexer, 32..36), false),
+                new(TokenKind.Identifier, "comment", new(lexer, 37..44), false),
+                new(TokenKind.Star, "*", new(lexer, 45..46), false),
+                new(TokenKind.Slash, "/", new(lexer, 46..47), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 47..48), false)
             };
 
             AreListEqual(expected, tokens);
@@ -294,14 +299,14 @@ namespace Nylon.Tests
         public void EmptyString_CorrectTokenization()
         {
             // An empty string gets converted into an <EOF>
-            Lexer lexer = new MugLexer("test", EMPTYSTRING);
+            var lexer = newLexer(EMPTYSTRING);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 0..1))
+                new(TokenKind.EOF, "<EOF>", new(lexer, 0..1), false)
             };
 
             AreListEqual(expected, tokens);
@@ -310,15 +315,15 @@ namespace Nylon.Tests
         [Test]
         public void TestStrings01_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", STRINGS01);
+            var lexer = newLexer(STRINGS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "This is a string", new(lexer, 0..18)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 18..19))
+                new(TokenKind.ConstantString, "This is a string", new(lexer, 0..18), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 18..19), false)
             };
 
             AreListEqual(expected, tokens);
@@ -327,26 +332,26 @@ namespace Nylon.Tests
         [Test]
         public void TestStrings02_ExceptionCaught()
         {
-            Lexer lexer = new MugLexer("test", STRINGS02);
-            var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
+            var lexer = newLexer(STRINGS02);
+            lexer.Tokenize();
 
-            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
+            Assert.AreEqual("Constant string has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestStrings03_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", STRINGS03);
+            var lexer = newLexer(STRINGS03);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "This is a ", new(lexer, 0..12)),
-                new Token(TokenKind.Identifier, "nested", new(lexer, 13..19)),
-                new Token(TokenKind.ConstantString, "string", new(lexer, 20..28)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 28..29))
+                new(TokenKind.ConstantString, "This is a ", new(lexer, 0..12), false),
+                new(TokenKind.Identifier, "nested", new(lexer, 13..19), false),
+                new(TokenKind.ConstantString, "string", new(lexer, 20..28), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 28..29), false)
             };
 
             AreListEqual(expected, tokens);
@@ -355,15 +360,15 @@ namespace Nylon.Tests
         [Test]
         public void TestStrings04_EscapedChars()
         {
-            Lexer lexer = new MugLexer("test", STRINGS04);
+            var lexer = newLexer(STRINGS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantString, "\n\t\r\"", new(lexer, 0..10)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 10..11))
+                new(TokenKind.ConstantString, "\n\t\r\"", new(lexer, 0..10), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 10..11), false)
             };
 
             AreListEqual(expected, tokens);
@@ -372,17 +377,17 @@ namespace Nylon.Tests
         [Test]
         public void TestStrings05_AdvancedEscapedChars()
         {
-            Lexer lexer = new MugLexer("test", STRINGS05);
+            var lexer = newLexer(STRINGS05);
             lexer.Tokenize();
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.KeyTi32, "i32", new(lexer, 0..3)),
-                new Token(TokenKind.ConstantString, "\\ ", new(lexer, 3..8)),
-                new Token(TokenKind.Identifier, "t", new(lexer, 8..9)),
-                new Token(TokenKind.Identifier, "token", new(lexer, 10..15)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 15..16))
+                new(TokenKind.Identifier, "i32", new(lexer, 0 ..3), false),
+                new(TokenKind.ConstantString, "\\ ", new(lexer, 3 ..8), false),
+                new(TokenKind.Identifier, "t", new(lexer, 8 ..9), false),
+                new(TokenKind.Identifier, "token", new(lexer, 10..15), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 15 ..16), false)
             };
 
             AreListEqual(expected, tokens);
@@ -391,42 +396,42 @@ namespace Nylon.Tests
         [Test]
         public void TestStrings06_ExceptionCaught()
         {
-            Lexer lexer = new MugLexer("test", STRINGS06);
-            var ex = Assert.Throws<CompilationException>(() => lexer.Tokenize());
+            var lexer = newLexer(STRINGS06);
+            lexer.Tokenize();
 
-            Assert.AreEqual("String has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
+            Assert.AreEqual("String has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestSingleTokens_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", SINGLE_TOKENS);
+            var lexer = newLexer(SINGLE_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.OpenPar, "(", new(lexer, 0..1)),
-                new Token(TokenKind.ClosePar, ")", new(lexer, 2..3)),
-                new Token(TokenKind.OpenBracket, "[", new(lexer, 4..5)),
-                new Token(TokenKind.CloseBracket, "]", new(lexer, 6..7)),
-                new Token(TokenKind.OpenBrace, "{", new(lexer, 8..9)),
-                new Token(TokenKind.CloseBrace, "}", new(lexer, 10..11)),
-                new Token(TokenKind.BooleanLess, "<", new(lexer, 12..13)),
-                new Token(TokenKind.BooleanGreater, ">", new(lexer, 14..15)),
-                new Token(TokenKind.Equal, "=", new(lexer, 16..17)),
-                new Token(TokenKind.Negation, "!", new(lexer, 18..19)),
-                new Token(TokenKind.BooleanAND, "&", new(lexer, 20..21)),
-                new Token(TokenKind.BooleanOR, "|", new(lexer, 22..23)),
-                new Token(TokenKind.Plus, "+", new(lexer, 24..25)),
-                new Token(TokenKind.Minus, "-", new(lexer, 26..27)),
-                new Token(TokenKind.Star, "*", new(lexer, 28..29)),
-                new Token(TokenKind.Slash, "/", new(lexer, 30..31)),
-                new Token(TokenKind.Comma, ",", new(lexer, 32..33)),
-                new Token(TokenKind.Colon, ":", new(lexer, 36..37)),
-                new Token(TokenKind.Dot, ".", new(lexer, 38..39)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 41..42))
+                new(TokenKind.OpenPar, "(", new(lexer, 0..1), false),
+                new(TokenKind.ClosePar, ")", new(lexer, 2..3), false),
+                new(TokenKind.OpenBracket, "[", new(lexer, 4..5), false),
+                new(TokenKind.CloseBracket, "]", new(lexer, 6..7), false),
+                new(TokenKind.OpenBrace, "{", new(lexer, 8..9), false),
+                new(TokenKind.CloseBrace, "}", new(lexer, 10..11), false),
+                new(TokenKind.BooleanLess, "<", new(lexer, 12..13), false),
+                new(TokenKind.BooleanGreater, ">", new(lexer, 14..15), false),
+                new(TokenKind.Equal, "=", new(lexer, 16..17), false),
+                new(TokenKind.Negation, "!", new(lexer, 18..19), false),
+                new(TokenKind.BooleanAND, "&", new(lexer, 20..21), false),
+                new(TokenKind.BooleanOR, "|", new(lexer, 22..23), false),
+                new(TokenKind.Plus, "+", new(lexer, 24..25), false),
+                new(TokenKind.Minus, "-", new(lexer, 26..27), false),
+                new(TokenKind.Star, "*", new(lexer, 28..29), false),
+                new(TokenKind.Slash, "/", new(lexer, 30..31), false),
+                new(TokenKind.Comma, ",", new(lexer, 32..33), false),
+                new(TokenKind.Colon, ":", new(lexer, 36..37), false),
+                new(TokenKind.Dot, ".", new(lexer, 38..39), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 41..42), false)
             };
 
             AreListEqual(expected, tokens);
@@ -435,25 +440,25 @@ namespace Nylon.Tests
         [Test]
         public void TestDoubleTokens_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", DOUBLE_TOKENS);
+            var lexer = newLexer(DOUBLE_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.BooleanEQ, "==", new(lexer, 0..2)),
-                new Token(TokenKind.BooleanNEQ, "!=", new(lexer, 3..5)),
-                new Token(TokenKind.OperatorIncrement, "++", new(lexer, 6..8)),
-                new Token(TokenKind.AddAssignment, "+=", new(lexer, 9..11)),
-                new Token(TokenKind.OperatorDecrement, "--", new(lexer, 12..14)),
-                new Token(TokenKind.SubAssignment, "-=", new(lexer, 15..17)),
-                new Token(TokenKind.MulAssignment, "*=", new(lexer, 18..20)),
-                new Token(TokenKind.DivAssignment, "/=", new(lexer, 21..23)),
-                new Token(TokenKind.BooleanLEQ, "<=", new(lexer, 24..26)),
-                new Token(TokenKind.BooleanGEQ, ">=", new(lexer, 27..29)),
-                new Token(TokenKind.RangeDots, "..", new(lexer, 30..32)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 32..33))
+                new(TokenKind.BooleanEQ, "==", new(lexer, 0..2), false),
+                new(TokenKind.BooleanNEQ, "!=", new(lexer, 3..5), false),
+                new(TokenKind.OperatorIncrement, "++", new(lexer, 6..8), false),
+                new(TokenKind.AddAssignment, "+=", new(lexer, 9..11), false),
+                new(TokenKind.OperatorDecrement, "--", new(lexer, 12..14), false),
+                new(TokenKind.SubAssignment, "-=", new(lexer, 15..17), false),
+                new(TokenKind.MulAssignment, "*=", new(lexer, 18..20), false),
+                new(TokenKind.DivAssignment, "/=", new(lexer, 21..23), false),
+                new(TokenKind.BooleanLEQ, "<=", new(lexer, 24..26), false),
+                new(TokenKind.BooleanGEQ, ">=", new(lexer, 27..29), false),
+                new(TokenKind.RangeDots, "..", new(lexer, 30..32), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 32..33), false)
             };
 
             AreListEqual(expected, tokens);
@@ -462,45 +467,45 @@ namespace Nylon.Tests
         [Test]
         public void TestFullTokens_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", FULL_TOKENS);
+            var lexer = newLexer(FULL_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.KeyReturn, "return", new(lexer, 0..6)),
-                new Token(TokenKind.KeyContinue, "continue", new(lexer, 7..15)),
-                new Token(TokenKind.KeyBreak, "break", new(lexer, 16..21)),
-                new Token(TokenKind.KeyWhile, "while", new(lexer, 22..27)),
-                new Token(TokenKind.KeyPub, "pub", new(lexer, 28..31)),
-                new Token(TokenKind.KeyUse, "use", new(lexer, 32..35)),
-                new Token(TokenKind.KeyImport, "import", new(lexer, 36..42)),
-                new Token(TokenKind.KeyNew, "new", new(lexer, 43..46)),
-                new Token(TokenKind.KeyFor, "for", new(lexer, 47..50)),
-                new Token(TokenKind.KeyType, "type", new(lexer, 51..55)),
-                new Token(TokenKind.KeyAs, "as", new(lexer, 56..58)),
-                new Token(TokenKind.KeyIn, "in", new(lexer, 59..61)),
-                new Token(TokenKind.KeyTo, "to", new(lexer, 62..64)),
-                new Token(TokenKind.KeyIf, "if", new(lexer, 65..67)),
-                new Token(TokenKind.KeyElif, "elif", new(lexer, 68..72)),
-                new Token(TokenKind.KeyElse, "else", new(lexer, 73..77)),
-                new Token(TokenKind.KeyFunc, "func", new(lexer, 78..82)),
-                new Token(TokenKind.KeyVar, "var", new(lexer, 83..86)),
-                new Token(TokenKind.KeyConst, "const", new(lexer, 87..92)),
-                new Token(TokenKind.KeyTstr, "str", new(lexer, 93..96)),
-                new Token(TokenKind.KeyTchr, "chr", new(lexer, 97..100)),
-                new Token(TokenKind.KeyTi32, "i32", new(lexer, 107..110)),
-                new Token(TokenKind.KeyTi64, "i64", new(lexer, 111..114)),
-                new Token(TokenKind.KeyTu8, "u8", new(lexer, 115..117)),
-                new Token(TokenKind.KeyTu32, "u32", new(lexer, 118..121)),
-                new Token(TokenKind.KeyTu64, "u64", new(lexer, 122..125)),
-                new Token(TokenKind.KeyTunknown, "unknown", new(lexer, 126..133)),
-                new Token(TokenKind.KeyWhen, "when", new(lexer, 134..138)),
-                new Token(TokenKind.KeyDeclare, "declare", new(lexer, 139..146)),
-                new Token(TokenKind.KeyTVoid, "void", new(lexer, 147..151)),
-                new Token(TokenKind.KeyTbool, "bool", new(lexer, 152..156)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 156..157))
+                new(TokenKind.KeyReturn, "return", new(lexer, 0..6), false),
+                new(TokenKind.KeyContinue, "continue", new(lexer, 7..15), false),
+                new(TokenKind.KeyBreak, "break", new(lexer, 16..21), false),
+                new(TokenKind.KeyWhile, "while", new(lexer, 22..27), false),
+                new(TokenKind.KeyPub, "pub", new(lexer, 28..31), false),
+                new(TokenKind.KeyUse, "use", new(lexer, 32..35), false),
+                new(TokenKind.KeyImport, "import", new(lexer, 36..42), false),
+                new(TokenKind.KeyNew, "new", new(lexer, 43..46), false),
+                new(TokenKind.KeyFor, "for", new(lexer, 47..50), false),
+                new(TokenKind.KeyType, "type", new(lexer, 51..55), false),
+                new(TokenKind.KeyAs, "as", new(lexer, 56..58), false),
+                new(TokenKind.KeyIn, "in", new(lexer, 59..61), false),
+                new(TokenKind.KeyTo, "to", new(lexer, 62..64), false),
+                new(TokenKind.KeyIf, "if", new(lexer, 65..67), false),
+                new(TokenKind.KeyElif, "elif", new(lexer, 68..72), false),
+                new(TokenKind.KeyElse, "else", new(lexer, 73..77), false),
+                new(TokenKind.KeyFunc, "func", new(lexer, 78..82), false),
+                new(TokenKind.KeyVar, "var", new(lexer, 83..86), false),
+                new(TokenKind.KeyConst, "const", new(lexer, 87..92), false),
+                new(TokenKind.Identifier, "str", new(lexer, 93..96), false),
+                new(TokenKind.Identifier, "chr", new(lexer, 97..100), false),
+                new(TokenKind.Identifier, "i32", new(lexer, 107..110), false),
+                new(TokenKind.Identifier, "i64", new(lexer, 111..114), false),
+                new(TokenKind.Identifier, "u8", new(lexer, 115..117), false),
+                new(TokenKind.Identifier, "u32", new(lexer, 118..121), false),
+                new(TokenKind.Identifier, "u64", new(lexer, 122..125), false),
+                new(TokenKind.Identifier, "unknown", new(lexer, 126..133), false),
+                new(TokenKind.Identifier, "when", new(lexer, 134..138), false),
+                new(TokenKind.Identifier, "declare", new(lexer, 139..146), false),
+                new(TokenKind.Identifier, "void", new(lexer, 147..151), false),
+                new(TokenKind.Identifier, "bool", new(lexer, 152..156), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 156..157), false)
             };
 
             AreListEqual(expected, tokens);
@@ -509,24 +514,24 @@ namespace Nylon.Tests
         [Test]
         public void TestRandomTokens_CorrectTokenization()
         {
-            Lexer lexer = new MugLexer("test", RANDOM_TOKENS);
+            var lexer = newLexer(RANDOM_TOKENS);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.KeyReturn, "return", new(lexer, 0..6)),
-                new Token(TokenKind.BooleanEQ, "==", new(lexer, 7..9)),
-                new Token(TokenKind.OpenPar, "(", new(lexer, 10..11)),
-                new Token(TokenKind.ClosePar, ")", new(lexer, 12..13)),
-                new Token(TokenKind.AddAssignment, "+=", new(lexer, 14..16)),
-                new Token(TokenKind.KeyContinue, "continue", new(lexer, 17..25)),
-                new Token(TokenKind.KeyPub, "pub", new(lexer, 26..29)),
-                new Token(TokenKind.Negation, "!", new(lexer, 30..31)),
-                new Token(TokenKind.MulAssignment, "*=", new(lexer, 32..34)),
-                new Token(TokenKind.RangeDots, "..", new(lexer, 35..37)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 37..38))
+                new(TokenKind.KeyReturn, "return", new(lexer, 0..6), false),
+                new(TokenKind.BooleanEQ, "==", new(lexer, 7..9), false),
+                new(TokenKind.OpenPar, "(", new(lexer, 10..11), false),
+                new(TokenKind.ClosePar, ")", new(lexer, 12..13), false),
+                new(TokenKind.AddAssignment, "+=", new(lexer, 14..16), false),
+                new(TokenKind.KeyContinue, "continue", new(lexer, 17..25), false),
+                new(TokenKind.KeyPub, "pub", new(lexer, 26..29), false),
+                new(TokenKind.Negation, "!", new(lexer, 30..31), false),
+                new(TokenKind.MulAssignment, "*=", new(lexer, 32..34), false),
+                new(TokenKind.RangeDots, "..", new(lexer, 35..37), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 37..38), false)
             };
 
             AreListEqual(expected, tokens);
@@ -535,15 +540,15 @@ namespace Nylon.Tests
         [Test]
         public void TestChars01_OneChar()
         {
-            Lexer lexer = new MugLexer("test", CHARS01);
+            var lexer = newLexer(CHARS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantChar, "c", new(lexer, 0..3)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
+                new(TokenKind.ConstantChar, "c", new(lexer, 0..3), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 3..4), false)
             };
 
             AreListEqual(expected, tokens);
@@ -552,33 +557,33 @@ namespace Nylon.Tests
         [Test]
         public void TestChars02_OneChar()
         {
-            Lexer lexer = new MugLexer("test", CHARS02);
-            var ex = Assert.Throws<Nylon.Compilation.CompilationException>(() => lexer.Tokenize());
+            var lexer = newLexer(CHARS02);
+            lexer.Tokenize();
 
-            Assert.AreEqual("Char has not been correctly enclosed", ex.Diagnostic.GetAlerts().First().Message);
+            Assert.AreEqual("Constant char has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestChars03_TooManyChars()
         {
-            Lexer lexer = new MugLexer("test", CHARS03);
+            var lexer = newLexer(CHARS03);
             lexer.Tokenize();
 
-            Assert.AreEqual("Too many characters in const char", lexer.DiagnosticBag.GetErrors().First().Message);
+            Assert.AreEqual("Too many characters in const char", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestChars04_OneEscapedChar()
         {
-            Lexer lexer = new MugLexer("test", CHARS04);
+            var lexer = newLexer(CHARS04);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.ConstantChar, "\\", new(lexer, 0..4)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 4..5))
+                new(TokenKind.ConstantChar, "\\", new(lexer, 0..4), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 4..5), false)
             };
 
             AreListEqual(expected, tokens);
@@ -587,25 +592,24 @@ namespace Nylon.Tests
         [Test]
         public void TestChars05_TooManyEscapedChars()
         {
-            Lexer lexer = new MugLexer("test", CHARS05);
+            var lexer = newLexer(CHARS05);
             lexer.Tokenize();
-            Assert.AreEqual(lexer.DiagnosticBag.Count, 1);
 
-            Assert.AreEqual("Too many characters in const char", lexer.DiagnosticBag.GetErrors().First().Message);
+            Assert.AreEqual("Too many characters in const char", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestBackticks01_OneSymbol()
         {
-            Lexer lexer = new MugLexer("test", BACKTICKS01);
+            var lexer = newLexer(BACKTICKS01);
             lexer.Tokenize();
 
             List<Token> tokens = lexer.TokenCollection;
 
-            List<Token> expected = new List<Token>
+            var expected = new List<Token>
             {
-                new Token(TokenKind.Identifier, "*", new(lexer, 0..3)),
-                new Token(TokenKind.EOF, "<EOF>", new(lexer, 3..4))
+                new(TokenKind.Identifier, "*", new(lexer, 0..3), false),
+                new(TokenKind.EOF, "<EOF>", new(lexer, 3..4), false)
             };
 
             AreListEqual(expected, tokens);
@@ -614,19 +618,19 @@ namespace Nylon.Tests
         [Test]
         public void TestBackticks02_OneChar()
         {
-            Lexer lexer = new MugLexer("test", BACKTICKS02);
+            var lexer = newLexer(BACKTICKS02);
             lexer.Tokenize();
 
-            Assert.AreEqual("Backtick sequence has not been correctly enclosed", lexer.DiagnosticBag.GetErrors().First().Message);
+            Assert.AreEqual("Backtick sequence has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
 
         [Test]
         public void TestBackticks03_Empty()
         {
-            Lexer lexer = new MugLexer("test", BACKTICKS03);
+            var lexer = newLexer(BACKTICKS03);
             lexer.Tokenize();
 
-            Assert.AreEqual("Not enough characters in backtick sequence", lexer.DiagnosticBag.GetErrors().First().Message);
+            Assert.AreEqual("Not enough characters in backtick sequence", lexer.Tower.Diagnostic.GetAlerts().First().Message);
         }
     }
 }

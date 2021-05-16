@@ -14,6 +14,7 @@ namespace Nylon.Models.Generator.IR.Builder
         private readonly DataType[] _parameterTypes;
         private readonly List<NIRValue> _body = new();
         private readonly List<NIRAllocation> _allocations = new();
+        private int _labelEnumeration = 0;
 
         public NIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
         {
@@ -123,6 +124,18 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitReturn(_returnType);
         }
 
+        public string EmitJumpFalse(string label)
+        {
+            label = EnumerateLabel(label);
+            EmitInstruction(NIRValueKind.JumpFalse, DataType.Void, label);
+            return label;
+        }
+
+        private string EnumerateLabel(string label)
+        {
+            return $"{label}{_labelEnumeration++}";
+        }
+
         public void EmitComment(string text, bool first = true)
         {
             if (first) EmitComment(null, false);
@@ -143,6 +156,11 @@ namespace Nylon.Models.Generator.IR.Builder
         public int GetAllocationNumber()
         {
             return _allocations.Count - 1;
+        }
+
+        public int GetAllocationNumbers()
+        {
+            return _allocations.Count;
         }
 
         public void EmitReturn(DataType type)

@@ -217,18 +217,35 @@ namespace Nylon.Models.Lexer
         {
             if (MatchStartMultiLineComment())
             {
-                // eats first two chars '//'
-                CurrentIndex += 2;
-
-                while (!MatchEndMultiLineComment() && CurrentIndex != Source.Length)
-                    CurrentIndex++;
-
-                if (MatchEndMultiLineComment())
-                    CurrentIndex += 2;
+                EatFirstTwoCommentChars();
+                EatMultiLineComment();
+                EatLastTwoCommentChars();
             }
             else if (MatchInlineComment())
-                while (!MatchEolOrEof())
-                    CurrentIndex++;
+                EatInlineComment();
+        }
+
+        private void EatInlineComment()
+        {
+            while (!MatchEolOrEof())
+                CurrentIndex++;
+        }
+
+        private void EatLastTwoCommentChars()
+        {
+            if (MatchEndMultiLineComment())
+                CurrentIndex += 2;
+        }
+
+        private void EatMultiLineComment()
+        {
+            while (!MatchEndMultiLineComment() && CurrentIndex != Source.Length)
+                CurrentIndex++;
+        }
+
+        private void EatFirstTwoCommentChars()
+        {
+            CurrentIndex += 2;
         }
 
         /// <summary>
@@ -239,36 +256,56 @@ namespace Nylon.Models.Lexer
             var start = CurrentIndex++;
 
             //consume string until EOF or closed " is found
-            while (CurrentIndex < Source.Length && Source[CurrentIndex] != '\'')
+            while (DoesNotMatchEOFOrClose('\''))
             {
-                char c = Source[CurrentIndex++];
-
-                if (c == '\\')
-                {
-                    c = RecognizeEscapedChar(Current); // @1
-                    CurrentIndex++; // cursor now points to the next character after the escaped one, if operated at @1 the position was broken with unrecognized chars
-                }
+                var c = Source[CurrentIndex++];
+                CollectEscapedCharIfNeeded(ref c);
 
                 CurrentSymbol.Append(c);
             }
 
             var end = CurrentIndex;
 
-            //if you found an EOF, throw
-            if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '"')
-                Tower.Report(this, CurrentIndex - 1, $"Char has not been correctly enclosed");
+            ReportNotCorrectlyEnclosedIfNeeded('\'', "Constant char");
 
             end++;
 
-            //longer than one char
+            ReportCharLengthIfNeeded(start, end);
+            AddCurrentSymbol(TokenKind.ConstantChar, start, end);
+        }
+
+        private void AddCurrentSymbol(TokenKind kind, int start, int end)
+        {
+            TokenCollection.Add(new(kind, CurrentSymbol.ToString(), ModPos(start..end), GetEOL()));
+            CurrentSymbol.Clear();
+        }
+
+        private void ReportCharLengthIfNeeded(int start, int end)
+        {
             if (CurrentSymbol.Length > 1)
                 Tower.Report(ModPos(start..end), "Too many characters in const char");
             else if (CurrentSymbol.Length < 1)
                 Tower.Report(ModPos(start..end), "Not enough characters in const char");
+        }
 
-            //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantChar, CurrentSymbol.ToString(), ModPos(start..end), GetEOL()));
-            CurrentSymbol.Clear();
+        private void ReportNotCorrectlyEnclosedIfNeeded(char delimiter, string kind)
+        {
+            if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != delimiter)
+                Tower.Report(this, CurrentIndex - 1, $"{kind} has not been correctly enclosed");
+        }
+
+        private bool DoesNotMatchEOFOrClose(char delimiter)
+        {
+            return DoesNotMatchEOF() && Source[CurrentIndex] != delimiter;
+        }
+
+        private void CollectEscapedCharIfNeeded(ref char c)
+        {
+            if (c == '\\')
+            {
+                c = RecognizeEscapedChar(Current);
+                CurrentIndex++;
+            }
         }
 
         private char RecognizeEscapedChar(char escapedchar)
@@ -291,33 +328,20 @@ namespace Nylon.Models.Lexer
         {
             var start = CurrentIndex++;
 
-            if (CurrentIndex == Source.Length)
-                reportNotCorrectlyEnclosed();
-
             //consume string until EOF or closed " is found
-            while (CurrentIndex < Source.Length && Source[CurrentIndex] != '"')
+            while (DoesNotMatchEOFOrClose('"'))
             {
-                char c = Source[CurrentIndex++];
-
-                if (c == '\\')
-                    c = RecognizeEscapedChar(Source[CurrentIndex++]);
+                var c = Source[CurrentIndex++];
+                CollectEscapedCharIfNeeded(ref c);
 
                 CurrentSymbol.Append(c);
             }
 
             var end = CurrentIndex;
 
-            //if you found an EOF, throw
-            if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '"')
-                reportNotCorrectlyEnclosed();
+            ReportNotCorrectlyEnclosedIfNeeded('"', "Constant string");
 
-            //else add closing simbol
-            TokenCollection.Add(new(TokenKind.ConstantString, CurrentSymbol.ToString(), ModPos(start..(end + 1)), GetEOL()));
-            CurrentSymbol.Clear();
-
-            void reportNotCorrectlyEnclosed() {
-                Tower.Report(this, start, $"String has not been correctly enclosed");
-            }
+            AddCurrentSymbol(TokenKind.ConstantString, start, end + 1);
         }
 
         private bool IsValidBackTickSequence(string sequence)
@@ -345,29 +369,28 @@ namespace Nylon.Models.Lexer
         {
             var start = CurrentIndex++;
 
-            //consume string until EOF or closed ` is found
-            while (CurrentIndex < Source.Length && Source[CurrentIndex] != '`')
+            while (DoesNotMatchEOFOrClose('`'))
                 CurrentSymbol.Append(Source[CurrentIndex++]);
 
             var end = CurrentIndex;
 
-            //if you found an EOF, throw
-            if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != '`')
-                Tower.Report(this, CurrentIndex - 1, $"Backtick sequence has not been correctly enclosed");
+            ReportNotCorrectlyEnclosedIfNeeded('`', "Backtick sequence");
 
-            var pos = ModPos(start..(end + 1));
+            end++;
 
-            if (CurrentSymbol.Length < 1)
-                Tower.Report(pos, "Not enough characters in backtick sequence");
-
-            string sequence = CurrentSymbol.ToString();
-
-            if (!IsValidBackTickSequence(sequence) && !IsKeyword(sequence))
-                Tower.Report(pos, "Invalid backtick sequence");
+            var sequence = CurrentSymbol.ToString();
+            ReportBadBacktickSequenceIfNeeded(sequence, ModPos(start..end));
 
             //else add closing simbol, removing whitespaces
-            TokenCollection.Add(new(TokenKind.Identifier, sequence, pos, GetEOL()));
-            CurrentSymbol.Clear();
+            AddCurrentSymbol(TokenKind.Identifier, start, end);
+        }
+
+        private void ReportBadBacktickSequenceIfNeeded(string sequence, ModulePosition position)
+        {
+            if (sequence.Length < 1)
+                Tower.Report(position, "Not enough characters in backtick sequence");
+            if (!IsValidBackTickSequence(sequence) && !IsKeyword(sequence))
+                Tower.Report(position, "Invalid backtick sequence");
         }
 
         /// <summary>
@@ -391,103 +414,154 @@ namespace Nylon.Models.Lexer
         /// </summary>
         private void ProcessSpecial(char current)
         {
-            if (current == '"') CollectString();
-            else if (current == '\'') CollectChar();
-            else if (current == '`') CollectBacktick();
-            else
+            switch (current)
             {
-                if (!HasNext())
-                {
-                    AddSingle(GetSingle(current), current.ToString());
-                    return;
-                }
-
-                var doubleToken = current.ToString() + GetNext();
-
-                // checks if there is a double token
-                switch (doubleToken)
-                {
-                    case "==": AddDouble(TokenKind.BooleanEQ, doubleToken); break;
-                    case "!=": AddDouble(TokenKind.BooleanNEQ, doubleToken); break;
-                    case "++": AddDouble(TokenKind.OperatorIncrement, doubleToken); break;
-                    case "+=": AddDouble(TokenKind.AddAssignment, doubleToken); break;
-                    case "--": AddDouble(TokenKind.OperatorDecrement, doubleToken); break;
-                    case "-=": AddDouble(TokenKind.SubAssignment, doubleToken); break;
-                    case "*=": AddDouble(TokenKind.MulAssignment, doubleToken); break;
-                    case "/=": AddDouble(TokenKind.DivAssignment, doubleToken); break;
-                    case "<=": AddDouble(TokenKind.BooleanLEQ, doubleToken); break;
-                    case ">=": AddDouble(TokenKind.BooleanGEQ, doubleToken); break;
-                    case "..": AddDouble(TokenKind.RangeDots, doubleToken); break;
-                    default: AddSingle(GetSingle(current), current.ToString()); break;
-                }
+                case '"': CollectString(); break;
+                case '\'':  CollectChar(); break;
+                case '`': CollectBacktick(); break;
+                default: ProcessSymbol(current); break;
             }
+        }
+
+        private void ProcessSymbol(char current)
+        {
+            if (!HasNext())
+            {
+                AddSingle(GetSingle(current), current.ToString());
+                return;
+            }
+
+            ProcessDoubleTokenOrSingle(current);
+        }
+
+        private void ProcessDoubleTokenOrSingle(char current)
+        {
+            var doubleToken = current.ToString() + GetNext();
+
+            // checks if there is a double token
+            switch (doubleToken)
+            {
+                case "==": add(TokenKind.BooleanEQ); break;
+                case "!=": add(TokenKind.BooleanNEQ); break;
+                case "++": add(TokenKind.OperatorIncrement); break;
+                case "+=": add(TokenKind.AddAssignment); break;
+                case "--": add(TokenKind.OperatorDecrement); break;
+                case "-=": add(TokenKind.SubAssignment); break;
+                case "*=": add(TokenKind.MulAssignment); break;
+                case "/=": add(TokenKind.DivAssignment); break;
+                case "<=": add(TokenKind.BooleanLEQ); break;
+                case ">=": add(TokenKind.BooleanGEQ); break;
+                case "..": add(TokenKind.RangeDots); break;
+                default: AddSingle(GetSingle(current), current.ToString()); break;
+            }
+
+            void add(TokenKind kind) => AddDouble(kind, doubleToken);
         }
 
         private void CollectIdentifer()
         {
-            do
-                CurrentSymbol.Append(Source[CurrentIndex++]);
-            while (CurrentIndex < Source.Length && (IsValidIdentifierChar(Current) || char.IsDigit(Current)));
-            
+            CollectHomogeneousWord();
+
             var value = CurrentSymbol.ToString();
             CurrentSymbol.Clear();
 
+            AddIdentifierOrKeywordOrConstantBoolean(value);
+        }
+
+        private void AddIdentifierOrKeywordOrConstantBoolean(string value)
+        {
             if (CheckAndSetKeyword(value, out var kind))
                 AddKeyword(kind, value);
+            else if (IsBoolean(value))
+                AddToken(TokenKind.ConstantBoolean, value);
             else
-            {
-                if (IsBoolean(value))
-                    AddToken(TokenKind.ConstantBoolean, value);
-                else
-                    AddToken(TokenKind.Identifier, value);
-            }
-            
+                AddToken(TokenKind.Identifier, value);
+
             CurrentIndex--;
+        }
+
+        private void CollectHomogeneousWord()
+        {
+            do
+                CurrentSymbol.Append(Source[CurrentIndex++]);
+            while (HasCurrentAndItIsValidIdentifierChar());
+        }
+
+        private bool HasCurrentAndItIsValidIdentifierChar()
+        {
+            return DoesNotMatchEOF() && (IsValidIdentifierChar(Current) || char.IsDigit(Current));
         }
 
         private void CollectDigit()
         {
             var pos = CurrentIndex;
             var isfloat = false;
+            var skipConstantFloatF = false;
+
+            CollectConstantDigit(ref isfloat, ref skipConstantFloatF);
+
+            if (!skipConstantFloatF)
+                CheckConstantFloatF(ref isfloat);
+
+            ReportOverflowConstantIfNeeded(ModPos(pos..CurrentIndex));
+
+            AddCurrentSymbol(isfloat ? TokenKind.ConstantFloatDigit : TokenKind.ConstantDigit, pos, CurrentIndex);
+
+            CurrentIndex--;
+        }
+
+        private void CollectConstantDigit(ref bool isfloat, ref bool skipConstantFloatF)
+        {
             do
             {
-                if (Current == '.')
-                {
-                    if (CurrentIndex >= Source.Length || !char.IsDigit(Source[CurrentIndex + 1]))
-                        goto end;
-
-                    if (isfloat)
-                        Tower.Report(this, CurrentIndex, "Invalid dot here");
-
-                    isfloat = true;
-                    CurrentSymbol.Append(',');
-                }
+                if (Current == '.' &&
+                    CollectFloatDecimalPartAndReturnTrueIfHasToBreak(ref isfloat, ref skipConstantFloatF))
+                    break;
                 else if (Current != '_')
                     CurrentSymbol.Append(Current);
 
                 CurrentIndex++;
             }
-            while (CurrentIndex < Source.Length && (char.IsDigit(Current) || Current == '.' || Current == '_'));
+            while (DoesNotMatchEOFAndCurrentIsFloatValidConstantChar());
+        }
 
+        private bool DoesNotMatchEOFAndCurrentIsFloatValidConstantChar()
+        {
+            return DoesNotMatchEOF() && (char.IsDigit(Current) || Current == '.' || Current == '_');
+        }
+
+        private bool DoesNotMatchEOF()
+        {
+            return CurrentIndex < Source.Length;
+        }
+
+        private bool CollectFloatDecimalPartAndReturnTrueIfHasToBreak(ref bool isfloat, ref bool skipConstantFloatF)
+        {
+            if (CurrentIndex >= Source.Length || !char.IsDigit(Source[CurrentIndex + 1]))
+                return skipConstantFloatF = true;
+
+            if (isfloat)
+                Tower.Report(this, CurrentIndex, "Invalid dot here");
+
+            isfloat = true;
+            CurrentSymbol.Append(',');
+
+            return false;
+        }
+
+        private void CheckConstantFloatF(ref bool isfloat)
+        {
             if (Current == 'f')
             {
                 CurrentIndex++;
                 isfloat = true;
             }
+        }
 
-        end:
-
-            var position = ModPos(pos..CurrentIndex);
-            var s = CurrentSymbol.ToString();
-
-            // could overflow
-            if (s.Length >= 21)
+        private void ReportOverflowConstantIfNeeded(ModulePosition position)
+        {
+            if (CurrentSymbol.Length >= 21)
                 Tower.Report(position, "Constant overflow");
-
-            TokenCollection.Add(new(isfloat ? TokenKind.ConstantFloatDigit : TokenKind.ConstantDigit, s, position, GetEOL()));
-            CurrentSymbol.Clear();
-
-            CurrentIndex--;
         }
 
         private bool MatchEOL()
@@ -509,17 +583,20 @@ namespace Nylon.Models.Lexer
         /// </summary>
         private void ProcessCurrentChar()
         {
-            // remove useless comments
+            SetUpEOL();
+
             ConsumeComments();
 
             if (ReachedEOF())
                 return;
 
-            if (!_eol)
-                _eol = MatchEOL();
+            SetUpEOL();
 
-            var current = Current;
+            ProcessChar(Current);
+        }
 
+        private void ProcessChar(char current)
+        {
             if (IsSkippableControl(current))
                 return;
 
@@ -529,6 +606,12 @@ namespace Nylon.Models.Lexer
                 CollectDigit();
             else
                 ProcessSpecial(current); // if current is not a valid id char, a control or a string quote
+        }
+
+        private void SetUpEOL()
+        {
+            if (!_eol)
+                _eol = MatchEOL();
         }
 
         private bool ReachedEOF()
@@ -545,7 +628,7 @@ namespace Nylon.Models.Lexer
             Reset();
 
             // go to the next char while there is one
-            while (CurrentIndex < Source.Length)
+            while (DoesNotMatchEOF())
             {
                 ProcessCurrentChar();
                 CurrentIndex++;
