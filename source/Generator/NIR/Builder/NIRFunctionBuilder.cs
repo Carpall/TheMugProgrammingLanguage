@@ -170,11 +170,16 @@ namespace Nylon.Models.Generator.IR.Builder
 
         public void EmitOptionalReturnVoid()
         {
-            if (_returnType.SolvedType.IsVoid() && (_body.Count == 0 || _body[^1].Kind != NIRValueKind.Return))
+            if (_returnType.SolvedType.IsVoid() && !EmittedExplicitReturn())
             {
                 EmitComment("implicit void return");
                 EmitReturn(DataType.Void);
             }
+        }
+
+        private bool EmittedExplicitReturn()
+        {
+            return _body.Count > 0 && _body[^1].Kind == NIRValueKind.Return;
         }
 
         public void EmitCall(string name, DataType type)
