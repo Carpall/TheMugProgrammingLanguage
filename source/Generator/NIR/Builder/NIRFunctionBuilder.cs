@@ -52,6 +52,11 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitInstruction(new NIRValue(kind, value.Type, value));
         }
 
+        public void EmitInstruction(NIRValueKind kind, object value)
+        {
+            EmitInstruction(new NIRValue(kind, value: value));
+        }
+
         public void EmitInstruction(NIRValueKind kind)
         {
             EmitInstruction(new NIRValue(kind));
@@ -139,8 +144,13 @@ namespace Nylon.Models.Generator.IR.Builder
         public void EmitComment(string text, bool first = true)
         {
             if (first) EmitComment(null, false);
-            EmitInstruction(new NIRValue(NIRValueKind.Comment, value: text));
+            EmitInstruction(NIRValueKind.Comment, text);
             if (first) EmitComment(null, false);
+        }
+
+        public void EmitLabel(string label)
+        {
+            EmitInstruction(NIRValueKind.Label, label);
         }
 
         public int CurrentIndex()

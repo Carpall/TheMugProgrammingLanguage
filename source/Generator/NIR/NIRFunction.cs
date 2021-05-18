@@ -36,7 +36,7 @@ namespace Nylon.Models.Generator.IR
             if (Allocations.Length == 0)
                 locals.Append(".empty");
 
-            for (int i = 0; i < Allocations.Length; i++)
+            for (var i = 0; i < Allocations.Length; i++)
                 locals.AppendFormat(".[{0}] {1}{2}", i, Allocations[i], i < Allocations.Length - 1 ? "\n    " : "");
 
             return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}:

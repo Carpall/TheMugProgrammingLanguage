@@ -178,7 +178,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void DeclarePreDeclaredSymbols()
         {
-            for (int i = 0; i < _preDeclaredSymbols.Count; i++)
+            for (var i = 0; i < _preDeclaredSymbols.Count; i++)
                 DeclareSymbol(_preDeclaredSymbols[i]);
         }
 
@@ -332,7 +332,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private static CompilationTarget GetTarget(string target)
         {
-            for (int i = 0; i < _targets.Length; i++)
+            for (var i = 0; i < _targets.Length; i++)
                 if (_targets[i] == target)
                     return (CompilationTarget)i;
             

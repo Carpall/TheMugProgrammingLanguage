@@ -85,15 +85,15 @@ namespace Nylon.Tests
             if (reals.Count != expected.Count)
             {
                 Console.WriteLine("expected contained:");
-                for (int i = 0; i < expected.Count; i++)
+                for (var i = 0; i < expected.Count; i++)
                     Console.WriteLine($"i:{i}, contained:{expected[i]}");
                 Console.WriteLine("reals contained:");
-                for (int i = 0; i < reals.Count; i++)
+                for (var i = 0; i < reals.Count; i++)
                     Console.WriteLine($"i:{i}, contained:{reals[i]}");
                 Assert.Fail($"Assert different lenghts:\n   - expected {expected.Count} tokens\n   - found {reals.Count} tokens");
             }
 
-            for (int i = 0; i < reals.Count; i++)
+            for (var i = 0; i < reals.Count; i++)
                 if (!reals[i].Equals(expected[i]))
                     Assert.Fail($"Assert different values:\n   - expected: {expected[i]}\n   - found: {reals[i]}");
 
@@ -106,7 +106,7 @@ namespace Nylon.Tests
             var lexer = newLexer(VARIABLE01);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -126,7 +126,7 @@ namespace Nylon.Tests
             var lexer = newLexer(VARIABLE02);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -148,7 +148,7 @@ namespace Nylon.Tests
             var lexer = newLexer(VARIABLE03);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -170,7 +170,7 @@ namespace Nylon.Tests
             var lexer = newLexer(VARIABLE04);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -187,7 +187,7 @@ namespace Nylon.Tests
             var lexer = newLexer(VARIABLE05);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -205,7 +205,7 @@ namespace Nylon.Tests
             var lexer = newLexer(COMMENTS01);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -222,7 +222,7 @@ namespace Nylon.Tests
             var lexer = newLexer(COMMENTS02);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -239,7 +239,7 @@ namespace Nylon.Tests
             var lexer = newLexer(COMMENTS03);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -256,7 +256,7 @@ namespace Nylon.Tests
             var lexer = newLexer(COMMENTS04);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -279,7 +279,7 @@ namespace Nylon.Tests
             var lexer = newLexer(COMMENTS05);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -302,7 +302,7 @@ namespace Nylon.Tests
             var lexer = newLexer(EMPTYSTRING);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -318,7 +318,7 @@ namespace Nylon.Tests
             var lexer = newLexer(STRINGS01);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -344,7 +344,7 @@ namespace Nylon.Tests
             var lexer = newLexer(STRINGS03);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -363,7 +363,7 @@ namespace Nylon.Tests
             var lexer = newLexer(STRINGS04);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -379,7 +379,7 @@ namespace Nylon.Tests
         {
             var lexer = newLexer(STRINGS05);
             lexer.Tokenize();
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -408,7 +408,7 @@ namespace Nylon.Tests
             var lexer = newLexer(SINGLE_TOKENS);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -443,7 +443,7 @@ namespace Nylon.Tests
             var lexer = newLexer(DOUBLE_TOKENS);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -470,7 +470,7 @@ namespace Nylon.Tests
             var lexer = newLexer(FULL_TOKENS);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -517,7 +517,7 @@ namespace Nylon.Tests
             var lexer = newLexer(RANDOM_TOKENS);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -543,7 +543,7 @@ namespace Nylon.Tests
             var lexer = newLexer(CHARS01);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -578,7 +578,7 @@ namespace Nylon.Tests
             var lexer = newLexer(CHARS04);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {
@@ -604,7 +604,7 @@ namespace Nylon.Tests
             var lexer = newLexer(BACKTICKS01);
             lexer.Tokenize();
 
-            List<Token> tokens = lexer.TokenCollection;
+            var tokens = lexer.TokenCollection;
 
             var expected = new List<Token>
             {

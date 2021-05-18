@@ -33,7 +33,7 @@ namespace Nylon.TypeSystem
         /// </summary>
         public static DataType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
         {
-            TypeKind type = t.Value switch
+            var type = t.Value switch
             {
                 "str" => TypeKind.String,
                 "chr" => TypeKind.Char,

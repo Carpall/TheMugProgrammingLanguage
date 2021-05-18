@@ -29,6 +29,7 @@ namespace Nylon.Models.Generator.IR
         Call,
         Pop,
         JumpFalse,
+        Label
     }
 
     public struct NIRValue

@@ -73,7 +73,7 @@ namespace Nylon.Models.Parser
         {
             StringBuilder result = new();
 
-            for (int i = 0; i < kinds.Length; i++)
+            for (var i = 0; i < kinds.Length; i++)
             {
                 result.Append(kinds[i].GetDescription());
                 if (i < kinds.Length - 1)
@@ -88,7 +88,7 @@ namespace Nylon.Models.Parser
             if (kinds.Length > 0)
             {
 
-                for (int i = 0; i < kinds.Length; i++)
+                for (var i = 0; i < kinds.Length; i++)
                     if (Match(kinds[i]))
                     {
                         CurrentIndex++;
@@ -635,7 +635,7 @@ namespace Nylon.Models.Parser
 
         private INode ExpectFactor(bool allowNullExpression)
         {
-            if (!MatchFactor(out INode e, allowNullExpression))
+            if (!MatchFactor(out var e, allowNullExpression))
                 ParseError(UnexpectedToken);
 
             return e;
@@ -892,7 +892,7 @@ namespace Nylon.Models.Parser
 
             var name = Expect("Expected the variable name", TokenKind.Identifier);
             var type = ExpectVariableType();
-            INode body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : CreateBadNode();
+            var body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : CreateBadNode();
 
             statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type, IsConst = token.Kind == TokenKind.KeyConst };
 
@@ -967,7 +967,7 @@ namespace Nylon.Models.Parser
             if (isFirstCondition && MatchAdvance(TokenKind.KeySwitch, out var matchtoken))
                 return CollectMatchExpression(out statement, matchtoken.Position);
 
-            if (!MatchAdvance(TokenKind.KeyIf, out Token key) &&
+            if (!MatchAdvance(TokenKind.KeyIf, out var key) &&
                 !MatchAdvance(TokenKind.KeyElif, out key) &&
                 !MatchAdvance(TokenKind.KeyElse, out key) &&
                 !MatchAdvance(TokenKind.KeyWhile, out key))
@@ -1038,7 +1038,7 @@ namespace Nylon.Models.Parser
         {
             statement = CreateBadNode();
 
-            if (!MatchAdvance(TokenKind.KeyFor, out Token key))
+            if (!MatchAdvance(TokenKind.KeyFor, out var key))
                 return false;
 
             var leftexpr = CollectForLeftExpression();
@@ -1202,7 +1202,7 @@ namespace Nylon.Models.Parser
 
             INode body;
 
-            ImportMode mode = ImportMode.FromPackages;
+            var mode = ImportMode.FromPackages;
 
             if (MatchAdvance(TokenKind.ConstantString)) // import <"path">
             {
@@ -1517,7 +1517,7 @@ namespace Nylon.Models.Parser
 
                 // searches for a global statement
                 // func id() {}
-                if (!FunctionDefinition(out INode statement))
+                if (!FunctionDefinition(out var statement))
                     // (c struct) type MyStruct {}
                     if (!TypeDefinition(out statement))
                     {

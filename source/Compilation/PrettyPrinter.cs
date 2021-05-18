@@ -13,7 +13,7 @@ namespace Nylon.Compilation
         /// </summary>
         public static int CountLines(string source, int posStart)
         {
-            int count = 1;
+            var count = 1;
             for (; posStart >= 0; posStart--)
                 if (source[posStart] == '\n')
                     count++;

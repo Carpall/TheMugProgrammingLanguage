@@ -36,13 +36,13 @@ namespace Nylon.TypeResolution
 
         private void CheckFunctionParameters(ParameterListNode parameters, ref string[] declared)
         {
-            for (int i = 0; i < parameters.Length; i++)
+            for (var i = 0; i < parameters.Length; i++)
                 CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "Parameter");
         }
 
         private void CheckGenericParameters(List<Token> generics, ref string[] declared)
         {
-            for (int i = 0; i < generics.Count; i++)
+            for (var i = 0; i < generics.Count; i++)
                 CheckSingleDeclaration(generics[i].Position, ref declared, i, generics[i].Value, "Generic parameter");
         }
 
@@ -66,13 +66,13 @@ namespace Nylon.TypeResolution
 
         private void CheckTypeFields(List<FieldNode> bodyfields, ref string[] declared)
         {
-            for (int i = 0; i < bodyfields.Count; i++)
+            for (var i = 0; i < bodyfields.Count; i++)
                 CheckSingleDeclaration(bodyfields[i].Position, ref declared, i, bodyfields[i].Name, "Field");
         }
 
         private void CheckTypeMethods(List<FunctionStatement> bodyfunctions, ref string[] declared)
         {
-            for (int i = 0; i < bodyfunctions.Count; i++)
+            for (var i = 0; i < bodyfunctions.Count; i++)
             {
                 var function = bodyfunctions[i];
                 CheckFunc(function.ParameterList, function.Generics, function.Pragmas);

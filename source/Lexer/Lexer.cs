@@ -346,7 +346,7 @@ namespace Nylon.Models.Lexer
 
         private bool IsValidBackTickSequence(string sequence)
         {
-            for (int i = 0; i < sequence.Length; i++)
+            for (var i = 0; i < sequence.Length; i++)
             {
                 var chr = sequence[i];
 

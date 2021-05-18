@@ -50,7 +50,7 @@ namespace Nylon.TypeResolution
 
         private void WalkTypes()
         {
-            for (int i = 0; i < Tower.Types.Count; i++)
+            for (var i = 0; i < Tower.Types.Count; i++)
                 if (!Tower.Types[i].IsSolved)
                     Tower.Types[i].Solve(ResolveType(Tower.Types[i]));
         }

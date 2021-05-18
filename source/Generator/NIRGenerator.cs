@@ -41,7 +41,7 @@ namespace Nylon.Models.Generator
         {
             var result = new DataType[parameters.Length];
 
-            for (int i = 0; i < parameters.Length; i++)
+            for (var i = 0; i < parameters.Length; i++)
                 result[i] = parameters.Parameters[i].Type;
 
             return result;
@@ -49,7 +49,7 @@ namespace Nylon.Models.Generator
 
         private void GenerateBlock(BlockNode block)
         {
-            for (int i = 0; i < block.Statements.Count; i++)
+            for (var i = 0; i < block.Statements.Count; i++)
             {
                 var statement = block.Statements[i];
                 FunctionBuilder.EmitComment($"node: {statement.NodeKind}");
@@ -100,19 +100,18 @@ namespace Nylon.Models.Generator
 
             FixAndCheckTypes(DataType.Bool, condition, expression.Expression.Position);
 
-            var label = FunctionBuilder.EmitJumpFalse("if_then");
+            var label = FunctionBuilder.EmitJumpFalse("else");
 
-            var conditionblock = EvaluateNodeBlockInExpression(expression.Body);
+            var conditionBlock = EvaluateNodeBlockInExpression(expression.Body);
 
-            return conditionblock;
+            FunctionBuilder.EmitLabel(label);
+
+            return conditionBlock;
         }
 
         private AllocationData GetHiddenBufferTypeOrVoid()
         {
-            return
-                CurrentScope.HiddenAllocationBuffer is not null ?
-                    CurrentScope.HiddenAllocationBuffer :
-                    CreateVoidAllocation();
+            return  CurrentScope.HiddenAllocationBuffer ??  CreateVoidAllocation();
         }
 
         private static AllocationData CreateVoidAllocation()
@@ -122,16 +121,15 @@ namespace Nylon.Models.Generator
 
         private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
         {
-            if (!type.SolvedType.IsVoid())
+            if (type.SolvedType.IsVoid()) return;
+            
+            if (!isLastOfBlock)
+                FunctionBuilder.EmitPop();
+            else
             {
-                if (!isLastOfBlock)
-                    FunctionBuilder.EmitPop();
-                else
-                {
-                    SetupOrStoreInHiddenBuffer(type, position);
-                    if (CurrentScope.IsInFunctionBlock)
-                        FunctionBuilder.EmitAutoReturn();
-                }
+                SetupOrStoreInHiddenBuffer(type, position);
+                if (CurrentScope.IsInFunctionBlock)
+                    FunctionBuilder.EmitAutoReturn();
             }
         }
 
@@ -165,6 +163,7 @@ namespace Nylon.Models.Generator
                 ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
 
             SetupOrStoreInHiddenBuffer(EvaluateExpression(expression), expression.Position);
+            ContextTypes.Pop();
         }
 
         private void EvaluateHiddenBufferInFunctionBlock(INode expression)
@@ -173,6 +172,7 @@ namespace Nylon.Models.Generator
             FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
 
             FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
+            ContextTypes.Pop();
         }
 
         private AllocationData TryAllocateHiddenBuffer(DataType type)
@@ -238,7 +238,7 @@ namespace Nylon.Models.Generator
 
         private static bool IsConvertibleToLeftExpressionInstruction(NIRValueKind kind)
         {
-            return kind == NIRValueKind.LoadLocal || kind == NIRValueKind.LoadField;
+            return kind is NIRValueKind.LoadLocal or NIRValueKind.LoadField;
         }
 
         private void CleanLeftValueChecker()
@@ -280,18 +280,17 @@ namespace Nylon.Models.Generator
 
         private void CheckVariable(VariableStatement statement)
         {
-            if (!statement.IsAssigned)
-            {
-                if (statement.IsConst)
-                    Tower.Report(statement.Position, "A constant declaration requires a body");
-
-                if (statement.Type.SolvedType.Kind == TypeKind.Auto)
-                    Tower.Report(statement.Position, "Type notation needed");
-            }
+            if (statement.IsAssigned) return;
+            
+            if (statement.IsConst)
+                Tower.Report(statement.Position, "A constant declaration requires a body");
+            if (statement.Type.SolvedType.Kind == TypeKind.Auto)
+                Tower.Report(statement.Position, "Type notation needed");
         }
 
         private static INode GetDefaultValueOf(DataType type)
         {
+            CompilationTower.Todo($"implement NIRGenerator.GetDefaultValueOf");
             return new BadNode();
         }
 
@@ -455,7 +454,7 @@ namespace Nylon.Models.Generator
         {
             ReportFewParameters(expression, func);
 
-            for (int i = 0; i < expression.Parameters.Count; i++)
+            for (var i = 0; i < expression.Parameters.Count; i++)
                 CheckAndEvaluateParameter(func, i, expression.Parameters[i]);
 
             FunctionBuilder.EmitCall(func.Name, func.ReturnType);
@@ -549,16 +548,16 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateNodeBinaryExpression(BinaryExpressionNode expression)
         {
-            var leftisconstant = IsConstantInt(expression.Left);
-            var rightisconstant = IsConstantInt(expression.Right);
+            var leftIsConstant = IsConstantInt(expression.Left);
+            var rightIsConstant = IsConstantInt(expression.Right);
             DataType type;
 
             // make it better
-            if (leftisconstant & rightisconstant)
+            if (leftIsConstant & rightIsConstant)
                 type = EvaluateBinaryConstant(expression);
             else
             {
-                type = EvaluateSemiConstantBinaryOrNonConstant(expression, leftisconstant, rightisconstant);
+                type = EvaluateSemiConstantBinaryOrNonConstant(expression, leftIsConstant, rightIsConstant);
 
                 EmitOperation(expression.Operator, type);
             }
@@ -568,13 +567,13 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateSemiConstantBinaryOrNonConstant(
             BinaryExpressionNode expression,
-            bool leftisconstant,
-            bool rightisconstant)
+            bool leftIsConstant,
+            bool rightIsConstant)
         {
             return
-                leftisconstant ?
+                leftIsConstant ?
                     EvaluateLeftIsConstant(expression) :
-                    rightisconstant ?
+                    rightIsConstant ?
                         EvaluateRightIsConstant(expression) :
                         EvaluateNoConstants(expression);
         }
@@ -590,7 +589,7 @@ namespace Nylon.Models.Generator
 
         private DataType EvaluateNoConstants(BinaryExpressionNode expression)
         {
-            DataType type = EvaluateExpression(expression.Left);
+            var type = EvaluateExpression(expression.Left);
             FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Right.Position);
             // allow user defined operators
             return type;
@@ -686,21 +685,20 @@ namespace Nylon.Models.Generator
         private static bool IsConstantInt(INode node)
         {
             return
-                (node is BadNode) ||
-                (node is Token token && token.Kind == TokenKind.ConstantDigit) ||
+                (node is BadNode or Token {Kind: TokenKind.ConstantDigit}) ||
                 (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
         }
 
         private DataType EvaluateMemberNode(MemberNode expression)
         {
-            var basetype = EvaluateExpression(expression.Base);
-            if (!basetype.SolvedType.IsNewOperatorAllocable())
+            var baseType = EvaluateExpression(expression.Base);
+            if (!baseType.SolvedType.IsNewOperatorAllocable())
             {
-                Tower.Report(expression.Base.Position, $"Type '{basetype}' is not accessible via operator '.'");
+                Tower.Report(expression.Base.Position, $"Type '{baseType}' is not accessible via operator '.'");
                 return ContextType;
             }
 
-            var structure = basetype.SolvedType.GetStruct();
+            var structure = baseType.SolvedType.GetStruct();
 
             var type = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
             LoadField(expression, structure, type, index);
@@ -757,7 +755,7 @@ namespace Nylon.Models.Generator
 
         private void EvaluateTypeInitialization(TypeAllocationNode expression, TypeStatement structure, List<string> assignedFields)
         {
-            for (int i = 0; i < expression.Body.Count; i++)
+            for (var i = 0; i < expression.Body.Count; i++)
                 EmitFieldInitialization(expression.Body[i], structure, assignedFields);
         }
 
@@ -770,24 +768,24 @@ namespace Nylon.Models.Generator
             }
 
             assignedFields.Add(field.Name);
-            var fieldtype = GetFieldType(field.Name, structure, field.Position, out var fieldindex);
+            var fieldType = GetFieldType(field.Name, structure, field.Position, out var fieldIndex);
 
-            if (fieldtype is null)
+            if (fieldType is null)
             {
                 Tower.Report(field.Position, $"Type '{structure.Name}' does not contain a definition for '{field.Name}'");
                 return;
             }
 
-            EvaluateFieldAsignmentInInitialization(field, fieldtype, fieldindex);
+            EvaluateFieldAssignmentInInitialization(field, fieldType, fieldIndex);
         }
 
-        private void EvaluateFieldAsignmentInInitialization(FieldAssignmentNode field, DataType fieldtype, int fieldindex)
+        private void EvaluateFieldAssignmentInInitialization(FieldAssignmentNode field, DataType fieldType, int fieldIndex)
         {
-            ContextTypes.Push(fieldtype);
+            ContextTypes.Push(fieldType);
 
             FunctionBuilder.EmitDupplicate();
-            FixAndCheckTypes(fieldtype, EvaluateExpression(field.Body), field.Position);
-            FunctionBuilder.EmitStoreField(fieldindex, fieldtype);
+            FixAndCheckTypes(fieldType, EvaluateExpression(field.Body), field.Position);
+            FunctionBuilder.EmitStoreField(fieldIndex, fieldType);
 
             ContextTypes.Pop();
         }
@@ -795,11 +793,11 @@ namespace Nylon.Models.Generator
         private bool ContextTypeIsAmbiguousOrGet(ModulePosition position, out SolvedType type)
         {
             type = ContextType.SolvedType;
-            var isambiguous = type.IsAuto();
-            if (isambiguous)
+            var isAmbiguous = type.IsAuto();
+            if (isAmbiguous)
                 Tower.Report(position, "Cannot infer ambiguous type");
 
-            return isambiguous;
+            return isAmbiguous;
         }
 
         private DataType GetFieldType(string name, TypeStatement type, ModulePosition position, out int i)
@@ -876,8 +874,8 @@ namespace Nylon.Models.Generator
 
         private DataType CoercedOr(DataType or)
         {
-            var contexttype = ContextTypes.Peek();
-            return contexttype.SolvedType.IsInt() ? contexttype : or;
+            var contextType = ContextTypes.Peek();
+            return contextType.SolvedType.IsInt() ? contextType : or;
         }
 
         private AllocationData DeclareVirtualMemorySymbol(string name, DataType type, ModulePosition position, bool isconst)
@@ -936,42 +934,41 @@ namespace Nylon.Models.Generator
             return CurrentType == type;
         }
 
-        private void CheckRecursiveType(TypeStatement type, List<string> illegaltypes)
+        private void CheckRecursiveType(TypeStatement type, List<string> illegalTypes)
         {
-            illegaltypes.Add(type.Name);
+            illegalTypes.Add(type.Name);
 
             foreach (var field in type.BodyFields)
             {
-                var fieldtype = field.Type.SolvedType;
-                if (fieldtype.IsStruct() ||
-                    (fieldtype.IsPointer() && fieldtype.GetBaseElementType().SolvedType.IsStruct()))
-                {
-                    var fieldstructtype =
-                        (
-                            fieldtype.Kind == TypeKind.Pointer ?
-                                (fieldtype.Base as DataType).SolvedType :
-                                fieldtype
-                        ).GetStruct();
+                var fieldType = field.Type.SolvedType;
+                if (!fieldType.IsStruct() &&
+                    (!fieldType.IsPointer() || !fieldType.GetBaseElementType().SolvedType.IsStruct())) continue;
+                
+                var fieldStructType =
+                (
+                    fieldType.Kind == TypeKind.Pointer ?
+                        ((DataType)fieldType.Base).SolvedType :
+                        fieldType
+                ).GetStruct();
 
-                    CheckIfThereIsARecursion(type, illegaltypes, field, fieldtype, fieldstructtype);
-                }
+                CheckIfThereIsARecursion(type, illegalTypes, field, fieldType, fieldStructType);
             }
         }
 
         private void CheckIfThereIsARecursion(
             TypeStatement type,
-            List<string> illegaltypes,
+            List<string> illegalTypes,
             FieldNode field,
-            SolvedType fieldtype,
-            TypeStatement fieldstructtype)
+            SolvedType fieldType,
+            TypeStatement fieldStructType)
         {
-            if (illegaltypes.Contains(fieldtype.ToString()))
+            if (illegalTypes.Contains(fieldType.ToString()))
             {
                 Tower.Report(type.Position, "Recursive type");
-                Tower.Report(field.Type.Position, $"Use '?{fieldtype}' instead");
+                Tower.Report(field.Type.Position, $"Use '?{fieldType}' instead");
             }
             else
-                CheckRecursiveType(fieldstructtype, illegaltypes);
+                CheckRecursiveType(fieldStructType, illegalTypes);
         }
 
         private void WalkDeclarations()
@@ -984,12 +981,12 @@ namespace Nylon.Models.Generator
         {
             switch (value)
             {
-                case TypeStatement structsymbol:
-                    CheckRecursiveType(structsymbol, new());
-                    GenerateStruct(structsymbol);
+                case TypeStatement structSymbol:
+                    CheckRecursiveType(structSymbol, new());
+                    GenerateStruct(structSymbol);
                     break;
-                case FunctionStatement funcsymbol:
-                    GenerateFunction(funcsymbol, funcsymbol.Name);
+                case FunctionStatement funcSymbol:
+                    GenerateFunction(funcSymbol, funcSymbol.Name);
                     break;
                 default:
                     ToImplement<object>(value.ToString(), "RecognizeSymbol");

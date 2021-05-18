@@ -146,7 +146,7 @@ namespace Nylon.Compilation
 
         public Diagnostic Generate()
         {
-            try { GenerateNIR(); return Tower.Diagnostic; }
+            try  { GenerateNIR(); return Tower.Diagnostic; }
             catch (CompilationException) { return Tower.Diagnostic; }
         }
 
