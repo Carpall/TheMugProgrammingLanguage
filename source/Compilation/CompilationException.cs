@@ -2,7 +2,7 @@
 
 namespace Nylon.Compilation
 {
-  public class CompilationException : Exception
+    public class CompilationException : Exception
     {
         public Diagnostic Diagnostic;
         public bool IsGlobalError
@@ -10,19 +10,17 @@ namespace Nylon.Compilation
             get
             {
                 return
-                    Diagnostic is null
-                    || Diagnostic.Count == 0
-                    || Diagnostic.GetAlerts()[0].Bad.Lexer is null;
+                    Message != "";
             }
         }
 
-        public CompilationException(Diagnostic lexer) : this("Cannot build due to previous errors", lexer)
-        {
-        }
-
-        public CompilationException(string error, Diagnostic diagnostic = null) : base(error)
+        public CompilationException(Diagnostic diagnostic) : base("")
         {
             Diagnostic = diagnostic;
+        }
+
+        public CompilationException(string error) : base(error)
+        {
         }
     }
 }

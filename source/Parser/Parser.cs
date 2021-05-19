@@ -339,9 +339,11 @@ namespace Nylon.Models.Parser
             var start = Current.Position;
             if (!MatchAdvance(TokenKind.OpenPar))
                 return false;
-            var end = Current.Position;
 
             e = ExpectExpression(end: TokenKind.ClosePar);
+
+            var end = Back.Position;
+
             e.Position = GetModulePositionRange(start, end);
             return true;
         }
@@ -535,10 +537,10 @@ namespace Nylon.Models.Parser
 
         internal static bool HasElseBody(INode condition)
         {
-            while (condition is not BadNode && conditional().Expression is not BadNode)
+            while (condition is not null && conditional().Expression is not null)
                 condition = conditional().ElseNode;
 
-            return condition is not BadNode && conditional().Expression is BadNode;
+            return condition is not null && conditional().Expression is null;
 
             ConditionalStatement conditional() => condition as ConditionalStatement;
         }

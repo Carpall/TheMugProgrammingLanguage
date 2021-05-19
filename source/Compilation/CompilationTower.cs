@@ -73,7 +73,7 @@ namespace Nylon.Compilation
         public void Throw(ModulePosition position, string error)
         {
             Diagnostic.Report(new(CompilationAlertKind.Error, position, error));
-            throw new CompilationException(error, Diagnostic);
+            throw new CompilationException(Diagnostic);
         }
 
         public void Report(ModulePosition position, string error)

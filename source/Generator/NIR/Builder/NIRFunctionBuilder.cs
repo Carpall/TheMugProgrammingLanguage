@@ -14,7 +14,7 @@ namespace Nylon.Models.Generator.IR.Builder
         private readonly DataType[] _parameterTypes;
         private readonly List<NIRValue> _body = new();
         private readonly List<NIRAllocation> _allocations = new();
-        private int _labelEnumeration = 0;
+        private readonly List<NIRLabel> _labels = new();
 
         public NIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
         {
@@ -34,7 +34,7 @@ namespace Nylon.Models.Generator.IR.Builder
 
         public NIRFunction Build()
         {
-            return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
+            return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray(), _labels.ToArray());
         }
 
         public void DeclareAllocation(NIRAllocationAttribute attributes, DataType type)
@@ -129,28 +129,23 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitReturn(_returnType);
         }
 
-        public string EmitJumpFalse(string label)
+        public void EmitJumpFalse(NIRLabel label)
         {
-            label = EnumerateLabel(label);
-            EmitInstruction(NIRValueKind.JumpFalse, DataType.Void, label);
-            return label;
+            EmitInstruction(NIRValueKind.JumpFalse, label);
         }
 
-        private string EnumerateLabel(string label)
+        public NIRLabel CreateLabel(string label)
         {
-            return $"{label}{_labelEnumeration++}";
+            var nirlabel = new NIRLabel(CurrentIndex(), label);
+            _labels.Add(nirlabel);
+            return nirlabel;
         }
 
         public void EmitComment(string text, bool first = true)
         {
-            if (first) EmitComment(null, false);
+            /*if (first) EmitComment(null, false);
             EmitInstruction(NIRValueKind.Comment, text);
-            if (first) EmitComment(null, false);
-        }
-
-        public void EmitLabel(string label)
-        {
-            EmitInstruction(NIRValueKind.Label, label);
+            if (first) EmitComment(null, false);*/
         }
 
         public int CurrentIndex()
@@ -161,6 +156,11 @@ namespace Nylon.Models.Generator.IR.Builder
         public void MoveLastInstructionTo(int index)
         {
             _body.Insert(index, PopLastInstruction());
+        }
+
+        public void EmitJump(NIRLabel endLabel)
+        {
+            EmitInstruction(NIRValueKind.Jump, endLabel);
         }
 
         public int GetAllocationNumber()

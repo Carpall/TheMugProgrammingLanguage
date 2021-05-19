@@ -88,25 +88,77 @@ namespace Nylon.Models.Generator
 
         private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock)
         {
-            var condition = EvaluateConditionExpression(statement);
+            var condition = EvaluateConditionalStatement(statement, CouldBeImplicitReturnValue(isLastOfBlock));
             StoreInHiddenBufferIfNeeded(condition, isLastOfBlock, statement.Position);
         }
 
-        private DataType EvaluateConditionExpression(ConditionalStatement expression)
+        private bool CouldBeImplicitReturnValue(bool isLastOfBlock)
         {
-            ContextTypes.Push(DataType.Bool);
-            var condition = EvaluateExpression(expression.Expression);
-            ContextTypes.Pop();
+            return isLastOfBlock && CurrentScope.HiddenAllocationBuffer is null;
+        }
 
-            FixAndCheckTypes(DataType.Bool, condition, expression.Expression.Position);
+        private NIRLabel CreateLabel(string label)
+        {
+            return FunctionBuilder.CreateLabel(label);
+        }
 
-            var label = FunctionBuilder.EmitJumpFalse("else");
+        private void LocateLabelHere(NIRLabel label)
+        {
+            if (label is not null)
+                label.BodyIndex = FunctionBuilder.CurrentIndex();
+        }
+
+        private static bool ConditionNodeIsOmitted(ConditionalStatement expression)
+        {
+            return expression is null;
+        }
+
+        private DataType EvaluateConditionalStatement(ConditionalStatement expression, bool isExpression)
+        {
+            if (isExpression && Parser.Parser.HasElseBody(expression))
+                Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
+
+            if (ConditionNodeIsOmitted(expression))
+                return DataType.Void;
+
+            EvaluateConditionExpression(expression.Expression, out var otherwiseLabel);
+
+            var endLabel = CreateLabel("end");
 
             var conditionBlock = EvaluateNodeBlockInExpression(expression.Body);
 
-            FunctionBuilder.EmitLabel(label);
+            FunctionBuilder.EmitJump(endLabel);
+
+            LocateLabelHere(otherwiseLabel);
+
+            EvaluateConditionalElseNode(expression, isExpression, conditionBlock);
+
+            LocateLabelHere(endLabel);
 
             return conditionBlock;
+        }
+
+        private void EvaluateConditionalElseNode(ConditionalStatement expression, bool isExpression, DataType conditionBlock)
+        {
+            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode, isExpression);
+            
+            FixAndCheckTypes(conditionBlock, elseConditionBlock,
+                expression.ElseNode is not null ? expression.ElseNode.Position : expression.Position);
+        }
+
+        private void EvaluateConditionExpression(INode expression, out NIRLabel otherwiseLabel)
+        {
+            otherwiseLabel = null;
+            if (expression is BadNode or null) return;
+
+            ContextTypes.Push(DataType.Bool);
+            var condition = EvaluateExpression(expression);
+            ContextTypes.Pop();
+
+            FixAndCheckTypes(DataType.Bool, condition, expression.Position);
+
+            otherwiseLabel = CreateLabel("else");
+            FunctionBuilder.EmitJumpFalse(otherwiseLabel);
         }
 
         private AllocationData GetHiddenBufferTypeOrVoid()

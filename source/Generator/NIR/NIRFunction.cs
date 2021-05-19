@@ -14,22 +14,38 @@ namespace Nylon.Models.Generator.IR
         public DataType[] ParameterTypes { get; }
         public NIRValue[] Body { get; }
         public NIRAllocation[] Allocations { get; }
+        public NIRLabel[] Labels { get; }
 
         public NIRFunction(
             string name,
             DataType returntype,
             DataType[] parametertypes,
             NIRValue[] body,
-            NIRAllocation[] allocations)
+            NIRAllocation[] allocations,
+            NIRLabel[] labels)
         {
             Name = name;
             ReturnType = returntype;
             ParameterTypes = parametertypes;
             Body = body;
             Allocations = allocations;
+            Labels = labels;
         }
 
         public override string ToString()
+        {
+            var locals = GetAllocationsReppresentation();
+            var body = GetBodyReppresentation();
+
+            return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}:
+  .locals:
+    {locals}
+
+  {body}
+";
+        }
+
+        private readonly string GetAllocationsReppresentation()
         {
             var locals = new StringBuilder();
 
@@ -39,12 +55,20 @@ namespace Nylon.Models.Generator.IR
             for (var i = 0; i < Allocations.Length; i++)
                 locals.AppendFormat(".[{0}] {1}{2}", i, Allocations[i], i < Allocations.Length - 1 ? "\n    " : "");
 
-            return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}:
-  .locals:
-    {locals}
+            return locals.ToString();
+        }
 
-  {(Body.Length > 0 ? string.Join("\n  ", Body) : ".empty")}
-";
+        private readonly string GetBodyReppresentation()
+        {
+            var body = new StringBuilder();
+
+            if (Body.Length == 0)
+                body.Append(".empty");
+
+            for (var i = 0; i < Body.Length; i++)
+                body.AppendFormat("L{0}: {1}{2}", i, Body[i], i < Body.Length - 1 ? "\n  " : "");
+
+            return body.ToString();
         }
     }
 }

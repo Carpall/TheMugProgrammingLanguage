@@ -64,10 +64,16 @@ namespace Nylon.Compilation
             Console.ResetColor();
         }
 
-        public static void PrintAlerts(Diagnostic diagnostic)
+        public static void PrintAlerts(CompilationException e)
         {
+            if (e.IsGlobalError)
+            {
+                WriteFail("", e.Message);
+                return;
+            }
+
             var i = 0;
-            var alerts = diagnostic.GetAlerts();
+            var alerts = e.Diagnostic.GetAlerts();
             try
             {
                 for (; i < alerts.Count; i++)
