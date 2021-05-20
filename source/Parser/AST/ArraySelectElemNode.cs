@@ -1,6 +1,6 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 
-namespace Nylon.Models.Parser.AST
+namespace Mug.Models.Parser.AST
 {
     public class ArraySelectElemNode : INode
     {

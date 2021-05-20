@@ -1,7 +1,7 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System.Collections.Generic;
 
-namespace Nylon.Models.Parser.AST
+namespace Mug.Models.Parser.AST
 {
     public class BlockNode : INode
     {

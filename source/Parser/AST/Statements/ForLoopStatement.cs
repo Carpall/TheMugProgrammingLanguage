@@ -1,6 +1,6 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
   public struct ForLoopStatement : INode
     {

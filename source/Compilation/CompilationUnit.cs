@@ -1,18 +1,18 @@
 ﻿using LLVMSharp.Interop;
-using Nylon.Models.Generator.IR;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
-using Nylon.Models.Parser.AST;
+using Mug.Models.Generator.IR;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Models.Parser.AST;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace Nylon.Compilation
+namespace Mug.Compilation
 {
     public class CompilationUnit : CompilerComponent
     {
-        public static readonly string[] AllowedExtensions = new[] { ".n", ".nyl" , ".ny" };
+        public static readonly string[] AllowedExtensions = new[] { ".mug" };
 
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
@@ -36,7 +36,7 @@ namespace Nylon.Compilation
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             // generates the bytecode
-            GenerateNIR();
+            GenerateMIR();
 
             CompileModule(optimizazioneLevel, output, onlyBitcode, optionalFlag);
         }
@@ -146,11 +146,11 @@ namespace Nylon.Compilation
 
         public CompilationException Generate()
         {
-            try  { GenerateNIR(); return new(Tower.Diagnostic); }
+            try  { GenerateMIR(); return new(Tower.Diagnostic); }
             catch (CompilationException e) { return e; }
         }
 
-        public NIR GenerateNIR()
+        public MIR GenerateMIR()
         {
             GenerateTAST();
             return Tower.Generator.Generate();

@@ -1,11 +1,11 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Parser;
+﻿using Mug.Compilation;
+using Mug.Models.Parser;
 using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using System.Linq;
-using Nylon.Models.Generator.IR;
+using Mug.Models.Generator.IR;
 
 #if DEBUG
 
@@ -28,7 +28,7 @@ using Nylon.Models.Generator.IR;
 //       - add calls to supported hidden allocation expressions
 //       - add implicit type for parameters 'function(a, b: i32)'
 
-var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.n");
+var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
 // unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
 // Console.WriteLine((unit.GenerateAST() as INode).Dump());
@@ -37,7 +37,7 @@ var unit = new CompilationUnit("test.nir", @"../../../../tests/main_test.n");
 PrettyPrinter.PrintAlerts(unit.Generate());
 
 if (!unit.Tower.HasErrors())
-    Console.WriteLine(unit.Tower.NIRModule.Dump());
+    Console.WriteLine(unit.Tower.MIRModule.Dump());
 
 #else
 

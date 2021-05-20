@@ -1,13 +1,13 @@
-﻿using Nylon.TypeSystem;
+﻿using Mug.TypeSystem;
 
-namespace Nylon.Models.Generator
+namespace Mug.Models.Generator
 {
-    public class NIRLabel
+    public class MIRLabel
     {
         public int BodyIndex { get; set; }
         public string Name { get; set; }
 
-        public NIRLabel(int bodyIndex, string name)
+        public MIRLabel(int bodyIndex, string name)
         {
             BodyIndex = bodyIndex;
             Name = name;

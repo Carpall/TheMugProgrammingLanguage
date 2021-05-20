@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Nylon.Compilation
+namespace Mug.Compilation
 {
     public class CompilationException : Exception
     {

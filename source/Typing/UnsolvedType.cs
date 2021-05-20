@@ -1,12 +1,12 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 
-namespace Nylon.TypeSystem
+namespace Mug.TypeSystem
 {
     public struct UnsolvedType : INode
     {

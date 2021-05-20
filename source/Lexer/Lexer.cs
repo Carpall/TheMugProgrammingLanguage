@@ -1,11 +1,11 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Nylon.Models.Lexer
+namespace Mug.Models.Lexer
 {
     public class Lexer : CompilerComponent
     {

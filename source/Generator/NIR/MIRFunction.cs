@@ -1,28 +1,28 @@
-﻿using Nylon.TypeSystem;
+﻿using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.Models.Generator.IR
+namespace Mug.Models.Generator.IR
 {
-    public struct NIRFunction
+    public struct MIRFunction
     {
         public string Name { get; }
         public DataType ReturnType { get; }
         public DataType[] ParameterTypes { get; }
-        public NIRValue[] Body { get; }
-        public NIRAllocation[] Allocations { get; }
-        public NIRLabel[] Labels { get; }
+        public MIRValue[] Body { get; }
+        public MIRAllocation[] Allocations { get; }
+        public MIRLabel[] Labels { get; }
 
-        public NIRFunction(
+        public MIRFunction(
             string name,
             DataType returntype,
             DataType[] parametertypes,
-            NIRValue[] body,
-            NIRAllocation[] allocations,
-            NIRLabel[] labels)
+            MIRValue[] body,
+            MIRAllocation[] allocations,
+            MIRLabel[] labels)
         {
             Name = name;
             ReturnType = returntype;

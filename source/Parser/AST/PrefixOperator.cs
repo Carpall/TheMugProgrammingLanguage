@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Nylon.Models.Parser.AST
+namespace Mug.Models.Parser.AST
 {
     public class PrefixOperator : IStatement
     {

@@ -1,6 +1,6 @@
-﻿using Nylon.TypeSystem;
+﻿using Mug.TypeSystem;
 
-namespace Nylon.Models.Generator
+namespace Mug.Models.Generator
 {
     public record AllocationData(int StackIndex, DataType Type, bool IsConst);
 }

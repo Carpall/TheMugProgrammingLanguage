@@ -1,11 +1,11 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.Symbols
+namespace Mug.Symbols
 {
     public interface ISymbol
     {

@@ -1,7 +1,7 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System.Collections.Generic;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
     public struct SwitchNode : INode
     {

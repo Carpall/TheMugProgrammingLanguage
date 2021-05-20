@@ -1,7 +1,7 @@
-﻿using Nylon.Compilation;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.TypeSystem;
 
-namespace Nylon.Models.Parser.AST
+namespace Mug.Models.Parser.AST
 {
     public struct BadNode : INode
     {

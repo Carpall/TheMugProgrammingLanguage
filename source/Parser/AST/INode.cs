@@ -1,7 +1,7 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using Newtonsoft.Json;
 
-namespace Nylon.Models.Parser
+namespace Mug.Models.Parser
 {
     public interface INode
     {

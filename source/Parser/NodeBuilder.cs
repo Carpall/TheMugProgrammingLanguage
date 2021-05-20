@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System.Collections;
 using System.Collections.Generic;
 using System;
 
-namespace Nylon.Models.Parser
+namespace Mug.Models.Parser
 {
     public class NodeBuilder : INode, ICollection<INode>
     {

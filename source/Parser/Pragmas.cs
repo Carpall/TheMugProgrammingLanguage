@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Nylon.Models.Parser
+namespace Mug.Models.Parser
 {
   public class Pragmas
     {

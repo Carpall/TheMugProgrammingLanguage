@@ -1,10 +1,10 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Parser.AST;
-using Nylon.Models.Parser.AST.Statements;
-using Nylon.Symbols;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.Models.Parser.AST;
+using Mug.Models.Parser.AST.Statements;
+using Mug.Symbols;
+using Mug.TypeSystem;
 
-namespace Nylon.TypeResolution
+namespace Mug.TypeResolution
 {
     public class ASTSolver : CompilerComponent
     {

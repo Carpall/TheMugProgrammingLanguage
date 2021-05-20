@@ -1,10 +1,10 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
-using Nylon.Symbols;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
+using Mug.Symbols;
+using Mug.TypeSystem;
 using System.Collections.Generic;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
     public class FunctionStatement : INode, ISymbol
     {

@@ -1,17 +1,17 @@
 ﻿using LLVMSharp.Interop;
-using Nylon.Models.Generator;
-using Nylon.Models.Generator.IR;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
-using Nylon.Models.Parser.AST;
-using Nylon.Symbols;
-using Nylon.TypeResolution;
-using Nylon.TypeSystem;
+using Mug.Models.Generator;
+using Mug.Models.Generator.IR;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Models.Parser.AST;
+using Mug.Symbols;
+using Mug.TypeResolution;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Nylon.Compilation
+namespace Mug.Compilation
 {
     public class CompilationTower
     {
@@ -20,7 +20,7 @@ namespace Nylon.Compilation
         public Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
-        public NIRGenerator Generator { get; }
+        public MIRGenerator Generator { get; }
         public SymbolTable Symbols { get; }
         public List<DataType> Types { get; }
         public string OutputFilename { get; internal set; }
@@ -28,7 +28,7 @@ namespace Nylon.Compilation
 
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
-        public NIR NIRModule => Generator.Module.Build();
+        public MIR MIRModule => Generator.Module.Build();
 
         public CompilationTower(string outputFilename)
         {

@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Parser;
+﻿using Mug.Compilation;
+using Mug.Models.Parser;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Nylon.Models.Lexer
+namespace Mug.Models.Lexer
 {
     public struct Token : INode
     {

@@ -1,11 +1,11 @@
-using Nylon.Compilation;
-using Nylon.Models.Lexer;
+using Mug.Compilation;
+using Mug.Models.Lexer;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Nylon.Tests
+namespace Mug.Tests
 {
     public class LexerTests
     {

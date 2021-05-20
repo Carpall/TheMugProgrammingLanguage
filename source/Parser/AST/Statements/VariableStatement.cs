@@ -1,8 +1,8 @@
-﻿using Nylon.Compilation;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.TypeSystem;
 using System;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
     public class VariableStatement : INode
     {

@@ -1,7 +1,7 @@
-﻿using Nylon.Models.Lexer;
+﻿using Mug.Models.Lexer;
 using System;
 
-namespace Nylon.Compilation
+namespace Mug.Compilation
 {
   public struct ModulePosition
     {

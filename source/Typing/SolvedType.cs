@@ -1,15 +1,15 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
-using Nylon.Symbols;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Symbols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Nylon.Models.Parser.AST.Statements;
+using Mug.Models.Parser.AST.Statements;
 
-namespace Nylon.TypeSystem
+namespace Mug.TypeSystem
 {
     public struct SolvedType
     {

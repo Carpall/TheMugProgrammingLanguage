@@ -1,4 +1,4 @@
-﻿using Nylon.TypeSystem;
+﻿using Mug.TypeSystem;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -7,10 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.Models.Generator.IR
+namespace Mug.Models.Generator.IR
 {
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum NIRValueKind
+    public enum MIRValueKind
     {
         Return,
         Constant,
@@ -32,13 +32,13 @@ namespace Nylon.Models.Generator.IR
         Jump
     }
 
-    public struct NIRValue
+    public struct MIRValue
     {
-        public NIRValueKind Kind { get; internal set; }
+        public MIRValueKind Kind { get; internal set; }
         public DataType Type { get; }
         public object Value { get; }
 
-        internal NIRValue(NIRValueKind kind, DataType type = null, object value = null)
+        internal MIRValue(MIRValueKind kind, DataType type = null, object value = null)
         {
             Kind = kind;
             Type = type;
@@ -46,11 +46,11 @@ namespace Nylon.Models.Generator.IR
         }
 
         internal long ConstantIntValue => (long)Value;
-        internal NIRValue ParameterValue => (NIRValue)Value;
+        internal MIRValue ParameterValue => (MIRValue)Value;
 
         public override string ToString()
         {
-            if (Kind == NIRValueKind.Comment)
+            if (Kind == MIRValueKind.Comment)
                 return Value is not null ? $"~ {Value}" : "";
 
             return $"{Kind} {Type} ({Value ?? "_"})";

@@ -1,4 +1,4 @@
-﻿namespace Nylon.Compilation
+﻿namespace Mug.Compilation
 {
     public enum CompilationAlertKind
     {

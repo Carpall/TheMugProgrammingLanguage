@@ -1,22 +1,22 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Generator.IR;
-using Nylon.Models.Generator.IR.Builder;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
-using Nylon.Models.Parser.AST;
-using Nylon.Models.Parser.AST.Statements;
-using Nylon.Symbols;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.Models.Generator.IR;
+using Mug.Models.Generator.IR.Builder;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Models.Parser.AST;
+using Mug.Models.Parser.AST.Statements;
+using Mug.Symbols;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 
-namespace Nylon.Models.Generator
+namespace Mug.Models.Generator
 {
-    public class NIRGenerator : CompilerComponent
+    public class MIRGenerator : CompilerComponent
     {
-        public NIRModuleBuilder Module { get; } = new();
+        public MIRModuleBuilder Module { get; } = new();
 
-        private NIRFunctionBuilder FunctionBuilder { get; set; }
+        private MIRFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
         private TypeStatement CurrentType { get; set; }
         private Stack<DataType> ContextTypes { get; set; } = new();
@@ -25,11 +25,11 @@ namespace Nylon.Models.Generator
         private Scope CurrentScope = default;
         private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
 
-        public NIRGenerator(CompilationTower tower) : base(tower)
+        public MIRGenerator(CompilationTower tower) : base(tower)
         {
         }
 
-        public NIR Generate()
+        public MIR Generate()
         {
             WalkDeclarations();
 
@@ -97,12 +97,12 @@ namespace Nylon.Models.Generator
             return isLastOfBlock && CurrentScope.HiddenAllocationBuffer is null;
         }
 
-        private NIRLabel CreateLabel(string label)
+        private MIRLabel CreateLabel(string label)
         {
             return FunctionBuilder.CreateLabel(label);
         }
 
-        private void LocateLabelHere(NIRLabel label)
+        private void LocateLabelHere(MIRLabel label)
         {
             if (label is not null)
                 label.BodyIndex = FunctionBuilder.CurrentIndex();
@@ -146,7 +146,7 @@ namespace Nylon.Models.Generator
                 expression.ElseNode is not null ? expression.ElseNode.Position : expression.Position);
         }
 
-        private void EvaluateConditionExpression(INode expression, out NIRLabel otherwiseLabel)
+        private void EvaluateConditionExpression(INode expression, out MIRLabel otherwiseLabel)
         {
             otherwiseLabel = null;
             if (expression is BadNode or null) return;
@@ -163,7 +163,7 @@ namespace Nylon.Models.Generator
 
         private AllocationData GetHiddenBufferTypeOrVoid()
         {
-            return  CurrentScope.HiddenAllocationBuffer ??  CreateVoidAllocation();
+            return CurrentScope.HiddenAllocationBuffer ??  CreateVoidAllocation();
         }
 
         private static AllocationData CreateVoidAllocation()
@@ -231,7 +231,7 @@ namespace Nylon.Models.Generator
         {
             if (CurrentScope.HiddenAllocationBuffer is null)
             {
-                FunctionBuilder.DeclareAllocation(NIRAllocationAttribute.HiddenBuffer, type);
+                FunctionBuilder.DeclareAllocation(MIRAllocationAttribute.HiddenBuffer, type);
                 CurrentScope.HiddenAllocationBuffer = new(FunctionBuilder.GetAllocationNumber(), type, false);
             }
 
@@ -274,7 +274,7 @@ namespace Nylon.Models.Generator
             FunctionBuilder.EmitInstruction(instruction);
         }
 
-        private NIRValue EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
+        private MIRValue EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
         {
             CleanLeftValueChecker();
             ContextTypes.Pop();
@@ -288,9 +288,9 @@ namespace Nylon.Models.Generator
             return instruction;
         }
 
-        private static bool IsConvertibleToLeftExpressionInstruction(NIRValueKind kind)
+        private static bool IsConvertibleToLeftExpressionInstruction(MIRValueKind kind)
         {
-            return kind is NIRValueKind.LoadLocal or NIRValueKind.LoadField;
+            return kind is MIRValueKind.LoadLocal or MIRValueKind.LoadField;
         }
 
         private void CleanLeftValueChecker()
@@ -309,7 +309,7 @@ namespace Nylon.Models.Generator
             ContextTypes.Push(DataType.Primitive(TypeKind.Undefined));
         }
 
-        private static NIRValueKind GetLeftExpressionInstruction(NIRValueKind kind)
+        private static MIRValueKind GetLeftExpressionInstruction(MIRValueKind kind)
         {
             return kind + 1;
         }
@@ -342,7 +342,7 @@ namespace Nylon.Models.Generator
 
         private static INode GetDefaultValueOf(DataType type)
         {
-            CompilationTower.Todo($"implement NIRGenerator.GetDefaultValueOf");
+            CompilationTower.Todo($"implement MIRGenerator.GetDefaultValueOf");
             return new BadNode();
         }
 
@@ -387,7 +387,7 @@ namespace Nylon.Models.Generator
 
         private static T ToImplement<T>(string value, string function)
         {
-            CompilationTower.Todo($"implement {value} in NIRGenerator.{function}");
+            CompilationTower.Todo($"implement {value} in MIRGenerator.{function}");
             return default;
         }
 
@@ -445,7 +445,7 @@ namespace Nylon.Models.Generator
 
         private DataType GetExpressionType(INode expression)
         {
-            var oldFunctionBuilder = new NIRFunctionBuilder(FunctionBuilder);
+            var oldFunctionBuilder = new MIRFunctionBuilder(FunctionBuilder);
 
             ContextTypesPushUndefined();
             var type = EvaluateExpression(expression);
@@ -690,10 +690,10 @@ namespace Nylon.Models.Generator
         {
             FunctionBuilder.EmitInstruction(op switch
             {
-                TokenKind.Plus => NIRValueKind.Add,
-                TokenKind.Minus => NIRValueKind.Sub,
-                TokenKind.Star => NIRValueKind.Mul,
-                TokenKind.Slash => NIRValueKind.Div,
+                TokenKind.Plus => MIRValueKind.Add,
+                TokenKind.Minus => MIRValueKind.Sub,
+                TokenKind.Star => MIRValueKind.Mul,
+                TokenKind.Slash => MIRValueKind.Div,
                 _ => throw new()
             }, type);
         }
@@ -936,7 +936,7 @@ namespace Nylon.Models.Generator
             var allocation = new AllocationData(localindex, type, isconst);
             CheckForRedeclaration(name, position, allocation);
 
-            FunctionBuilder.DeclareAllocation((NIRAllocationAttribute)Convert.ToInt32(isconst), type);
+            FunctionBuilder.DeclareAllocation((MIRAllocationAttribute)Convert.ToInt32(isconst), type);
 
             return allocation;
         }
@@ -952,9 +952,9 @@ namespace Nylon.Models.Generator
             return FunctionBuilder.GetAllocationNumbers();
         }
 
-        private void GenerateFunction(FunctionStatement func, string nirFunctionName)
+        private void GenerateFunction(FunctionStatement func, string irFunctionName)
         {
-            FunctionBuilder = new NIRFunctionBuilder(nirFunctionName, func.ReturnType, GetParameterTypes(func.ParameterList));
+            FunctionBuilder = new MIRFunctionBuilder(irFunctionName, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(null, true, new());
 

@@ -1,6 +1,6 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 
-namespace Nylon.Models.Parser.AST.Directives
+namespace Mug.Models.Parser.AST.Directives
 {
   public enum ImportMode
     {

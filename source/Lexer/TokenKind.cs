@@ -2,7 +2,7 @@
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 
-namespace Nylon.Models.Lexer
+namespace Mug.Models.Lexer
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TokenKind

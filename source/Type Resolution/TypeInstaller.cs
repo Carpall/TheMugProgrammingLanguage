@@ -1,16 +1,16 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser;
-using Nylon.Models.Parser.AST;
-using Nylon.Models.Parser.AST.Statements;
-using Nylon.Symbols;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
+using Mug.Models.Parser;
+using Mug.Models.Parser.AST;
+using Mug.Models.Parser.AST.Statements;
+using Mug.Symbols;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.TypeResolution
+namespace Mug.TypeResolution
 {
     public class TypeInstaller : CompilerComponent
     {

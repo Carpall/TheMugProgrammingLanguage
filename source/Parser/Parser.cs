@@ -1,16 +1,16 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
-using Nylon.Models.Parser.AST;
-using Nylon.Models.Parser.AST.Directives;
-using Nylon.Models.Parser.AST.Statements;
-using Nylon.TypeSystem;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
+using Mug.Models.Parser.AST;
+using Mug.Models.Parser.AST.Directives;
+using Mug.Models.Parser.AST.Statements;
+using Mug.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System;
 using System.Data;
 
-namespace Nylon.Models.Parser
+namespace Mug.Models.Parser
 {
     public class Parser : CompilerComponent
     {

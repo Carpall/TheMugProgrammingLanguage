@@ -1,8 +1,8 @@
-﻿using Nylon.Models.Lexer;
+﻿using Mug.Models.Lexer;
 using System;
 using System.Collections.Generic;
 
-namespace Nylon.Compilation
+namespace Mug.Compilation
 {
   public class Diagnostic
     {

@@ -1,12 +1,12 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Generator;
+﻿using Mug.Compilation;
+using Mug.Models.Generator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.TypeSystem
+namespace Mug.TypeSystem
 {
     public class DataType
     {

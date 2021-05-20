@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
     public class ConditionalStatement : INode
     {

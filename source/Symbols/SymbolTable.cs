@@ -1,9 +1,9 @@
-﻿using Nylon.Compilation;
+﻿using Mug.Compilation;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Nylon.Symbols
+namespace Mug.Symbols
 {
     public class SymbolTable : CompilerComponent
     {

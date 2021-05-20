@@ -1,7 +1,7 @@
-﻿using Nylon.Compilation;
-using Nylon.Models.Lexer;
+﻿using Mug.Compilation;
+using Mug.Models.Lexer;
 
-namespace Nylon.Models.Parser.AST.Statements
+namespace Mug.Models.Parser.AST.Statements
 {
     public class LoopManagementStatement : INode
     {

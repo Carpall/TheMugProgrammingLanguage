@@ -1,29 +1,29 @@
-﻿using Nylon.Models.Generator.IR;
-using Nylon.Models.Lexer;
-using Nylon.TypeSystem;
+﻿using Mug.Models.Generator.IR;
+using Mug.Models.Lexer;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Nylon.Models.Generator.IR.Builder
+namespace Mug.Models.Generator.IR.Builder
 {
-    internal class NIRFunctionBuilder
+    internal class MIRFunctionBuilder
     {
         private readonly string _name;
         private readonly DataType _returnType;
         private readonly DataType[] _parameterTypes;
-        private readonly List<NIRValue> _body = new();
-        private readonly List<NIRAllocation> _allocations = new();
-        private readonly List<NIRLabel> _labels = new();
+        private readonly List<MIRValue> _body = new();
+        private readonly List<MIRAllocation> _allocations = new();
+        private readonly List<MIRLabel> _labels = new();
 
-        public NIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
+        public MIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
         {
             _name = name;
             _returnType = returntype;
             _parameterTypes = parametertypes;
         }
 
-        public NIRFunctionBuilder(NIRFunctionBuilder functionBuilder)
+        public MIRFunctionBuilder(MIRFunctionBuilder functionBuilder)
         {
             _name = functionBuilder._name;
             _returnType = functionBuilder._returnType;
@@ -32,92 +32,92 @@ namespace Nylon.Models.Generator.IR.Builder
             _allocations = new(functionBuilder._allocations);
         }
 
-        public NIRFunction Build()
+        public MIRFunction Build()
         {
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray(), _labels.ToArray());
         }
 
-        public void DeclareAllocation(NIRAllocationAttribute attributes, DataType type)
+        public void DeclareAllocation(MIRAllocationAttribute attributes, DataType type)
         {
             _allocations.Add(new(attributes, type));
         }
 
-        public void EmitInstruction(NIRValue instruction)
+        public void EmitInstruction(MIRValue instruction)
         {
             _body.Add(instruction);
         }
 
-        public void EmitInstruction(NIRValueKind kind, NIRValue value)
+        public void EmitInstruction(MIRValueKind kind, MIRValue value)
         {
-            EmitInstruction(new NIRValue(kind, value.Type, value));
+            EmitInstruction(new MIRValue(kind, value.Type, value));
         }
 
-        public void EmitInstruction(NIRValueKind kind, object value)
+        public void EmitInstruction(MIRValueKind kind, object value)
         {
-            EmitInstruction(new NIRValue(kind, value: value));
+            EmitInstruction(new MIRValue(kind, value: value));
         }
 
-        public void EmitInstruction(NIRValueKind kind)
+        public void EmitInstruction(MIRValueKind kind)
         {
-            EmitInstruction(new NIRValue(kind));
+            EmitInstruction(new MIRValue(kind));
         }
 
-        public void EmitInstruction(NIRValueKind kind, DataType type)
+        public void EmitInstruction(MIRValueKind kind, DataType type)
         {
-            EmitInstruction(new NIRValue(kind, type));
+            EmitInstruction(new MIRValue(kind, type));
         }
 
-        private void EmitInstruction(NIRValueKind kind, DataType type, object value)
+        private void EmitInstruction(MIRValueKind kind, DataType type, object value)
         {
-            EmitInstruction(new NIRValue(kind, type, value));
+            EmitInstruction(new MIRValue(kind, type, value));
         }
 
         public void EmitLoadConstantValue(object constant, DataType type)
         {
-            EmitInstruction(NIRValueKind.Load, type, constant);
+            EmitInstruction(MIRValueKind.Load, type, constant);
         }
 
         public void EmitStoreLocal(int stackIndex, DataType type)
         {
-            EmitInstruction(NIRValueKind.StoreLocal, type, stackIndex);
+            EmitInstruction(MIRValueKind.StoreLocal, type, stackIndex);
         }
 
         public void EmitLoadZeroinitializedStruct(DataType type)
         {
-            EmitInstruction(NIRValueKind.LoadZeroinitialized, type);
+            EmitInstruction(MIRValueKind.LoadZeroinitialized, type);
         }
 
         public void EmitDupplicate()
         {
-            EmitInstruction(NIRValueKind.Dupplicate);
+            EmitInstruction(MIRValueKind.Dupplicate);
         }
 
         public void EmitStoreField(int stackindex, DataType type)
         {
-            EmitInstruction(NIRValueKind.StoreField, type, stackindex);
+            EmitInstruction(MIRValueKind.StoreField, type, stackindex);
         }
 
         public void EmitLoadLocal(int stackindex, DataType type)
         {
-            EmitInstruction(NIRValueKind.LoadLocal, type, stackindex);
+            EmitInstruction(MIRValueKind.LoadLocal, type, stackindex);
         }
 
-        public NIRValue LastInstruction()
+        public MIRValue LastInstruction()
         {
             return _body.Last();
         }
 
         public void EmitLoadField(int index, DataType type)
         {
-            EmitInstruction(NIRValueKind.LoadField, type, index);
+            EmitInstruction(MIRValueKind.LoadField, type, index);
         }
 
         public void EmitPop()
         {
-            EmitInstruction(NIRValueKind.Pop);
+            EmitInstruction(MIRValueKind.Pop);
         }
 
-        public NIRValue PopLastInstruction()
+        public MIRValue PopLastInstruction()
         {
             var value = _body[^1];
             _body.RemoveAt(_body.Count - 1);
@@ -129,22 +129,22 @@ namespace Nylon.Models.Generator.IR.Builder
             EmitReturn(_returnType);
         }
 
-        public void EmitJumpFalse(NIRLabel label)
+        public void EmitJumpFalse(MIRLabel label)
         {
-            EmitInstruction(NIRValueKind.JumpFalse, label);
+            EmitInstruction(MIRValueKind.JumpFalse, label);
         }
 
-        public NIRLabel CreateLabel(string label)
+        public MIRLabel CreateLabel(string label)
         {
-            var nirlabel = new NIRLabel(CurrentIndex(), label);
-            _labels.Add(nirlabel);
-            return nirlabel;
+            var irlabel = new MIRLabel(CurrentIndex(), label);
+            _labels.Add(irlabel);
+            return irlabel;
         }
 
         public void EmitComment(string text, bool first = true)
         {
             /*if (first) EmitComment(null, false);
-            EmitInstruction(NIRValueKind.Comment, text);
+            EmitInstruction(MIRValueKind.Comment, text);
             if (first) EmitComment(null, false);*/
         }
 
@@ -158,9 +158,9 @@ namespace Nylon.Models.Generator.IR.Builder
             _body.Insert(index, PopLastInstruction());
         }
 
-        public void EmitJump(NIRLabel endLabel)
+        public void EmitJump(MIRLabel endLabel)
         {
-            EmitInstruction(NIRValueKind.Jump, endLabel);
+            EmitInstruction(MIRValueKind.Jump, endLabel);
         }
 
         public int GetAllocationNumber()
@@ -175,7 +175,7 @@ namespace Nylon.Models.Generator.IR.Builder
 
         public void EmitReturn(DataType type)
         {
-            EmitInstruction(NIRValueKind.Return, type);
+            EmitInstruction(MIRValueKind.Return, type);
         }
 
         public void EmitOptionalReturnVoid()
@@ -189,12 +189,12 @@ namespace Nylon.Models.Generator.IR.Builder
 
         private bool EmittedExplicitReturn()
         {
-            return _body.Count > 0 && _body[^1].Kind == NIRValueKind.Return;
+            return _body.Count > 0 && _body[^1].Kind == MIRValueKind.Return;
         }
 
         public void EmitCall(string name, DataType type)
         {
-            EmitInstruction(NIRValueKind.Call, type, name);
+            EmitInstruction(MIRValueKind.Call, type, name);
         }
     }
 }

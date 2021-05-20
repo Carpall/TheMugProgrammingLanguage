@@ -6,13 +6,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Nylon.Models.Generator.IR
+namespace Mug.Models.Generator.IR
 {
-    public struct NIR
+    public struct MIR
     {
-        public NIRFunction[] Functions { get; }
+        public MIRFunction[] Functions { get; }
 
-        public NIR(NIRFunction[] functions)
+        public MIR(MIRFunction[] functions)
         {
             Functions = functions;
         }
