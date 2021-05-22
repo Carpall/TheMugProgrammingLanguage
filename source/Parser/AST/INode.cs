@@ -5,7 +5,7 @@ namespace Mug.Models.Parser
 {
     public interface INode
     {
-        public string NodeKind { get; }
+        public string NodeName { get; }
         [JsonIgnore]
         public abstract ModulePosition Position { get; set; }
 

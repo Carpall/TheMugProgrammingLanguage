@@ -423,7 +423,7 @@ namespace Mug.Models.Parser
             if (MatchAdvance(TokenKind.BooleanLess, true))
             {
                 if (builtin)
-                    ParseError(UnexpectedToken);
+                    Report(UnexpectedToken);
 
                 if (MatchType(out var type))
                 {
@@ -457,7 +457,7 @@ namespace Mug.Models.Parser
 
             if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
                 return false;
-
+            
             var generics = CollectGenericParameters(ref builtin);
 
             if (!MatchAdvance(TokenKind.OpenPar, true))
@@ -533,16 +533,6 @@ namespace Mug.Models.Parser
                 MatchAdvance(TokenKind.Star, out prefix)              ||
                 MatchAdvance(TokenKind.OperatorIncrement, out prefix) ||
                 MatchAdvance(TokenKind.OperatorDecrement, out prefix);
-        }
-
-        internal static bool HasElseBody(INode condition)
-        {
-            while (condition is not null && conditional().Expression is not null)
-                condition = conditional().ElseNode;
-
-            return condition is not null && conditional().Expression is null;
-
-            ConditionalStatement conditional() => condition as ConditionalStatement;
         }
 
         private bool MatchTerm(out INode e, bool allowNullExpression)
@@ -697,7 +687,7 @@ namespace Mug.Models.Parser
                     {
                         Left = e,
                         Right = right,
-                        Operator = op.Kind,
+                        Operator = op,
                         Position = GetModulePositionRange(e.Position, right.Position)
                     };
 
@@ -778,7 +768,9 @@ namespace Mug.Models.Parser
 
         private bool MatchAndOrOperator()
         {
-            return MatchAdvance(TokenKind.BooleanOR, true) || MatchAdvance(TokenKind.BooleanAND, true);
+            return
+                MatchAdvance(TokenKind.BooleanOR, true)
+                || MatchAdvance(TokenKind.BooleanAND, true);
         }
 
         private bool MatchPlusMinus()
@@ -803,7 +795,7 @@ namespace Mug.Models.Parser
                 {
                     e = new BinaryExpressionNode()
                     {
-                        Operator = op.Kind,
+                        Operator = op,
                         Left = e,
                         Right = right,
                         Position = GetModulePositionRange(e.Position, right.Position)
@@ -826,14 +818,14 @@ namespace Mug.Models.Parser
             {
                 var boolean = new BooleanBinaryExpressionNode()
                 {
-                    Operator = boolOP.Kind,
+                    Operator = boolOP,
                     Left = e
                 };
 
                 if (boolOP.Kind != TokenKind.KeyIs)
                 {
                     boolean.Right = ExpectExpression(false, false, end: end);
-                    boolean.Position = GetModulePositionRange(boolean.Left.Position, boolean.Left.Position);
+                    boolean.Position = GetModulePositionRange(boolean.Left.Position, boolean.Right.Position);
                 }
                 else
                 {
@@ -849,10 +841,11 @@ namespace Mug.Models.Parser
 
             while (allowLogicOP && MatchAndOrOperator())
             {
+                var op = Back;
                 var right = ExpectExpression(allowLogicOP: false, end: end);
                 e = new BooleanBinaryExpressionNode()
                 {
-                    Operator = Back.Kind,
+                    Operator = op,
                     Left = e,
                     Right = right,
                     Position = GetModulePositionRange(e.Position, right.Position)

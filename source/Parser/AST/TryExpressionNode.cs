@@ -5,7 +5,7 @@ namespace Mug.Models.Parser.AST
 {
     public struct TryExpressionNode : INode
     {
-        public string NodeKind => "Try";
+        public string NodeName => "Try";
         public INode Expression { get; set; }
         public ModulePosition Position { get; set; }
     }

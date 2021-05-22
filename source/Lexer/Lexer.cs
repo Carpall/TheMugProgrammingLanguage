@@ -41,7 +41,7 @@ namespace Mug.Models.Lexer
         {
             get
             {
-                return Source[CurrentIndex];
+                return DoesNotMatchEOF() ? Source[CurrentIndex] : '\0';
             }
         }
 

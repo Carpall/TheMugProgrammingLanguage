@@ -27,6 +27,9 @@ using Mug.Models.Generator.IR;
 //       - add warnings
 //       - add calls to supported hidden allocation expressions
 //       - add implicit type for parameters 'function(a, b: i32)'
+//       - add optional parameter
+//       - add varargs
+//       - change is into a new node, not boolean
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
@@ -34,10 +37,10 @@ var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 // Console.WriteLine((unit.GenerateAST() as INode).Dump());
 // Console.WriteLine((unit.GenerateTAST() as INode).Dump());
 
-PrettyPrinter.PrintAlerts(unit.Generate());
+PrettyPrinter.PrintAlerts(unit.GenerateMIR(out var ir));
 
-if (!unit.Tower.HasErrors())
-    Console.WriteLine(unit.Tower.MIRModule.Dump());
+if (!unit.HasErrors())
+    Console.WriteLine(ir.Dump());
 
 #else
 

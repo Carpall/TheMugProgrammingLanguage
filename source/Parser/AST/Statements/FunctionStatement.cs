@@ -8,7 +8,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class FunctionStatement : INode, ISymbol
     {
-        public string NodeKind => "Function";
+        public string NodeName => "Function";
         public Pragmas Pragmas { get; set; }
         public TokenKind Modifier { get; set; }
         public string Name { get; set; }

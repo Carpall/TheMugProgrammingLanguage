@@ -5,7 +5,7 @@ namespace Mug.Models.Parser.AST
 {
     public class CastExpressionNode : INode
     {
-        public string NodeKind => "Cast";
+        public string NodeName => "Cast";
         public INode Expression { get; set; }
         public DataType Type { get; set; }
         public ModulePosition Position { get; set; }

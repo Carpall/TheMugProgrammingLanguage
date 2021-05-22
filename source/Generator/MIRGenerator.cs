@@ -9,6 +9,7 @@ using Mug.Symbols;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Mug.Models.Generator
 {
@@ -32,8 +33,8 @@ namespace Mug.Models.Generator
         public MIR Generate()
         {
             WalkDeclarations();
-
             Tower.CheckDiagnostic();
+
             return Module.Build();
         }
 
@@ -52,7 +53,7 @@ namespace Mug.Models.Generator
             for (var i = 0; i < block.Statements.Count; i++)
             {
                 var statement = block.Statements[i];
-                FunctionBuilder.EmitComment($"node: {statement.NodeKind}");
+                FunctionBuilder.EmitComment($"node: {statement.NodeName}");
                 RecognizeStatement(statement, i == block.Statements.Count - 1);
             }
         }
@@ -75,7 +76,7 @@ namespace Mug.Models.Generator
                     GenerateCallStatement(statement, isLastNodeOfBlock);
                     break;
                 case ConditionalStatement statement:
-                    GenerateConditionalStatement(statement, isLastNodeOfBlock);
+                    GenerateConditionalStatement(statement, isLastNodeOfBlock, false);
                     break;
                 default:
                     if (!isLastNodeOfBlock)
@@ -86,16 +87,16 @@ namespace Mug.Models.Generator
             }
         }
 
-        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock)
+        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock, bool isExpression)
         {
-            var condition = EvaluateConditionalStatement(statement, CouldBeImplicitReturnValue(isLastOfBlock));
+            var condition = EvaluateConditionalStatement(statement, isLastOfBlock | isExpression);
             StoreInHiddenBufferIfNeeded(condition, isLastOfBlock, statement.Position);
         }
 
-        private bool CouldBeImplicitReturnValue(bool isLastOfBlock)
+        /*private bool CouldBeImplicitReturnValue(bool isLastOfBlock, bool isExpression)
         {
-            return isLastOfBlock && CurrentScope.HiddenAllocationBuffer is null;
-        }
+            return isExpression || (isLastOfBlock && ContextType.SolvedType.IsVoid());
+        }*/
 
         private MIRLabel CreateLabel(string label)
         {
@@ -113,37 +114,42 @@ namespace Mug.Models.Generator
             return expression is null;
         }
 
-        private DataType EvaluateConditionalStatement(ConditionalStatement expression, bool isExpression)
+        private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression = false)
         {
-            if (isExpression && Parser.Parser.HasElseBody(expression))
-                Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
+            ReportMissingElseNode(node, isExpression);
 
-            if (ConditionNodeIsOmitted(expression))
-                return DataType.Void;
+            if (ConditionNodeIsOmitted(node))
+                return ContextType;
 
-            EvaluateConditionExpression(expression.Expression, out var otherwiseLabel);
+            EvaluateConditionExpression(node.Expression, out var otherwiseLabel);
 
             var endLabel = CreateLabel("end");
 
-            var conditionBlock = EvaluateNodeBlockInExpression(expression.Body);
+            var conditionBlock = EvaluateNodeBlockInExpression(node.Body);
 
             FunctionBuilder.EmitJump(endLabel);
 
             LocateLabelHere(otherwiseLabel);
 
-            EvaluateConditionalElseNode(expression, isExpression, conditionBlock);
+            EvaluateConditionalElseNode(node, conditionBlock);
 
             LocateLabelHere(endLabel);
 
             return conditionBlock;
         }
 
-        private void EvaluateConditionalElseNode(ConditionalStatement expression, bool isExpression, DataType conditionBlock)
+        private void ReportMissingElseNode(ConditionalStatement expression, bool isExpression)
         {
-            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode, isExpression);
+            if (isExpression && !HasElseBody(expression))
+                Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
+        }
+
+        private void EvaluateConditionalElseNode(ConditionalStatement expression, DataType conditionBlock)
+        {
+            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode);
             
-            FixAndCheckTypes(conditionBlock, elseConditionBlock,
-                expression.ElseNode is not null ? expression.ElseNode.Position : expression.Position);
+            if (expression.ElseNode is not null)
+                FixAndCheckTypes(conditionBlock, elseConditionBlock, expression.ElseNode.Position);
         }
 
         private void EvaluateConditionExpression(INode expression, out MIRLabel otherwiseLabel)
@@ -171,9 +177,25 @@ namespace Mug.Models.Generator
             return new(0, DataType.Void, false);
         }
 
+        private static bool HasElseBody(ConditionalStatement condition)
+        {
+            while (condition is not null)
+            {
+                if (condition.Expression is BadNode)
+                    return true;
+
+                condition = condition.ElseNode;
+            }
+
+            return false;
+        }
+
         private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
         {
-            if (type.SolvedType.IsVoid()) return;
+            FixAndCheckTypes(ContextType, type, position);
+
+            if (type.SolvedType.IsVoid())
+                return;
             
             if (!isLastOfBlock)
                 FunctionBuilder.EmitPop();
@@ -342,19 +364,23 @@ namespace Mug.Models.Generator
 
         private static INode GetDefaultValueOf(DataType type)
         {
-            CompilationTower.Todo($"implement MIRGenerator.GetDefaultValueOf");
+            CompilationTower.Todo($"implement {nameof(GetDefaultValueOf)}");
             return new BadNode();
         }
 
         private void FixAndCheckTypes(DataType expected, DataType gottype, ModulePosition position)
         {
             FixAuto(expected, gottype);
+            if (AreNotCompatible(expected, gottype))
+                Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
+        }
 
+        private static bool AreNotCompatible(DataType expected, DataType gottype)
+        {
             var rightsolved = expected.SolvedType;
             var leftsolved = gottype.SolvedType;
 
-            if (rightsolved.Kind != leftsolved.Kind || rightsolved.Base is not null && !rightsolved.Base.Equals(leftsolved.Base))
-                Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
+            return rightsolved.Kind != leftsolved.Kind || rightsolved.Base is not null && !rightsolved.Base.Equals(leftsolved.Base);
         }
 
         private static void FixAuto(DataType type, DataType expressiontype)
@@ -368,15 +394,14 @@ namespace Mug.Models.Generator
             var type = body switch
             {
                 BadNode => ContextType,
-                Token expression => expression.Kind == TokenKind.Identifier ?
-                    EvaluateIdentifier(expression.Value, expression.Position) :
-                    EvaluateConstant(expression),
+                Token expression => EvaluateToken(expression),
+                BooleanBinaryExpressionNode expression => EvaluateBooleanBinaryExpression(expression),
                 TypeAllocationNode expression => EvaluateNodeTypeAllocation(expression),
                 MemberNode expression => EvaluateMemberNode(expression),
                 BinaryExpressionNode expression => EvaluateNodeBinaryExpression(expression),
                 BlockNode expression => EvaluateNodeBlockInExpression(expression),
                 CallStatement expression => EvaluateNodeCall(expression),
-                _ => ToImplement<DataType>(body.ToString(), "EvaluateExpression"),
+                _ => ToImplement<DataType>(body.ToString(), nameof(EvaluateExpression)),
             };
 
             if (type.SolvedType.IsVoid())
@@ -385,9 +410,187 @@ namespace Mug.Models.Generator
             return type;
         }
 
+        private DataType EvaluateToken(Token expression)
+        {
+            return expression.Kind == TokenKind.Identifier ?
+                EvaluateIdentifier(expression.Value, expression.Position) :
+                EvaluateConstant(expression);
+        }
+
+        private DataType EvaluateBooleanBinaryExpression(BooleanBinaryExpressionNode expression)
+        {
+            var leftIsConstant = IsConstant(expression.Left);
+            var rightIsConstant = IsConstant(expression.Right);
+
+            if (leftIsConstant & rightIsConstant)
+                EvaluateLeftAndRightConstantInBooleanExpression(expression);
+            else
+            {
+                var type = EvaluateSemiConstantBooleanBinaryOrNonConstant(
+                    expression,
+                    IsConstantInt(expression.Left),
+                    IsConstantInt(expression.Right));
+
+                EmitOperation(expression.Operator.Kind, type);
+            }
+
+            return DataType.Bool;
+        }
+
+        private DataType EvaluateSemiConstantBooleanBinaryOrNonConstant(
+            BooleanBinaryExpressionNode expression,
+            bool leftIsConstant,
+            bool rightIsConstant)
+        {
+            return
+                leftIsConstant ?
+                    EvaluateLeftBooleanBinaryIsConstant(expression) :
+                    rightIsConstant ?
+                        EvaluateRightIsBooleanBinaryConstant(expression) :
+                        EvaluateBooleanBinaryNoConstants(expression);
+        }
+
+        private DataType EvaluateBooleanBinaryNoConstants(BooleanBinaryExpressionNode expression)
+        {
+            var leftType = EvaluateTermOfBooleanBinaryOmittingConstantBoolean(expression.Left);
+            var rightType = EvaluateTermOfBooleanBinaryOmittingConstantBoolean(expression.Right);
+
+            CheckOperatorImplementation(leftType, expression.Operator.Kind, expression.Operator.Position);
+            CheckLeftAndRightTypes(leftType, rightType, expression.Position);
+
+            return leftType;
+        }
+
+        private DataType EvaluateTermOfBooleanBinaryOmittingConstantBoolean(INode term)
+        {
+            var result = EvaluateExpression(term);
+
+            if (term is Token { Kind: TokenKind.ConstantBoolean })
+                Tower.Warn(term.Position, "Constant boolean in boolean expression");
+
+            return result;
+        }
+
+        private DataType EvaluateRightIsBooleanBinaryConstant(BooleanBinaryExpressionNode expression)
+        {
+            var right = FoldConstantIntoToken(expression.Right);
+
+            var leftType = EvaluateExpression(expression.Left);
+            var constantRight = ulong.Parse(right.Value);
+
+            ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
+
+            FunctionBuilder.EmitLoadConstantValue(constantRight, leftType);
+
+            return leftType;
+        }
+
+        private DataType EvaluateLeftBooleanBinaryIsConstant(BooleanBinaryExpressionNode expression)
+        {
+            var index = FunctionBuilder.CurrentIndex();
+            var left = FoldConstantIntoToken(expression.Left);
+
+            ContextTypesPushUndefined();
+
+            var rightType = EvaluateExpression(expression.Right);
+
+            ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), rightType);
+
+            ContextTypes.Pop();
+
+            FunctionBuilder.MoveLastInstructionTo(index);
+            return rightType;
+        }
+
+        private void EvaluateLeftAndRightConstantInBooleanExpression(BooleanBinaryExpressionNode expression)
+        {
+            var result = FoldConstantBooleanExpressionIntoBool(
+                expression.Left,
+                expression.Right,
+                expression.Operator.Kind,
+                expression.Position);
+
+            FunctionBuilder.EmitLoadConstantValue(result, DataType.Bool);
+        }
+
+        private bool FoldConstantBooleanExpressionIntoBool(INode left, INode right, TokenKind op, ModulePosition position)
+        {
+            var foldedLeft = FoldConstantIntoToken(left);
+            var foldedRight = FoldConstantIntoToken(right);
+
+            ReportIfTypesAreIncompatible(foldedLeft, foldedRight, position);
+
+            return PerformBooleanConstantOperation(foldedLeft, foldedRight, op);
+        }
+
+        private void ReportIfTypesAreIncompatible(Token left, Token right, ModulePosition position)
+        {
+            if (left.Kind != right.Kind)
+                ReportIncompatibleTypes(left.Kind.GetDescription(), right.Kind.GetDescription(), position);
+        }
+
+        private static bool PerformBooleanConstantOperation(Token left, Token right, TokenKind op)
+        {
+            return op switch
+            {
+                TokenKind.BooleanNEQ => left.Value != right.Value,
+                TokenKind.BooleanEQ => left.Value == right.Value,
+
+                TokenKind.BooleanGreater =>
+                    IsConstantNumber(left, right, out var constantLeft, out var constantRight)
+                    && constantLeft > constantRight,
+                TokenKind.BooleanLess =>
+                    IsConstantNumber(left, right, out var constantLeft, out var constantRight)
+                    && constantLeft < constantRight,
+
+                TokenKind.BooleanGEQ =>
+                    IsConstantNumber(left, right, out var constantLeft, out var constantRight)
+                    && constantLeft >= constantRight,
+                TokenKind.BooleanLEQ =>
+                    IsConstantNumber(left, right, out var constantLeft, out var constantRight)
+                    && constantLeft <= constantRight,
+
+                _ => false
+            };
+        }
+
+        private static bool IsConstantNumber(Token left, Token right, out decimal constantLeft, out decimal constantRight)
+        {
+            _ = decimal.TryParse(left.Value, out constantLeft);
+            _ = decimal.TryParse(right.Value, out constantRight);
+
+            return left.Kind is TokenKind.ConstantDigit or TokenKind.ConstantFloatDigit;
+        }
+
+        private static bool IsConstant(INode node)
+        {
+            return node switch
+            {
+                Token expression => IsTokenConstant(expression),
+                BooleanBinaryExpressionNode expression => IsConstantBinary(expression.Left, expression.Right),
+                _ => false
+            };
+        }
+
+        private static bool IsConstantBinary(INode left, INode right)
+        {
+            return IsConstant(left) && IsConstant(right);
+        }
+
+        private static bool IsTokenConstant(Token value)
+        {
+            return
+                value.Kind is TokenKind.ConstantBoolean
+                or TokenKind.ConstantChar
+                or TokenKind.ConstantDigit
+                or TokenKind.ConstantFloatDigit
+                or TokenKind.ConstantString;
+        }
+
         private static T ToImplement<T>(string value, string function)
         {
-            CompilationTower.Todo($"implement {value} in MIRGenerator.{function}");
+            CompilationTower.Todo($"implement {value} in {function}");
             return default;
         }
 
@@ -398,7 +601,7 @@ namespace Mug.Models.Generator
             expression.Parameters = parameters;
 
             if (func is null)
-                return DataType.Void;
+                return ContextType;
 
             EvaluateCallParameters(expression, func);
 
@@ -409,7 +612,7 @@ namespace Mug.Models.Generator
         {
             var funcSymbol = functionName switch
             {
-                Token name => SearchForFunctionOrStaticMethod(name),
+                Token name => CheckAndSearchForFunctionOrStaticMethod(name),
                 MemberNode name => EvaluateBaseFunctionName(name, ref parameters),
                 _ => FunctionBaseNameToImplement(functionName),
             };
@@ -558,8 +761,14 @@ namespace Mug.Models.Generator
             return type;
         }
 
-        private FunctionStatement SearchForFunctionOrStaticMethod(Token name)
+        private FunctionStatement CheckAndSearchForFunctionOrStaticMethod(Token name)
         {
+            if (name.Kind != TokenKind.Identifier)
+            {
+                Tower.Report(name.Position, $"Function cannot named with non-identifier tokens");
+                return new() { Name = name.Value, ReturnType = DataType.Int32 };
+            }
+
             if (ProcessingMethod() && IsInternalMethod(name.Value, out var method))
                 return method;
 
@@ -600,8 +809,8 @@ namespace Mug.Models.Generator
 
         private DataType EvaluateNodeBinaryExpression(BinaryExpressionNode expression)
         {
-            var leftIsConstant = IsConstantInt(expression.Left);
-            var rightIsConstant = IsConstantInt(expression.Right);
+            var leftIsConstant = IsConstant(expression.Left);
+            var rightIsConstant = IsConstant(expression.Right);
             DataType type;
 
             // make it better
@@ -609,9 +818,12 @@ namespace Mug.Models.Generator
                 type = EvaluateBinaryConstant(expression);
             else
             {
-                type = EvaluateSemiConstantBinaryOrNonConstant(expression, leftIsConstant, rightIsConstant);
+                type = EvaluateSemiConstantBinaryOrNonConstant(
+                    expression,
+                    IsConstantInt(expression.Left),
+                    IsConstantInt(expression.Right));
 
-                EmitOperation(expression.Operator, type);
+                EmitOperation(expression.Operator.Kind, type);
             }
 
             return type;
@@ -624,10 +836,10 @@ namespace Mug.Models.Generator
         {
             return
                 leftIsConstant ?
-                    EvaluateLeftIsConstant(expression) :
+                    EvaluateLeftBinaryIsConstant(expression) :
                     rightIsConstant ?
-                        EvaluateRightIsConstant(expression) :
-                        EvaluateNoConstants(expression);
+                        EvaluateRightIsBinaryConstant(expression) :
+                        EvaluateBinaryNoConstants(expression);
         }
 
         private DataType EvaluateBinaryConstant(BinaryExpressionNode expression)
@@ -639,25 +851,55 @@ namespace Mug.Models.Generator
             return type;
         }
 
-        private DataType EvaluateNoConstants(BinaryExpressionNode expression)
+        private DataType EvaluateBinaryNoConstants(BinaryExpressionNode expression)
         {
-            var type = EvaluateExpression(expression.Left);
-            FixAndCheckTypes(type, EvaluateExpression(expression.Right), expression.Right.Position);
-            // allow user defined operators
-            return type;
+            var leftType = EvaluateExpression(expression.Left);
+            var rightType = EvaluateExpression(expression.Right);
+
+            CheckLeftAndRightTypes(leftType, rightType, expression.Position);
+            CheckOperatorImplementation(leftType, expression.Operator.Kind, expression.Operator.Position);
+
+            return leftType;
         }
 
-        private DataType EvaluateRightIsConstant(BinaryExpressionNode expression)
+        private void CheckOperatorImplementation(DataType type, TokenKind op, ModulePosition position)
+        {
+            if (op is TokenKind.BooleanEQ or TokenKind.BooleanNEQ
+                || type.SolvedType.IsInt()
+                || type.SolvedType.IsFloat())
+                return;
+
+            var supportsOperators = DataType.TypesOperatorsImplementation.TryGetValue(type.SolvedType.Kind, out var operators);
+
+            if (!supportsOperators || !operators.Contains(op))
+                Tower.Report(position, $"Type '{type}' does not support operator '{op.GetDescription()}'");
+        }
+
+        private DataType EvaluateRightIsBinaryConstant(BinaryExpressionNode expression)
         {
             var right = FoldConstantIntoToken(expression.Right);
 
-            var type = EvaluateExpression(expression.Left);
+            var leftType = EvaluateExpression(expression.Left);
             var constantRight = ulong.Parse(right.Value);
-            ReportWhenDividingByZero(constantRight, expression.Operator == TokenKind.Slash, expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(constantRight, type);
+            ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
+            ReportWhenDividingByZero(constantRight, expression.Operator.Kind == TokenKind.Slash, expression.Position);
 
-            return type;
+            FunctionBuilder.EmitLoadConstantValue(constantRight, leftType);
+
+            return leftType;
+        }
+
+        private void ExpectIntTypeLeftTermOfSemiConstantExpression(DataType type, ModulePosition position)
+        {
+            if (!type.SolvedType.IsInt())
+                ReportIncompatibleTypes(type.ToString(), "int literal", position);
+        }
+
+        private void ExpectIntTypeRightTermOfSemiConstantExpression(DataType type, ModulePosition position)
+        {
+            if (!type.SolvedType.IsInt())
+                ReportIncompatibleTypes("int literal", type.ToString(), position);
         }
 
         private bool ReportWhenDividingByZero(ulong right, bool isDividing, ModulePosition position)
@@ -670,32 +912,38 @@ namespace Mug.Models.Generator
             return dividingByZero;
         }
 
-        private DataType EvaluateLeftIsConstant(BinaryExpressionNode expression)
+        private void CheckLeftAndRightTypes(DataType left, DataType right, ModulePosition position)
+        {
+            if (AreNotCompatible(left, right))
+                ReportIncompatibleTypes(left.ToString(), right.ToString(), position);
+        }
+
+        private void ReportIncompatibleTypes(string left, string right, ModulePosition position)
+        {
+            Tower.Report(position, $"Type mismatch: types '{left}' and '{right}' are incompatible");
+        }
+
+        private DataType EvaluateLeftBinaryIsConstant(BinaryExpressionNode expression)
         {
             var index = FunctionBuilder.CurrentIndex();
             var left = FoldConstantIntoToken(expression.Left);
 
             ContextTypesPushUndefined();
 
-            var type = EvaluateExpression(expression.Right);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), type);
+            var rightType = EvaluateExpression(expression.Right);
+
+            ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), rightType);
 
             ContextTypes.Pop();
 
             FunctionBuilder.MoveLastInstructionTo(index);
-            return type;
+            return rightType;
         }
 
         private void EmitOperation(TokenKind op, DataType type)
         {
-            FunctionBuilder.EmitInstruction(op switch
-            {
-                TokenKind.Plus => MIRValueKind.Add,
-                TokenKind.Minus => MIRValueKind.Sub,
-                TokenKind.Star => MIRValueKind.Mul,
-                TokenKind.Slash => MIRValueKind.Div,
-                _ => throw new()
-            }, type);
+            FunctionBuilder.EmitInstruction((MIRValueKind)op, type);
         }
 
         private Token FoldConstantIntoToken(INode opaque)
@@ -705,17 +953,36 @@ namespace Mug.Models.Generator
             {
                 BadNode => Token.NewInfo(TokenKind.ConstantDigit, "1"),
                 Token expression => expression,
-                BinaryExpressionNode expression => new Token(
-                    TokenKind.ConstantDigit,
-                    FoldConstants(
-                        ulong.Parse(FoldConstantIntoToken(expression.Left).Value),
-                        ulong.Parse(FoldConstantIntoToken(expression.Right).Value),
-                        expression.Operator,
-                        opaque.Position).ToString(),
-                    expression.Position,
-                    false),
+                BinaryExpressionNode expression => FoldConstantBinaryExpressionIntoToken(expression),
+                BooleanBinaryExpressionNode expression => FoldConstantBooleanBinaryExpressionIntoToken(expression),
                 _ => Token.NewInfo(TokenKind.Bad, "")
             };
+        }
+
+        private Token FoldConstantBooleanBinaryExpressionIntoToken(BooleanBinaryExpressionNode expression)
+        {
+            return new(
+                TokenKind.ConstantBoolean,
+                FoldConstantBooleanExpressionIntoBool(
+                    expression.Left,
+                    expression.Right,
+                    expression.Operator.Kind,
+                    expression.Position).ToString(),
+                expression.Position,
+                false);
+        }
+
+        private Token FoldConstantBinaryExpressionIntoToken(BinaryExpressionNode expression)
+        {
+            return new(
+                TokenKind.ConstantDigit,
+                FoldConstants(
+                    ulong.Parse(FoldConstantIntoToken(expression.Left).Value),
+                    ulong.Parse(FoldConstantIntoToken(expression.Right).Value),
+                    expression.Operator.Kind,
+                    expression.Position).ToString(),
+                expression.Position,
+                false);
         }
 
         private ulong FoldConstants(ulong left, ulong right, TokenKind op, ModulePosition position)
@@ -737,8 +1004,8 @@ namespace Mug.Models.Generator
         private static bool IsConstantInt(INode node)
         {
             return
-                (node is BadNode or Token {Kind: TokenKind.ConstantDigit}) ||
-                (node is BinaryExpressionNode binary && IsConstantInt(binary.Left) && IsConstantInt(binary.Right));
+                (node is BadNode or Token {Kind: TokenKind.ConstantDigit})
+                || (node is BinaryExpressionNode binary && IsConstantBinary(binary.Left, binary.Right));
         }
 
         private DataType EvaluateMemberNode(MemberNode expression)
@@ -913,9 +1180,9 @@ namespace Mug.Models.Generator
                     value = bool.Parse(expression.Value);
                     break;
                 default:
-                    ToImplement<object>(expression.Kind.ToString(), "EvaluateConstant");
+                    ToImplement<object>(expression.Kind.ToString(), nameof(EvaluateConstant));
                     result = null;
-                    value = new();
+                    value = null;
                     break;
             }
 
@@ -926,8 +1193,7 @@ namespace Mug.Models.Generator
 
         private DataType CoercedOr(DataType or)
         {
-            var contextType = ContextTypes.Peek();
-            return contextType.SolvedType.IsInt() ? contextType : or;
+            return ContextType.SolvedType.IsInt() ? ContextType : or;
         }
 
         private AllocationData DeclareVirtualMemorySymbol(string name, DataType type, ModulePosition position, bool isconst)
@@ -958,9 +1224,11 @@ namespace Mug.Models.Generator
             CurrentFunction = func;
             CurrentScope = new(null, true, new());
 
+            ContextTypes.Push(func.ReturnType);
             AllocateParameters(func.ParameterList);
             GenerateBlock(func.Body);
             FunctionBuilder.EmitOptionalReturnVoid();
+            ContextTypes.Pop();
 
             Module.DefineFunction(FunctionBuilder.Build());
         }
@@ -1041,7 +1309,7 @@ namespace Mug.Models.Generator
                     GenerateFunction(funcSymbol, funcSymbol.Name);
                     break;
                 default:
-                    ToImplement<object>(value.ToString(), "RecognizeSymbol");
+                    ToImplement<object>(value.ToString(), nameof(RecognizeSymbol));
                     break;
             }
         }

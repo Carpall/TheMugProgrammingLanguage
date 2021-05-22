@@ -6,7 +6,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class VariableStatement : INode
     {
-        public string NodeKind => "Var";
+        public string NodeName => "Var";
         public string Name { get; set; }
         public DataType Type { get; set; }
         public bool IsAssigned

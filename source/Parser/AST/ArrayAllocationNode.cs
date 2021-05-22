@@ -6,7 +6,7 @@ namespace Mug.Models.Parser.AST
 {
     public class ArrayAllocationNode : INode
     {
-        public string NodeKind => "ArrayAllocationNode";
+        public string NodeName => "ArrayAllocationNode";
         public DataType Type { get; set; }
         public INode Size { get; set; }
         public bool SizeIsImplicit { get; set; }

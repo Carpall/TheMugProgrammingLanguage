@@ -6,7 +6,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class CallStatement : INode
     {
-        public string NodeKind => "Call";
+        public string NodeName => "Call";
         public NodeBuilder Parameters { get; set; } = new();
         public INode Name { get; set; }
         public List<DataType> Generics { get; set; } = new();

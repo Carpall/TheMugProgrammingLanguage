@@ -17,7 +17,7 @@ namespace Mug.Compilation
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
 
-        private static string ClangFilename
+        /*private static string ClangFilename
         {
             get
             {
@@ -26,7 +26,7 @@ namespace Mug.Compilation
                 else
                     return "/usr/bin/clang";
             }
-        }
+        }*/
 
         public CompilationUnit(string outputFilename, params string[] paths) : base(new(outputFilename))
         {
@@ -36,15 +36,17 @@ namespace Mug.Compilation
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             // generates the bytecode
-            GenerateMIR();
+            var e = GenerateMIR(out var ir);
+            PrettyPrinter.PrintAlerts(e);
 
-            CompileModule(optimizazioneLevel, output, onlyBitcode, optionalFlag);
+            if (!HasErrors())
+                CompileModules(optimizazioneLevel, output, onlyBitcode, optionalFlag);
         }
 
         /// <summary>
         /// writes the llvm module to a file and calls the llvm compiler on it
         /// </summary>
-        private void CompileModule(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
+        private void CompileModules(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             /*writeFile(
                 IRGenerator.Module,
@@ -83,6 +85,11 @@ namespace Mug.Compilation
             }*/
         }
 
+        public bool HasErrors()
+        {
+            return Tower.HasErrors();
+        }
+
         /*public static void CallClang(string command, int optimizazioneLevel)
         {
             // checks the clang execuatble exists
@@ -117,7 +124,7 @@ namespace Mug.Compilation
             }
         }*/
 
-        public void GenerateAST()
+        private void InternalGenerateAST()
         {
             foreach (var path in Paths)
             {
@@ -138,22 +145,47 @@ namespace Mug.Compilation
             }
         }
 
-        public NamespaceNode GenerateTAST()
+        private void InternalGenerateTAST()
         {
-            GenerateAST();
-            return Tower.Solver.Solve();
+            InternalGenerateAST();
+            Tower.TAST = Tower.Solver.Solve();
         }
 
-        public CompilationException Generate()
+        private void InternalGenerateMIR()
         {
-            try  { GenerateMIR(); return new(Tower.Diagnostic); }
-            catch (CompilationException e) { return e; }
+            InternalGenerateTAST();
+            Tower.MIRModule = Tower.Generator.Generate();
         }
 
-        public MIR GenerateMIR()
+        private CompilationException GenerateCatched(Action action)
         {
-            GenerateTAST();
-            return Tower.Generator.Generate();
+            CompilationException result;
+
+            try { action(); result = new(Tower.Diagnostic); }
+            catch (CompilationException e) { result = e; }
+
+            return result;
+        }
+
+        public CompilationException GenerateAST(out NamespaceNode head)
+        {
+            var result = GenerateCatched(InternalGenerateAST);
+            head = Tower.AST;
+            return result;
+        }
+
+        public CompilationException GenerateTAST(out NamespaceNode head)
+        {
+            var result = GenerateCatched(InternalGenerateTAST);
+            head = Tower.TAST;
+            return result;
+        }
+
+        public CompilationException GenerateMIR(out MIR ir)
+        {
+            var result = GenerateCatched(InternalGenerateMIR);
+            ir = Tower.MIRModule;
+            return result;
         }
     }
 }

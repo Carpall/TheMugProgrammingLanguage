@@ -9,7 +9,7 @@ namespace Mug.Models.Parser.AST.Directives
     }
     public class ImportDirective : INode
     {
-        public string NodeKind => "ImportDirective";
+        public string NodeName => "ImportDirective";
         public INode Member { get; set; }
         public ImportMode Mode { get; set; }
         public ModulePosition Position { get; set; }

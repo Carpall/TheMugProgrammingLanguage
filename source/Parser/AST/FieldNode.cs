@@ -6,7 +6,7 @@ namespace Mug.Models.Parser.AST
 {
     public class FieldNode : INode
     {
-        public string NodeKind => "Field";
+        public string NodeName => "Field";
         public Pragmas Pragmas { get; set; }
         public TokenKind Modifier { get; set; }
         public string Name { get; set; }

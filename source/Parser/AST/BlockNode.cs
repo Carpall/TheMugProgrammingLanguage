@@ -5,7 +5,7 @@ namespace Mug.Models.Parser.AST
 {
     public class BlockNode : INode
     {
-        public string NodeKind => "Block";
+        public string NodeName => "Block";
         public readonly List<INode> Statements = new();
         public ModulePosition Position { get; set; }
     }

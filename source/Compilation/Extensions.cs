@@ -71,7 +71,7 @@ namespace Mug.Compilation
                     return ((DescriptionAttribute)attr.ElementAt(0)).Description;
             }
 
-            return instance.ToString();
+            return "";
         }
     }
 }

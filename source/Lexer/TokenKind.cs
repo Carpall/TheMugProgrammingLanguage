@@ -11,13 +11,13 @@ namespace Mug.Models.Lexer
         Bad = -1,
         [Description("ident")]
         Identifier = -2,
-        [Description("const string")]
+        [Description("literal string")]
         ConstantString = -3,
-        [Description("const num")]
+        [Description("literal int")]
         ConstantDigit = -4,
         [Description("eof")]
         EOF = -5,
-        [Description("const char")]
+        [Description("literal char")]
         ConstantChar = -6,
         [Description("func")]
         KeyFunc = -7,
@@ -39,7 +39,7 @@ namespace Mug.Models.Lexer
         OpenBracket = '[',
         [Description("]")]
         CloseBracket = ']',
-        [Description("const float num")]
+        [Description("literal float")]
         ConstantFloatDigit = -10,
         [Description(".")]
         Dot = '.',
@@ -65,7 +65,7 @@ namespace Mug.Models.Lexer
         Star = '*',
         [Description("return")]
         KeyReturn = -14,
-        [Description("const bool")]
+        [Description("literal bool")]
         ConstantBoolean = -15,
         [Description("if")]
         KeyIf = -16,

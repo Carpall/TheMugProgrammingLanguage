@@ -24,11 +24,11 @@ namespace Mug.Compilation
         public SymbolTable Symbols { get; }
         public List<DataType> Types { get; }
         public string OutputFilename { get; internal set; }
-        public LLVMModuleRef LLVMModule { get; internal set; }
-
+        // public LLVMModuleRef LLVMModule { get; internal set; }
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
-        public MIR MIRModule => Generator.Module.Build();
+        public MIR MIRModule { get; internal set; }
+        public NamespaceNode TAST { get; internal set; }
 
         public CompilationTower(string outputFilename)
         {

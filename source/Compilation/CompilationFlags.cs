@@ -157,12 +157,13 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void DumpBytecode()
         {
-            File.WriteAllText(GetOutputPath(), _unit.Tower.LLVMModule.ToString());
+            CompilationTower.Todo($"implement {nameof(DumpBytecode)}");
+            // File.WriteAllText(GetOutputPath(), _unit.Tower.LLVMModule.ToString());
         }
 
-        private void DumpAbstractSyntaxTree()
+        private void DumpAbstractSyntaxTree(INode head)
         {
-            File.WriteAllText(GetOutputPath(), (_unit.Tower.Parser.Module as INode).Dump());
+            File.WriteAllText(GetOutputPath(), head.Dump());
         }
 
         private void DeclarePlatformSymbol()
@@ -203,7 +204,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             switch (target)
             {
                 case CompilationTarget.BC:
-                    Compile("", true);
+                    Compile(onlyBitcode: true);
                     break;
                 case CompilationTarget.LL:
                     CompilationTower.Todo("fix bytecode target");
@@ -211,9 +212,12 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     DumpBytecode();
                     break;
                 case CompilationTarget.TAST:
+                    PrintAlertsIfNeeded(_unit.GenerateTAST(out var head));
+                    DumpAbstractSyntaxTree(head);
+                    break;
                 case CompilationTarget.AST:
-                    if (target == CompilationTarget.TAST) _unit.GenerateTAST(); else _unit.GenerateAST();
-                    DumpAbstractSyntaxTree();
+                    PrintAlertsIfNeeded(_unit.GenerateAST(out head));
+                    DumpAbstractSyntaxTree(head);
                     break;
                 case CompilationTarget.ASM:
                     Compile("-S");
@@ -223,7 +227,8 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     break;
                 case CompilationTarget.MIRJSON:
                 case CompilationTarget.MIR:
-                    DumpMIR(_unit.GenerateMIR(), target == CompilationTarget.MIRJSON);
+                    PrintAlertsIfNeeded(_unit.GenerateMIR(out var ir));
+                    DumpMIR(ir, target == CompilationTarget.MIRJSON);
                     break;
                 default:
                     CompilationTower.Throw("Unsupported target, try with another");
@@ -414,7 +419,14 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", GetFiles());
-            _unit.GenerateMIR();
+            var e = _unit.GenerateMIR(out _);
+            PrintAlertsIfNeeded(e);
+        }
+
+        private void PrintAlertsIfNeeded(CompilationException e)
+        {
+            if (_unit.HasErrors())
+                PrettyPrinter.PrintAlerts(e);
         }
 
         private void AddSourceFilename(string source)

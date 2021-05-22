@@ -2,12 +2,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System;
+using Newtonsoft.Json;
 
 namespace Mug.Models.Parser
 {
     public class NodeBuilder : INode, ICollection<INode>
     {
-        public string NodeKind => "NodeBuilder";
+        public string NodeName => "NodeBuilder";
         private readonly List<INode> _nodes = new();
         public ModulePosition Position { get; set; }
         public int Count => _nodes.Count;

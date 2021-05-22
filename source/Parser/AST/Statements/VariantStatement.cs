@@ -7,7 +7,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class VariantStatement : INode
     {
-        public string NodeKind => "Variant";
+        public string NodeName => "Variant";
         public Pragmas Pragmas { get; set; }
         public string Name { get; set; }
         public List<DataType> Body { get; set; } = new();

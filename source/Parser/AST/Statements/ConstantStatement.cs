@@ -6,7 +6,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public struct ConstantStatement : INode
     {
-        public string NodeKind => "Const";
+        public string NodeName => "Const";
         public String Name { get; set; }
         public DataType Type { get; set; }
         public INode Body { get; set; }

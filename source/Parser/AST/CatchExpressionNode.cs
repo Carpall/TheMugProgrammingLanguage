@@ -5,7 +5,7 @@ namespace Mug.Models.Parser.AST
 {
   public struct CatchExpressionNode : INode
     {
-        public string NodeKind => "Catch";
+        public string NodeName => "Catch";
         public INode Expression { get; set; }
         public BlockNode Body { get; set; }
         public Token? OutError { get; set; }

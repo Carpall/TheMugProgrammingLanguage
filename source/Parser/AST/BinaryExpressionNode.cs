@@ -7,10 +7,10 @@ namespace Mug.Models.Parser.AST
 {
     public class BinaryExpressionNode : INode
     {
-        public string NodeKind => "BinaryExpression";
+        public string NodeName => "BinaryExpression";
         public INode Left { get; set; }
         public INode Right { get; set; }
-        public TokenKind Operator { get; set; }
+        public Token Operator { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

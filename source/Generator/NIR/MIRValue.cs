@@ -22,14 +22,20 @@ namespace Mug.Models.Generator.IR
         LoadField,
         StoreField,
         Comment,
-        Div,
-        Add,
-        Sub,
-        Mul,
+        Div = '/',
+        Add = '+',
+        Sub = '-',
+        Mul = '*',
         Call,
         Pop,
         JumpFalse,
-        Jump
+        Jump,
+        Ceq = -1,
+        Neq = -11,
+        Leq = -19,
+        Geq = -20,
+        Greater = '>',
+        Less = '<'
     }
 
     public struct MIRValue

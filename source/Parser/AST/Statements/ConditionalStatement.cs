@@ -7,7 +7,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class ConditionalStatement : INode
     {
-        public string NodeKind => "Condition";
+        public string NodeName => "Condition";
         public TokenKind Kind { get; set; }
         public INode Expression { get; set; }
         public BlockNode Body { get; set; }

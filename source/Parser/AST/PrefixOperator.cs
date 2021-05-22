@@ -7,7 +7,7 @@ namespace Mug.Models.Parser.AST
 {
     public class PrefixOperator : IStatement
     {
-        public string NodeKind => "PrefixOperator";
+        public string NodeName => "PrefixOperator";
         public INode Expression { get; set; }
         public TokenKind Prefix { get; set; }
         public ModulePosition Position { get; set; }

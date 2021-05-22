@@ -1,15 +1,16 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Generator;
-using System;
+using Mug.Models.Lexer;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Mug.TypeSystem
 {
     public class DataType
     {
+        internal static Dictionary<TypeKind, TokenKind[]> TypesOperatorsImplementation = new()
+        {
+            [TypeKind.String] = new[] { TokenKind.Plus },
+        };
+
         public UnsolvedType UnsolvedType { get; private set; }
         public SolvedType SolvedType { get; private set; }
         public bool IsSolved { get; private set; }

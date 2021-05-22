@@ -74,21 +74,21 @@ namespace Mug.TypeSystem
         public bool IsInt()
         {
             return
-                Kind == TypeKind.Int8 ||
-                Kind == TypeKind.Int16 ||
-                Kind == TypeKind.Int32 ||
-                Kind == TypeKind.Int64 ||
-                Kind == TypeKind.UInt8 ||
-                Kind == TypeKind.UInt16 ||
-                Kind == TypeKind.UInt32 ||
-                Kind == TypeKind.UInt64;
+                Kind is TypeKind.Int8
+                or TypeKind.Int16
+                or TypeKind.Int32
+                or TypeKind.Int64
+                or TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64;
         }
 
         public bool IsNewOperatorAllocable()
         {
             return
-                Kind == TypeKind.GenericDefinedType ||
-                Kind == TypeKind.DefinedType;
+                Kind is TypeKind.GenericDefinedType
+                or TypeKind.DefinedType;
         }
 
         public bool IsPointer()
@@ -109,6 +109,14 @@ namespace Mug.TypeSystem
         public bool IsUndefined()
         {
             return Kind == TypeKind.Undefined;
+        }
+
+        public bool IsFloat()
+        {
+            return
+                Kind is TypeKind.Float32
+                or TypeKind.Float64
+                or TypeKind.Float128;
         }
     }
 }

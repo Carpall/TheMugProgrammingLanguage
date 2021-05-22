@@ -1,7 +1,0 @@
-func main(): i32 {
-  if true {
-    10
-  } elif true {
-    1
-  }
-}

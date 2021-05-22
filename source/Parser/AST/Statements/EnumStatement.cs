@@ -7,7 +7,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class EnumStatement : INode
     {
-        public string NodeKind => "Enum";
+        public string NodeName => "Enum";
         public Pragmas Pragmas { get; set; }
         public DataType BaseType { get; set; }
         public string Name { get; set; }

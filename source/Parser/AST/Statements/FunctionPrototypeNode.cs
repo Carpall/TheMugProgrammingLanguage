@@ -7,7 +7,7 @@ namespace Mug.Models.Parser.AST.Statements
 {
     public class FunctionPrototypeNode : INode
     {
-        public string NodeKind => "FunctionPrototype";
+        public string NodeName => "FunctionPrototype";
         public Pragmas Pragmas { get; set; }
         public string Name { get; set; }
         public DataType Type { get; set; }
