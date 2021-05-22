@@ -1,3 +1,4 @@
 func main() {
-  const x = add[i32]()
+  const y = 10
+  const x = new { }
 }

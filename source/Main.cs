@@ -33,9 +33,10 @@ using Mug.Models.Generator.IR;
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
-// unit.IRGenerator.Parser.Lexer.Tokenize().ForEach(token => Console.WriteLine(token));
-// Console.WriteLine((unit.GenerateAST() as INode).Dump());
-// Console.WriteLine((unit.GenerateTAST() as INode).Dump());
+/*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
+
+if (!unit.HasErrors())
+    Console.WriteLine((ast as INode).Dump());*/
 
 PrettyPrinter.PrintAlerts(unit.GenerateMIR(out var ir));
 

@@ -215,21 +215,6 @@ namespace Mug.Models.Parser
             return UnsolvedType.Create(Tower, position, TypeKind.Tuple, types.ToArray());
         }
 
-        private bool MatchType(out DataType type)
-        {
-            type = null;
-            DataType t = null;
-
-            if (!Match(TokenKind.OpenBracket) && !Match(TokenKind.Star) && !MatchBaseType(out t))
-                return false;
-
-            if (t is not null)
-                CurrentIndex--;
-
-            type = ExpectType();
-            return true;
-        }
-
         private bool MatchAdvance(TokenKind kind, out Token token, bool linesensitive = false)
         {
             var match = MatchAdvance(kind, linesensitive);
@@ -416,18 +401,19 @@ namespace Mug.Models.Parser
             return parameters;
         }
 
-        private List<DataType> CollectGenericParameters(ref bool builtin)
+        private List<DataType> CollectGenericParameters(ref bool builtin, out bool hasToReturn)
         {
             var oldindex = CurrentIndex;
+            List<DataType> generics = new();
 
             if (MatchAdvance(TokenKind.BooleanLess, true))
             {
                 if (builtin)
                     Report(UnexpectedToken);
 
-                if (MatchType(out var type))
+                if ((out var type))
                 {
-                    var generics = new List<DataType>() { type };
+                    generics.Add(type);
 
                     while (MatchAdvance(TokenKind.Comma))
                         generics.Add(ExpectType());
@@ -435,13 +421,22 @@ namespace Mug.Models.Parser
                     if (MatchAdvance(TokenKind.BooleanGreater))
                     {
                         builtin = CollectBuiltInSymbol();
+                        hasToReturn = false;
                         return generics;
                     }
+                    else
+                        RemoveLastUnsolvedTypes(generics.Count);
                 }
             }
 
+            hasToReturn = true;
             CurrentIndex = oldindex;
-            return new List<DataType>();
+            return null;
+        }
+
+        private void RemoveLastUnsolvedTypes(int count)
+        {
+            Tower.Types.RemoveRange(Tower.Types.Count - count, count);
         }
 
         private bool CollectBuiltInSymbol()
@@ -458,7 +453,10 @@ namespace Mug.Models.Parser
             if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
                 return false;
             
-            var generics = CollectGenericParameters(ref builtin);
+            var generics = CollectGenericParameters(ref builtin, out var hasToReturn);
+
+            if (hasToReturn)
+                return false;
 
             if (!MatchAdvance(TokenKind.OpenPar, true))
             {
@@ -506,7 +504,10 @@ namespace Mug.Models.Parser
 
             var builtin = CollectBuiltInSymbol();
 
-            var generics = CollectGenericParameters(ref builtin);
+            var generics = CollectGenericParameters(ref builtin, out var hasToReturn);
+
+            if (hasToReturn)
+                return;
 
             if (MatchAdvance(TokenKind.OpenPar, true))
             {
@@ -720,7 +721,8 @@ namespace Mug.Models.Parser
                 return CollectNodeNewArray();
 
             // could be type inferred
-            MatchType(out var name);
+            var name = ExpectTypeOr(TokenKind.OpenPar);
+
             var allocation = new TypeAllocationNode() { Name = name, Position = newposition };
 
             Expect("Type allocation requires '{}'", TokenKind.OpenBrace);
@@ -733,6 +735,11 @@ namespace Mug.Models.Parser
             Expect("", TokenKind.CloseBrace);
 
             return allocation;
+        }
+
+        private DataType ExpectTypeOr(TokenKind or)
+        {
+            return !Match(or) ? ExpectType() : null;
         }
 
         private INode CollectNodeNewArray()

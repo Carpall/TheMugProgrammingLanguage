@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Models.Lexer;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.TypeSystem

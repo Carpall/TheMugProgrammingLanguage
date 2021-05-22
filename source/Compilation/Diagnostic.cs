@@ -50,5 +50,10 @@ namespace Mug.Compilation
             _otherAlertsCount += diagnostic._otherAlertsCount;
             _diagnostic.AddRange(diagnostic._diagnostic);
         }
+
+        internal void RestoreTo(int errors)
+        {
+            _diagnostic.RemoveRange(errors, Count - errors);
+        }
     }
 }
