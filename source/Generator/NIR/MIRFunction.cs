@@ -12,7 +12,7 @@ namespace Mug.Models.Generator.IR
         public string Name { get; }
         public DataType ReturnType { get; }
         public DataType[] ParameterTypes { get; }
-        public MIRValue[] Body { get; }
+        public MIRInstruction[] Body { get; }
         public MIRAllocation[] Allocations { get; }
         public MIRLabel[] Labels { get; }
 
@@ -20,7 +20,7 @@ namespace Mug.Models.Generator.IR
             string name,
             DataType returntype,
             DataType[] parametertypes,
-            MIRValue[] body,
+            MIRInstruction[] body,
             MIRAllocation[] allocations,
             MIRLabel[] labels)
         {

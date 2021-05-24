@@ -4,6 +4,7 @@ using Mug.Models.Parser;
 using Mug.Models.Parser.AST;
 using Mug.Models.Parser.AST.Statements;
 using Mug.Symbols;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -90,6 +91,7 @@ namespace Mug.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
+            // WarnNameIfIsPrimitiveLike(type.Name, type.Position);
             CheckType(type.BodyMethods, type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, type);
         }

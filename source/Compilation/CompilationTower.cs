@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using Mug.Generator.TargetGenerators.LLVM;
 using Mug.Models.Generator;
 using Mug.Models.Generator.IR;
 using Mug.Models.Lexer;
@@ -21,14 +22,15 @@ namespace Mug.Compilation
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
         public MIRGenerator Generator { get; }
+        public LLVMGenerator TargetGenerator { get; }
         public SymbolTable Symbols { get; }
         public List<DataType> Types { get; }
-        public string OutputFilename { get; internal set; }
-        // public LLVMModuleRef LLVMModule { get; internal set; }
+        public string OutputFilename { get; }
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
-        public MIR MIRModule { get; internal set; }
         public NamespaceNode TAST { get; internal set; }
+        public MIR MIRModule { get; internal set; }
+        public LLVMModuleRef LLVMModule { get; internal set; }
 
         public CompilationTower(string outputFilename)
         {
@@ -38,6 +40,7 @@ namespace Mug.Compilation
             TypeInstaller = new(this);
             Generator = new(this);
             Symbols = new(this);
+            TargetGenerator = new(this);
             Types = new();
         }
 

@@ -36,7 +36,7 @@ namespace Mug.Compilation
         public void Compile(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
         {
             // generates the bytecode
-            var e = GenerateMIR(out var ir);
+            var e = GenerateLLVMIR(out var ir);
             PrettyPrinter.PrintAlerts(e);
 
             if (!HasErrors())
@@ -157,6 +157,13 @@ namespace Mug.Compilation
             Tower.MIRModule = Tower.Generator.Generate();
         }
 
+        private void InternalGenerateLLVMMIR()
+        {
+            InternalGenerateMIR();
+            if (!HasErrors())
+                Tower.LLVMModule = Tower.TargetGenerator.Lower();
+        }
+
         private CompilationException GenerateCatched(Action action)
         {
             CompilationException result;
@@ -181,10 +188,17 @@ namespace Mug.Compilation
             return result;
         }
 
-        public CompilationException GenerateMIR(out MIR ir)
+        public CompilationException GenerateIR(out MIR ir)
         {
             var result = GenerateCatched(InternalGenerateMIR);
             ir = Tower.MIRModule;
+            return result;
+        }
+
+        public CompilationException GenerateLLVMIR(out LLVMModuleRef ir)
+        {
+            var result = GenerateCatched(InternalGenerateLLVMMIR);
+            ir = Tower.LLVMModule;
             return result;
         }
     }

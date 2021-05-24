@@ -30,6 +30,9 @@ using Mug.Models.Generator.IR;
 //       - add optional parameter
 //       - add varargs
 //       - change is into a new node, not boolean
+//       - add a warn for user defined types named like primitives
+//       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
+//       - add a check to avoid type allocations of size 0 byte
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
@@ -38,10 +41,10 @@ var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-PrettyPrinter.PrintAlerts(unit.GenerateMIR(out var ir));
+PrettyPrinter.PrintAlerts(unit.GenerateLLVMIR(out var ir));
 
 if (!unit.HasErrors())
-    Console.WriteLine(ir.Dump());
+    Console.WriteLine(ir.ToString());
 
 #else
 

@@ -10,10 +10,9 @@ using System.Threading.Tasks;
 namespace Mug.Models.Generator.IR
 {
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum MIRValueKind
+    public enum MIRInstructionKind
     {
         Return,
-        Constant,
         Load,
         Dupplicate,
         LoadZeroinitialized,
@@ -26,7 +25,7 @@ namespace Mug.Models.Generator.IR
         Add = '+',
         Sub = '-',
         Mul = '*',
-        Call,
+        Call = 50,
         Pop,
         JumpFalse,
         Jump,
@@ -38,13 +37,13 @@ namespace Mug.Models.Generator.IR
         Less = '<'
     }
 
-    public struct MIRValue
+    public struct MIRInstruction
     {
-        public MIRValueKind Kind { get; internal set; }
+        public MIRInstructionKind Kind { get; internal set; }
         public DataType Type { get; }
         public object Value { get; }
 
-        internal MIRValue(MIRValueKind kind, DataType type = null, object value = null)
+        internal MIRInstruction(MIRInstructionKind kind, DataType type = null, object value = null)
         {
             Kind = kind;
             Type = type;
@@ -52,11 +51,11 @@ namespace Mug.Models.Generator.IR
         }
 
         internal long ConstantIntValue => (long)Value;
-        internal MIRValue ParameterValue => (MIRValue)Value;
+        internal MIRInstruction ParameterValue => (MIRInstruction)Value;
 
         public override string ToString()
         {
-            if (Kind == MIRValueKind.Comment)
+            if (Kind == MIRInstructionKind.Comment)
                 return Value is not null ? $"~ {Value}" : "";
 
             return $"{Kind} {Type} ({Value ?? "_"})";
@@ -65,6 +64,11 @@ namespace Mug.Models.Generator.IR
         public bool IsIntConstant()
         {
             return Value is long;
+        }
+
+        public int GetStackIndex()
+        {
+            return (int)Value;
         }
     }
 }

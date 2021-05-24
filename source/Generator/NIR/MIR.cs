@@ -24,6 +24,9 @@ namespace Mug.Models.Generator.IR
 
         public string Dump()
         {
+            if (Functions is null)
+                return null;
+
             return $"{string.Join("\n", Functions)}";
         }
     }

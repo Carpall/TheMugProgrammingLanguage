@@ -227,7 +227,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     break;
                 case CompilationTarget.MIRJSON:
                 case CompilationTarget.MIR:
-                    PrintAlertsIfNeeded(_unit.GenerateMIR(out var ir));
+                    PrintAlertsIfNeeded(_unit.GenerateIR(out var ir));
                     DumpMIR(ir, target == CompilationTarget.MIRJSON);
                     break;
                 default:
@@ -419,7 +419,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", GetFiles());
-            var e = _unit.GenerateMIR(out _);
+            var e = _unit.GenerateLLVMIR(out _);
             PrintAlertsIfNeeded(e);
         }
 

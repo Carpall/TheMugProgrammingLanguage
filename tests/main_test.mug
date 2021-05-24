@@ -1,4 +1,5 @@
-func main() {
-  const y = 10
-  const x = new { }
+func main(): i32 {
+  const a = 10
+  const b = a
+  return b
 }

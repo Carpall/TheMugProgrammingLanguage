@@ -296,7 +296,7 @@ namespace Mug.Models.Generator
             FunctionBuilder.EmitInstruction(instruction);
         }
 
-        private MIRValue EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
+        private MIRInstruction EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
         {
             CleanLeftValueChecker();
             ContextTypes.Pop();
@@ -310,9 +310,9 @@ namespace Mug.Models.Generator
             return instruction;
         }
 
-        private static bool IsConvertibleToLeftExpressionInstruction(MIRValueKind kind)
+        private static bool IsConvertibleToLeftExpressionInstruction(MIRInstructionKind kind)
         {
-            return kind is MIRValueKind.LoadLocal or MIRValueKind.LoadField;
+            return kind is MIRInstructionKind.LoadLocal or MIRInstructionKind.LoadField;
         }
 
         private void CleanLeftValueChecker()
@@ -331,7 +331,7 @@ namespace Mug.Models.Generator
             ContextTypes.Push(DataType.Primitive(TypeKind.Undefined));
         }
 
-        private static MIRValueKind GetLeftExpressionInstruction(MIRValueKind kind)
+        private static MIRInstructionKind GetLeftExpressionInstruction(MIRInstructionKind kind)
         {
             return kind + 1;
         }
@@ -943,7 +943,7 @@ namespace Mug.Models.Generator
 
         private void EmitOperation(TokenKind op, DataType type)
         {
-            FunctionBuilder.EmitInstruction((MIRValueKind)op, type);
+            FunctionBuilder.EmitInstruction((MIRInstructionKind)op, type);
         }
 
         private Token FoldConstantIntoToken(INode opaque)
@@ -1236,7 +1236,7 @@ namespace Mug.Models.Generator
         private void AllocateParameters(ParameterListNode parameters)
         {
             foreach (var parameter in parameters.Parameters)
-                DeclareVirtualMemorySymbol(parameter.Name, parameter.Type, parameter.Position, false);
+                DeclareVirtualMemorySymbol(parameter.Name, parameter.Type, parameter.Position, true);
         }
 
         private void GenerateStruct(TypeStatement type)

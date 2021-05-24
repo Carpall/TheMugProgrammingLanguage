@@ -12,7 +12,7 @@ namespace Mug.Models.Generator.IR.Builder
         private readonly string _name;
         private readonly DataType _returnType;
         private readonly DataType[] _parameterTypes;
-        private readonly List<MIRValue> _body = new();
+        private readonly List<MIRInstruction> _body = new();
         private readonly List<MIRAllocation> _allocations = new();
         private readonly List<MIRLabel> _labels = new();
 
@@ -42,82 +42,82 @@ namespace Mug.Models.Generator.IR.Builder
             _allocations.Add(new(attributes, type));
         }
 
-        public void EmitInstruction(MIRValue instruction)
+        public void EmitInstruction(MIRInstruction instruction)
         {
             _body.Add(instruction);
         }
 
-        public void EmitInstruction(MIRValueKind kind, MIRValue value)
+        public void EmitInstruction(MIRInstructionKind kind, MIRInstruction value)
         {
-            EmitInstruction(new MIRValue(kind, value.Type, value));
+            EmitInstruction(new MIRInstruction(kind, value.Type, value));
         }
 
-        public void EmitInstruction(MIRValueKind kind, object value)
+        public void EmitInstruction(MIRInstructionKind kind, object value)
         {
-            EmitInstruction(new MIRValue(kind, value: value));
+            EmitInstruction(new MIRInstruction(kind, value: value));
         }
 
-        public void EmitInstruction(MIRValueKind kind)
+        public void EmitInstruction(MIRInstructionKind kind)
         {
-            EmitInstruction(new MIRValue(kind));
+            EmitInstruction(new MIRInstruction(kind));
         }
 
-        public void EmitInstruction(MIRValueKind kind, DataType type)
+        public void EmitInstruction(MIRInstructionKind kind, DataType type)
         {
-            EmitInstruction(new MIRValue(kind, type));
+            EmitInstruction(new MIRInstruction(kind, type));
         }
 
-        private void EmitInstruction(MIRValueKind kind, DataType type, object value)
+        private void EmitInstruction(MIRInstructionKind kind, DataType type, object value)
         {
-            EmitInstruction(new MIRValue(kind, type, value));
+            EmitInstruction(new MIRInstruction(kind, type, value));
         }
 
         public void EmitLoadConstantValue(object constant, DataType type)
         {
-            EmitInstruction(MIRValueKind.Load, type, constant);
+            EmitInstruction(MIRInstructionKind.Load, type, constant);
         }
 
         public void EmitStoreLocal(int stackIndex, DataType type)
         {
-            EmitInstruction(MIRValueKind.StoreLocal, type, stackIndex);
+            EmitInstruction(MIRInstructionKind.StoreLocal, type, stackIndex);
         }
 
         public void EmitLoadZeroinitializedStruct(DataType type)
         {
-            EmitInstruction(MIRValueKind.LoadZeroinitialized, type);
+            EmitInstruction(MIRInstructionKind.LoadZeroinitialized, type);
         }
 
         public void EmitDupplicate()
         {
-            EmitInstruction(MIRValueKind.Dupplicate);
+            EmitInstruction(MIRInstructionKind.Dupplicate);
         }
 
         public void EmitStoreField(int stackindex, DataType type)
         {
-            EmitInstruction(MIRValueKind.StoreField, type, stackindex);
+            EmitInstruction(MIRInstructionKind.StoreField, type, stackindex);
         }
 
         public void EmitLoadLocal(int stackindex, DataType type)
         {
-            EmitInstruction(MIRValueKind.LoadLocal, type, stackindex);
+            EmitInstruction(MIRInstructionKind.LoadLocal, type, stackindex);
         }
 
-        public MIRValue LastInstruction()
+        public MIRInstruction LastInstruction()
         {
             return _body.Last();
         }
 
         public void EmitLoadField(int index, DataType type)
         {
-            EmitInstruction(MIRValueKind.LoadField, type, index);
+            EmitInstruction(MIRInstructionKind.LoadField, type, index);
         }
 
         public void EmitPop()
         {
-            EmitInstruction(MIRValueKind.Pop);
+            EmitInstruction(MIRInstructionKind.Pop);
         }
 
-        public MIRValue PopLastInstruction()
+        public MIRInstruction PopLastInstruction()
         {
             var value = _body[^1];
             _body.RemoveAt(_body.Count - 1);
@@ -131,7 +131,7 @@ namespace Mug.Models.Generator.IR.Builder
 
         public void EmitJumpFalse(MIRLabel label)
         {
-            EmitInstruction(MIRValueKind.JumpFalse, label);
+            EmitInstruction(MIRInstructionKind.JumpFalse, label);
         }
 
         public MIRLabel CreateLabel(string label)
@@ -160,7 +160,7 @@ namespace Mug.Models.Generator.IR.Builder
 
         public void EmitJump(MIRLabel endLabel)
         {
-            EmitInstruction(MIRValueKind.Jump, endLabel);
+            EmitInstruction(MIRInstructionKind.Jump, endLabel);
         }
 
         public int GetAllocationNumber()
@@ -175,7 +175,7 @@ namespace Mug.Models.Generator.IR.Builder
 
         public void EmitReturn(DataType type)
         {
-            EmitInstruction(MIRValueKind.Return, type);
+            EmitInstruction(MIRInstructionKind.Return, type);
         }
 
         public void EmitOptionalReturnVoid()
@@ -189,12 +189,12 @@ namespace Mug.Models.Generator.IR.Builder
 
         private bool EmittedExplicitReturn()
         {
-            return _body.Count > 0 && _body[^1].Kind == MIRValueKind.Return;
+            return _body.Count > 0 && _body[^1].Kind == MIRInstructionKind.Return;
         }
 
         public void EmitCall(string name, DataType type)
         {
-            EmitInstruction(MIRValueKind.Call, type, name);
+            EmitInstruction(MIRInstructionKind.Call, type, name);
         }
     }
 }

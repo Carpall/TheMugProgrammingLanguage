@@ -401,9 +401,9 @@ namespace Mug.Models.Parser
             return parameters;
         }
 
-        private List<DataType> CollectGenericParameters(ref bool builtin, out bool hasToReturn)
+        private List<DataType> CollectGenericParameters(ref bool builtin)
         {
-            var oldindex = CurrentIndex;
+            /*var oldindex = CurrentIndex;
             List<DataType> generics = new();
 
             if (MatchAdvance(TokenKind.BooleanLess, true))
@@ -430,15 +430,10 @@ namespace Mug.Models.Parser
             }
 
             hasToReturn = true;
-            CurrentIndex = oldindex;
-            return null;
+            CurrentIndex = oldindex;*/
+            return new();
         }
-
-        private void RemoveLastUnsolvedTypes(int count)
-        {
-            Tower.Types.RemoveRange(Tower.Types.Count - count, count);
-        }
-
+        
         private bool CollectBuiltInSymbol()
         {
             return MatchAdvance(TokenKind.Negation, true);
@@ -453,10 +448,7 @@ namespace Mug.Models.Parser
             if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
                 return false;
             
-            var generics = CollectGenericParameters(ref builtin, out var hasToReturn);
-
-            if (hasToReturn)
-                return false;
+            var generics = CollectGenericParameters(ref builtin);
 
             if (!MatchAdvance(TokenKind.OpenPar, true))
             {
@@ -504,10 +496,7 @@ namespace Mug.Models.Parser
 
             var builtin = CollectBuiltInSymbol();
 
-            var generics = CollectGenericParameters(ref builtin, out var hasToReturn);
-
-            if (hasToReturn)
-                return;
+            var generics = CollectGenericParameters(ref builtin);
 
             if (MatchAdvance(TokenKind.OpenPar, true))
             {
@@ -721,7 +710,7 @@ namespace Mug.Models.Parser
                 return CollectNodeNewArray();
 
             // could be type inferred
-            var name = ExpectTypeOr(TokenKind.OpenPar);
+            var name = ExpectTypeOr(TokenKind.OpenBrace);
 
             var allocation = new TypeAllocationNode() { Name = name, Position = newposition };
 
