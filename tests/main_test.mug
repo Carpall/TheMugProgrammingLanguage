@@ -2,6 +2,8 @@ type A {
   a: i32
 }
 
+func a(a: i32, b: i32): i32 { a + b }
+
 func main() {
   var x: A = new { }
 }

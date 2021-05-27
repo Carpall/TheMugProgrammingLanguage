@@ -41,9 +41,9 @@ var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-// var e = unit.GenerateIR(out var ir);
+var e = unit.GenerateIR(out var ir);
 
-var e = unit.GenerateLLVMIR(out var ir);
+// var e = unit.GenerateLLVMIR(out var ir);
 
 if (!unit.HasErrors())
     Console.WriteLine(ir.ToString());

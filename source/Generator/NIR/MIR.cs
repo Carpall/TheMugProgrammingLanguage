@@ -29,5 +29,10 @@ namespace Mug.Models.Generator.IR
 
             return $"{string.Join("\n", Functions)}";
         }
+
+        public override string ToString()
+        {
+            return Dump();
+        }
     }
 }

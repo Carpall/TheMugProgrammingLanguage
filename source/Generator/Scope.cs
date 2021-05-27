@@ -13,13 +13,13 @@ namespace Mug.Models.Generator
 {
     struct Scope
     {
-        internal AllocationData HiddenAllocationBuffer { get; set; }
+        internal DataType Type { get; set; }
         internal bool IsInFunctionBlock { get; }
         internal VirtualMemory VirtualMemory { get; }
 
-        public Scope(AllocationData hiddenAllocationBuffer, bool isinfunctionblock, VirtualMemory allocations)
+        public Scope(DataType type, bool isinfunctionblock, VirtualMemory allocations)
         {
-            HiddenAllocationBuffer = hiddenAllocationBuffer;
+            Type = type;
             IsInFunctionBlock = isinfunctionblock;
             VirtualMemory = new(allocations);
         }

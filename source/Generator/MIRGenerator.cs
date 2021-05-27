@@ -82,21 +82,24 @@ namespace Mug.Models.Generator
                     if (!isLastNodeOfBlock)
                         Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
                     
-                    EvaluateExpressionInHiddenBuffer(opaque);
+                    EvaluateExpressionAsStatement(opaque);
                     break;
             }
         }
 
-        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock, bool isExpression)
+        private void EvaluateExpressionAsStatement(INode expression)
         {
-            var condition = EvaluateConditionalStatement(statement, isLastOfBlock | isExpression);
-            StoreInHiddenBufferIfNeeded(condition, isLastOfBlock, statement.Position);
+            var type = EvaluateExpression(expression);
+            FixAndCheckTypes(ContextType, type, expression.Position);
+
+            ManageScopeType(expression.Position, true, type);
         }
 
-        /*private bool CouldBeImplicitReturnValue(bool isLastOfBlock, bool isExpression)
+        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock, bool isExpression)
         {
-            return isExpression || (isLastOfBlock && ContextType.SolvedType.IsVoid());
-        }*/
+            var type = EvaluateConditionalStatement(statement, (isLastOfBlock && !ContextType.SolvedType.IsVoid()) | isExpression);
+            ManageScopeType(statement.Position, isLastOfBlock, type);
+        }
 
         private MIRLabel CreateLabel(string label)
         {
@@ -125,7 +128,8 @@ namespace Mug.Models.Generator
 
             var endLabel = CreateLabel("end");
 
-            var conditionBlock = EvaluateNodeBlockInExpression(node.Body);
+            var conditionBlock = GenerateNodeBlockInExpression(node.Body);
+            // ManageScopeType(node.Position, isExpression, conditionBlock);
 
             FunctionBuilder.EmitJump(endLabel);
 
@@ -167,14 +171,9 @@ namespace Mug.Models.Generator
             FunctionBuilder.EmitJumpFalse(otherwiseLabel);
         }
 
-        private AllocationData GetHiddenBufferTypeOrVoid()
+        private DataType GetHiddenBufferTypeOrVoid()
         {
-            return CurrentScope.HiddenAllocationBuffer ??  CreateVoidAllocation();
-        }
-
-        private static AllocationData CreateVoidAllocation()
-        {
-            return new(0, DataType.Void, false);
+            return CurrentScope.Type ?? DataType.Void;
         }
 
         private static bool HasElseBody(ConditionalStatement condition)
@@ -190,7 +189,7 @@ namespace Mug.Models.Generator
             return false;
         }
 
-        private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
+        /*private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
         {
             FixAndCheckTypes(ContextType, type, position);
 
@@ -205,59 +204,37 @@ namespace Mug.Models.Generator
                 if (CurrentScope.IsInFunctionBlock)
                     FunctionBuilder.EmitAutoReturn();
             }
-        }
+        }*/
 
         private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
         {
-            var call = EvaluateNodeCall(statement);
-            StoreInHiddenBufferIfNeeded(call, isLastOfBlock, statement.Position);
+            var type = EvaluateNodeCall(statement);
+            ManageScopeType(statement.Position, isLastOfBlock, type);
         }
 
-        private void SetupOrStoreInHiddenBuffer(DataType type, ModulePosition position)
+        private void ManageScopeType(ModulePosition position, bool isLastOfBlock, DataType type)
         {
-            var allocation = TryAllocateHiddenBuffer(type);
-            FixAndCheckTypes(allocation.Type, allocation.Type, position);
-
-            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
+            if (isLastOfBlock & !ContextType.SolvedType.IsVoid())
+                ManageScopeTypeNotVoid(type, position);
+            else if (!type.SolvedType.IsVoid())
+                FunctionBuilder.EmitPop();
         }
 
-        private void EvaluateExpressionInHiddenBuffer(INode expression)
+        private void ManageScopeTypeNotVoid(DataType expressionType, ModulePosition position)
+        {
+            if (CurrentScope.Type is null)
+                CurrentScope.Type = expressionType;
+            else
+            {
+                FixAndCheckTypes(CurrentScope.Type, expressionType, position);
+                EmitReturnIfExpressionAsStatementIsInFunctionBlock(expressionType);
+            }
+        }
+
+        private void EmitReturnIfExpressionAsStatementIsInFunctionBlock(DataType type)
         {
             if (CurrentScope.IsInFunctionBlock)
-                EvaluateHiddenBufferInFunctionBlock(expression);
-            else
-                EvaluateHiddenBufferInSubBlock(expression);
-        }
-
-        private void EvaluateHiddenBufferInSubBlock(INode expression)
-        {
-            if (CurrentScope.HiddenAllocationBuffer is null)
-                ContextTypesPushUndefined();
-            else
-                ContextTypes.Push(CurrentScope.HiddenAllocationBuffer.Type);
-
-            SetupOrStoreInHiddenBuffer(EvaluateExpression(expression), expression.Position);
-            ContextTypes.Pop();
-        }
-
-        private void EvaluateHiddenBufferInFunctionBlock(INode expression)
-        {
-            ContextTypes.Push(CurrentFunction.ReturnType);
-            FixAndCheckTypes(CurrentFunction.ReturnType, EvaluateExpression(expression), expression.Position);
-
-            FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
-            ContextTypes.Pop();
-        }
-
-        private AllocationData TryAllocateHiddenBuffer(DataType type)
-        {
-            if (CurrentScope.HiddenAllocationBuffer is null)
-            {
-                FunctionBuilder.DeclareAllocation(MIRAllocationAttribute.HiddenBuffer, type);
-                CurrentScope.HiddenAllocationBuffer = new(FunctionBuilder.GetAllocationNumber(), type, false);
-            }
-
-            return CurrentScope.HiddenAllocationBuffer;
+                FunctionBuilder.EmitReturn(type);
         }
 
         private void GenerateReturnStatement(ReturnStatement statement)
@@ -399,8 +376,9 @@ namespace Mug.Models.Generator
                 TypeAllocationNode expression => EvaluateNodeTypeAllocation(expression),
                 MemberNode expression => EvaluateMemberNode(expression),
                 BinaryExpressionNode expression => EvaluateNodeBinaryExpression(expression),
-                BlockNode expression => EvaluateNodeBlockInExpression(expression),
+                BlockNode expression => GenerateNodeBlockInExpression(expression),
                 CallStatement expression => EvaluateNodeCall(expression),
+                ConditionalStatement expression => EvaluateConditionalStatement(expression, true),
                 _ => ToImplement<DataType>(body.ToString(), nameof(EvaluateExpression)),
             };
 
@@ -786,25 +764,16 @@ namespace Mug.Models.Generator
             return CurrentType is not null;
         }
 
-        private AllocationData GenerateNodeBlockInExpression(BlockNode expression)
+        private DataType GenerateNodeBlockInExpression(BlockNode expression)
         {
             var oldScope = CurrentScope;
             CurrentScope = new(null, false, CurrentScope.VirtualMemory);
 
             GenerateBlock(expression);
 
-            var allocation = GetHiddenBufferTypeOrVoid();
+            var scopeType = GetHiddenBufferTypeOrVoid();
             CurrentScope = oldScope;
-            return allocation;
-        }
-
-        private DataType EvaluateNodeBlockInExpression(BlockNode expression)
-        {
-            var allocation = GenerateNodeBlockInExpression(expression);
-            if (!allocation.Type.SolvedType.IsVoid())
-                FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
-
-            return allocation.Type;
+            return scopeType;
         }
 
         private DataType EvaluateNodeBinaryExpression(BinaryExpressionNode expression)
@@ -1224,7 +1193,7 @@ namespace Mug.Models.Generator
         {
             FunctionBuilder = new MIRFunctionBuilder(irFunctionName, func.ReturnType, GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
-            CurrentScope = new(null, true, new());
+            CurrentScope = new(func.ReturnType, true, new());
 
             ContextTypes.Push(func.ReturnType);
             AllocateParameters(func.ParameterList);
