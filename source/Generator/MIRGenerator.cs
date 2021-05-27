@@ -1057,17 +1057,19 @@ namespace Mug.Models.Generator
                 return DataType.Solved(type);
             }
 
-            return EvaluateStruct(expression, type);
+            return EvaluateStruct(expression, DataType.Solved(type));
         }
 
-        private DataType EvaluateStruct(TypeAllocationNode expression, SolvedType type)
+        private DataType EvaluateStruct(TypeAllocationNode expression, DataType type)
         {
-            var structure = type.GetStruct();
+            var structure = type.SolvedType.GetStruct();
             var assignedFields = new List<string>();
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(expression.Name);
+            FunctionBuilder.EmitLoadZeroinitializedStruct(type);
 
             EvaluateTypeInitialization(expression, structure, assignedFields);
+
+            FunctionBuilder.EmitLoadValueFromPointer();
 
             return DataType.Solved(SolvedType.Struct(structure));
         }

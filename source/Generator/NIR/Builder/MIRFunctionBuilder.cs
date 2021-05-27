@@ -196,5 +196,10 @@ namespace Mug.Models.Generator.IR.Builder
         {
             EmitInstruction(MIRInstructionKind.Call, type, name);
         }
+
+        public void EmitLoadValueFromPointer()
+        {
+            EmitInstruction(MIRInstructionKind.LoadValueFromPointer);
+        }
     }
 }

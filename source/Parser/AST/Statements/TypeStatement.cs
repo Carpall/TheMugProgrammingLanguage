@@ -15,6 +15,7 @@ namespace Mug.Models.Parser.AST.Statements
         public List<FunctionStatement> BodyMethods { get; set; } = new();
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }
+        public bool IsPacked => Pragmas.PragmaIsTrue("packed");
 
         public override string ToString()
         {

@@ -4,14 +4,14 @@ using Mug.Models.Generator.IR;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Mug.Models.Parser.AST.Statements;
 
 using LLModule = LLVMSharp.Interop.LLVMModuleRef;
 using LLType = LLVMSharp.Interop.LLVMTypeRef;
 using LLValue = LLVMSharp.Interop.LLVMValueRef;
 using LLBuilder = LLVMSharp.Interop.LLVMBuilderRef;
+using LLVMC = LLVMSharp.Interop.LLVM;
+using Mug.Models.Parser.AST;
 
 namespace Mug.Generator.TargetGenerators.LLVM
 {
@@ -47,8 +47,48 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 TypeKind.Int32 => LLType.Int32,
                 TypeKind.Int64 => LLType.Int64,
                 TypeKind.Void => LLType.Void,
+                TypeKind.DefinedType => LowerStruct(type.SolvedType.GetStruct()),
                 _ => ToImplement<LLType>(type.SolvedType.Kind.ToString(), nameof(LowerDataType))
             };
+        }
+
+        private LLType LowerStruct(TypeStatement type)
+        {
+            var lltype = Module.GetTypeByName(type.Name);
+            if (!IsUnsafeNull(lltype))
+                return lltype;
+
+            unsafe
+            {
+                lltype = LLVMC.StructCreateNamed(Module.Context, new SByteString(type.Name));
+                LLVMC.StructSetBody(
+                    lltype,
+                    ArrayToPointer(LowerParameterDataTypes(type.BodyFields)),
+                    (uint)type.BodyFields.Count,
+                    Convert.ToInt32(type.IsPacked));
+
+                return lltype;
+            }
+        }
+
+        private static bool IsUnsafeNull(LLType value)
+        {
+            return value.Handle == IntPtr.Zero;
+        }
+
+        private static unsafe LLVMOpaqueType** ArrayToPointer(LLType[] types)
+        {
+            fixed (LLType* fixedTypes = types)
+                return (LLVMOpaqueType**)fixedTypes;
+        }
+
+        private LLType[] LowerParameterDataTypes(List<FieldNode> fields)
+        {
+            var results = new LLType[fields.Count];
+            for (int i = 0; i < fields.Count; i++)
+                results[i] = LowerDataType(fields[i].Type);
+
+            return results;
         }
 
         private static T ToImplement<T>(string what, string where)
@@ -62,7 +102,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
             CurrentFunction = function;
             CurrentLLVMFunction = Module.AddFunction(function.Name, CreateLLVMFunctionModel(function));
             CurrentFunctionBuilder = CreateBuilder();
-            Allocations = new (LLValue, MIRAllocationAttribute)[function.Allocations.Length];
+            Allocations = new(LLValue, MIRAllocationAttribute)[function.Allocations.Length];
 
             EmitAllocations();
             EmitParametersAssign();
@@ -97,11 +137,16 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.LoadLocal:
                     EmitLoadLocal(instruction);
                     break;
-                /*case MIRInstructionKind.Dupplicate:
+                case MIRInstructionKind.Dupplicate:
+                    EmitDupplicate();
                     break;
                 case MIRInstructionKind.LoadZeroinitialized:
+                    EmitLoadZeroinitialized(instruction);
                     break;
-                case MIRInstructionKind.LoadField:
+                case MIRInstructionKind.LoadValueFromPointer:
+                    EmitLoadFromPointer();
+                    break;
+                /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
                     break;
@@ -141,15 +186,31 @@ namespace Mug.Generator.TargetGenerators.LLVM
             }
         }
 
+        private void EmitLoadFromPointer()
+        {
+            StackValuesPush(CurrentFunctionBuilder.BuildLoad(StackValuesPop()));
+        }
+
+        private void EmitLoadZeroinitialized(MIRInstruction instruction)
+        {
+            var lltype = LowerDataType(instruction.Type);
+            StackValuesPush(CurrentFunctionBuilder.BuildAlloca(lltype));
+        }
+
+        private void EmitDupplicate()
+        {
+            StackValuesPush(StackValues.Peek());
+        }
+
         private void EmitLoadLocal(MIRInstruction instruction)
         {
             var stackindex = instruction.GetStackIndex();
-            var allocation = Allocations[stackindex];
+            var (Value, Attributes) = Allocations[stackindex];
 
             StackValuesPush(
-                allocation.Attributes == MIRAllocationAttribute.Unmutable ?
-                    allocation.Value :
-                    CurrentFunctionBuilder.BuildLoad(allocation.Value));
+                Attributes is MIRAllocationAttribute.Unmutable ?
+                    Value :
+                    CurrentFunctionBuilder.BuildLoad(Value));
         }
 
         private void EmitStoreLocal(MIRInstruction instruction)
@@ -262,9 +323,15 @@ namespace Mug.Generator.TargetGenerators.LLVM
         public LLModule Lower()
         {
             WalkFunctions();
-            Module.Verify(LLVMVerifierFailureAction.LLVMPrintMessageAction);
+            VerifyModule();
 
             return Module;
+        }
+
+        private void VerifyModule()
+        {
+            if (!Module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var message))
+                Console.WriteLine(message);
         }
     }
 }

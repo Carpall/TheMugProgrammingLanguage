@@ -34,7 +34,8 @@ namespace Mug.Models.Generator.IR
         Leq = -19,
         Geq = -20,
         Greater = '>',
-        Less = '<'
+        Less = '<',
+        LoadValueFromPointer = 63
     }
 
     public struct MIRInstruction

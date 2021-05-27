@@ -1,5 +1,7 @@
-func main(): i32 {
-  const a = 10
-  const b = a
-  return b
+type A {
+  a: i32
+}
+
+func main() {
+  var x: A = new { }
 }
