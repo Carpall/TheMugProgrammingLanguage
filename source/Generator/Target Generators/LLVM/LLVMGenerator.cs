@@ -31,10 +31,21 @@ namespace Mug.Generator.TargetGenerators.LLVM
             Module = LLModule.CreateWithName(tower.OutputFilename);
         }
 
+        private void DeclareFunctionPrototypes()
+        {
+            foreach (var function in Tower.MIRModule.Functions)
+                DeclareFunctionPrototype(function);
+        }
+
         private void WalkFunctions()
         {
             foreach (var function in Tower.MIRModule.Functions)
                 LowerFunction(function);
+        }
+
+        private void DeclareFunctionPrototype(MIRFunction function)
+        {
+            Module.AddFunction(function.Name, CreateLLVMFunctionModel(function));
         }
 
         private LLType LowerDataType(DataType type)
@@ -100,7 +111,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void LowerFunction(MIRFunction function)
         {
             CurrentFunction = function;
-            CurrentLLVMFunction = Module.AddFunction(function.Name, CreateLLVMFunctionModel(function));
+            CurrentLLVMFunction = GetLLVMFunction(function.Name);
             CurrentFunctionBuilder = CreateBuilder();
             Allocations = new(LLValue, MIRAllocationAttribute)[function.Allocations.Length];
 
@@ -146,23 +157,29 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.LoadValueFromPointer:
                     EmitLoadFromPointer();
                     break;
+                case MIRInstructionKind.Add:
+                    EmitAdd(instruction);
+                    break;
+                case MIRInstructionKind.Sub:
+                    EmitSub(instruction);
+                    break;
+                case MIRInstructionKind.Mul:
+                    EmitMul(instruction);
+                    break;
+                case MIRInstructionKind.Div:
+                    EmitDiv(instruction);
+                    break;
+                case MIRInstructionKind.Call:
+                    EmitCall(instruction);
+                    break;
+                case MIRInstructionKind.Pop:
+                    EmitPop();
+                    break;
                 /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
                     break;
                 case MIRInstructionKind.Comment:
-                    break;
-                case MIRInstructionKind.Div:
-                    break;
-                case MIRInstructionKind.Add:
-                    break;
-                case MIRInstructionKind.Sub:
-                    break;
-                case MIRInstructionKind.Mul:
-                    break;
-                case MIRInstructionKind.Call:
-                    break;
-                case MIRInstructionKind.Pop:
                     break;
                 case MIRInstructionKind.JumpFalse:
                     break;
@@ -184,6 +201,59 @@ namespace Mug.Generator.TargetGenerators.LLVM
                     ToImplement<object>(instruction.Kind.ToString(), nameof(EmitLoweredInstruction));
                     break;
             }
+        }
+
+        private void EmitPop()
+        {
+            StackValuesPopTop();
+        }
+
+        private void EmitCall(MIRInstruction instruction)
+        {
+            var function = GetLLVMFunction(instruction.GetName());
+            var result = CurrentFunctionBuilder.BuildCall(function, PopArgs(function.ParamsCount));
+            StackValuesPush(result);
+        }
+
+        private LLValue[] PopArgs(uint paramsCount)
+        {
+            var result = new LLValue[paramsCount];
+            while (paramsCount-- > 0)
+                result[paramsCount] = StackValuesPop();
+
+            return result;
+        }
+
+        private LLValue GetLLVMFunction(string name)
+        {
+            return Module.GetNamedFunction(name);
+        }
+
+        private void EmitDiv(MIRInstruction instruction)
+        {
+            var right = StackValuesPop();
+            StackValuesPush(
+                instruction.Type.SolvedType.IsSignedInt() ?
+                    CurrentFunctionBuilder.BuildSDiv(StackValuesPop(), right) :
+                    CurrentFunctionBuilder.BuildUDiv(StackValuesPop(), right));
+        }
+
+        private void EmitMul(MIRInstruction instruction)
+        {
+            var right = StackValuesPop();
+            StackValuesPush(CurrentFunctionBuilder.BuildAdd(StackValuesPop(), right));
+        }
+
+        private void EmitSub(MIRInstruction instruction)
+        {
+            var right = StackValuesPop();
+            StackValuesPush(CurrentFunctionBuilder.BuildAdd(StackValuesPop(), right));
+        }
+
+        private void EmitAdd(MIRInstruction instruction)
+        {
+            var right = StackValuesPop();
+            StackValuesPush(CurrentFunctionBuilder.BuildAdd(StackValuesPop(), right));
         }
 
         private void EmitLoadFromPointer()
@@ -322,6 +392,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         public LLModule Lower()
         {
+            DeclareFunctionPrototypes();
             WalkFunctions();
             VerifyModule();
 

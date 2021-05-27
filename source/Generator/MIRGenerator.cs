@@ -1,4 +1,5 @@
-﻿using Mug.Compilation;
+﻿using LLVMSharp.Interop;
+using Mug.Compilation;
 using Mug.Models.Generator.IR;
 using Mug.Models.Generator.IR.Builder;
 using Mug.Models.Lexer;
@@ -129,7 +130,6 @@ namespace Mug.Models.Generator
             var endLabel = CreateLabel("end");
 
             var conditionBlock = GenerateNodeBlockInExpression(node.Body);
-            // ManageScopeType(node.Position, isExpression, conditionBlock);
 
             FunctionBuilder.EmitJump(endLabel);
 
@@ -1034,13 +1034,65 @@ namespace Mug.Models.Generator
             var structure = type.SolvedType.GetStruct();
             var assignedFields = new List<string>();
 
+            ReportStaticTypeAllocationIfNeeded(expression, structure);
+
             FunctionBuilder.EmitLoadZeroinitializedStruct(type);
-
             EvaluateTypeInitialization(expression, structure, assignedFields);
-
             FunctionBuilder.EmitLoadValueFromPointer();
 
             return DataType.Solved(SolvedType.Struct(structure));
+        }
+
+        private void ReportStaticTypeAllocationIfNeeded(TypeAllocationNode expression, TypeStatement structure)
+        {
+            if (GetStructByteSize(structure) == 0)
+                Tower.Report(expression.Position, "Unable to allocate a static type");
+        }
+
+        private int GetTypeByteSize(DataType type)
+        {
+            return type.SolvedType.Kind switch
+            {
+                TypeKind.Pointer => PointerSize(),
+                TypeKind.String => PointerSize(),
+                TypeKind.Char => 1,
+                TypeKind.Int32 => 4,
+                TypeKind.Int64 => 8,
+                TypeKind.UInt8 => 1,
+                TypeKind.UInt32 => 4,
+                TypeKind.UInt64 => 8,
+                TypeKind.Float32 => 4,
+                TypeKind.Float64 => 8,
+                TypeKind.Float128 => 16,
+                TypeKind.Int8 => 1,
+                TypeKind.Int16 => 2,
+                TypeKind.UInt16 => 2,
+                TypeKind.Bool => 1,
+                TypeKind.Array => PointerSize(),
+                TypeKind.DefinedType => GetStructByteSize(type.SolvedType.GetStruct()),
+                TypeKind.GenericDefinedType => throw new NotImplementedException(),
+                TypeKind.Void => 0,
+                TypeKind.Unknown => PointerSize(),
+                TypeKind.EnumError => throw new NotImplementedException(),
+                TypeKind.Err => throw new NotImplementedException(),
+                TypeKind.Option => throw new NotImplementedException(),
+                TypeKind.Tuple => throw new NotImplementedException(),
+            };
+        }
+
+        private int GetStructByteSize(TypeStatement type)
+        {
+            var result = 0;
+            for (int i = 0; i < type.BodyFields.Count; i++)
+                result += GetTypeByteSize(type.BodyFields[i].Type);
+            
+            return result;
+        }
+
+        private int PointerSize()
+        {
+            // to fix
+            return 64;
         }
 
         private void EvaluateTypeInitialization(TypeAllocationNode expression, TypeStatement structure, List<string> assignedFields)

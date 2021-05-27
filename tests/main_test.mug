@@ -1,9 +1,5 @@
-type A {
-  a: i32
-}
+func a(a: i32, b: i32): i32 { a / b }
 
-func a(a: i32, b: i32): i32 { a + b }
-
-func main() {
-  var x: A = new { }
+func main(): i32 {
+  a(1, 2)
 }

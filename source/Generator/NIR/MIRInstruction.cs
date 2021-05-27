@@ -71,5 +71,10 @@ namespace Mug.Models.Generator.IR
         {
             return (int)Value;
         }
+
+        public string GetName()
+        {
+            return (string)Value;
+        }
     }
 }

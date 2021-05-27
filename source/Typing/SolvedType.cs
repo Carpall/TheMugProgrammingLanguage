@@ -118,5 +118,15 @@ namespace Mug.TypeSystem
                 or TypeKind.Float64
                 or TypeKind.Float128;
         }
+
+        public bool IsSignedInt()
+        {
+            return
+                IsInt() &&
+                Kind is TypeKind.Int8
+                or TypeKind.Int16
+                or TypeKind.Int32
+                or TypeKind.Int64;
+        }
     }
 }
