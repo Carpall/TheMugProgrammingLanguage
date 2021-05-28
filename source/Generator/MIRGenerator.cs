@@ -420,6 +420,13 @@ namespace Mug.Models.Generator
             FunctionBuilder.EmitNeg(type);
         }
 
+        private void EvaluateConstantMinusPrefixOperator(PrefixOperator expression, DataType type, ref string resultValue)
+        {
+            ExpectSignedIntForMinusPrefixOperator(type, expression.Prefix.Position);
+            if (long.TryParse(resultValue, out var value))
+                resultValue = (-value).ToString();
+        }
+
         private void EvaluateNegationPrefixOperator(PrefixOperator expression, DataType type, ref DataType result)
         {
             FixAndCheckTypes(DataType.Bool, type, expression.Prefix.Position);
@@ -460,6 +467,17 @@ namespace Mug.Models.Generator
             }
 
             return DataType.Bool;
+        }
+
+        private void CheckUnsignedOverflow(long constant, ModulePosition position)
+        {
+            if (ContextType.SolvedType.IsUnsignedInt() && IsNegative(constant))
+                Tower.Report(position, "Unsigned constant operation overflows");
+        }
+
+        private static bool IsNegative(long constant)
+        {
+            return constant < 0;
         }
 
         private DataType EvaluateSemiConstantBooleanBinaryOrNonConstant(
@@ -870,6 +888,8 @@ namespace Mug.Models.Generator
 
             var type = CoercedOr(DataType.Int32);
             FunctionBuilder.EmitLoadConstantValue(constant, type);
+            CheckUnsignedOverflow(constant, expression.Position);
+
             return type;
         }
 
@@ -977,7 +997,68 @@ namespace Mug.Models.Generator
                 Token expression => expression,
                 BinaryExpressionNode expression => FoldConstantBinaryExpressionIntoToken(expression),
                 BooleanBinaryExpressionNode expression => FoldConstantBooleanBinaryExpressionIntoToken(expression),
+                PrefixOperator expression => FoldConstantPrefixOperatorExpression(expression),
                 _ => Token.NewInfo(TokenKind.Bad, "")
+            };
+        }
+
+        private Token FoldConstantPrefixOperatorExpression(PrefixOperator expression)
+        {
+            var expr = FoldConstantIntoToken(expression.Expression);
+
+            var type = ConstantTokenKindToDataType(expr.Kind);
+            var resultType = type;
+            var resultValue = expr.Value;
+
+            switch (expression.Prefix.Kind)
+            {
+                case TokenKind.Plus:
+                    ExpectIntTypeForPlusPrefixOperator(type, expression.Prefix.Position);
+                    break;
+                case TokenKind.Minus:
+                    EvaluateConstantMinusPrefixOperator(expression, type, ref resultValue);
+                    break;
+                case TokenKind.Negation:
+                    EvaluateConstantNegationPrefixOperator(expression, type, ref resultValue);
+                    break;
+                /*case TokenKind.Star:
+                    break;
+                case TokenKind.BooleanAND:
+                    break;*/
+                default:
+                    ToImplement<object>(expression.Prefix.ToString(), nameof(EvaluatePrefixOperator));
+                    break;
+            }
+
+            return new(DataTypeToConstantTokenKind(resultType), resultValue, expr.Position, false);
+        }
+
+        private void EvaluateConstantNegationPrefixOperator(PrefixOperator expression, DataType type, ref string resultValue)
+        {
+            FixAndCheckTypes(DataType.Bool, type, expression.Prefix.Position);
+            if (bool.TryParse(resultValue, out var value))
+                resultValue = (!value).ToString();
+        }
+
+        private static DataType ConstantTokenKindToDataType(TokenKind kind)
+        {
+            return kind switch
+            {
+                TokenKind.ConstantString => DataType.String,
+                TokenKind.ConstantDigit => DataType.Int32,
+                TokenKind.ConstantChar => DataType.Char,
+                TokenKind.ConstantFloatDigit => DataType.Float32,
+            };
+        }
+
+        private static TokenKind DataTypeToConstantTokenKind(DataType type)
+        {
+            return type.SolvedType.Kind switch
+            {
+                TypeKind.String => TokenKind.ConstantString,
+                TypeKind.Int32 => TokenKind.ConstantDigit,
+                TypeKind.Char => TokenKind.ConstantChar,
+                TypeKind.Float32 => TokenKind.ConstantFloatDigit,
             };
         }
 
@@ -996,11 +1077,13 @@ namespace Mug.Models.Generator
 
         private Token FoldConstantBinaryExpressionIntoToken(BinaryExpressionNode expression)
         {
+            var l = FoldConstantIntoToken(expression.Left).Value;
+            var r = FoldConstantIntoToken(expression.Right).Value;
             return new(
                 TokenKind.ConstantDigit,
                 FoldConstants(
-                    long.Parse(FoldConstantIntoToken(expression.Left).Value),
-                    long.Parse(FoldConstantIntoToken(expression.Right).Value),
+                    long.Parse(l),
+                    long.Parse(r),
                     expression.Operator.Kind,
                     expression.Position).ToString(),
                 expression.Position,
