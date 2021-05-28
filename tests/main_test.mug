@@ -1,5 +1,4 @@
-func div(a: u8, b: u8): u8 { a / b }
-
-func main(): u8 {
-  div(255, 255)
+func main() {
+  const u: u8 = 1
+  var x = -u
 }

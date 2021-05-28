@@ -153,6 +153,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.Div:                  EmitDiv(instruction);                 break;
                 case MIRInstructionKind.Call:                 EmitCall(instruction);                break;
                 case MIRInstructionKind.Pop:                  EmitPop();                            break;
+                case MIRInstructionKind.Neg:                  EmitNeg(instruction);                 break;
                 /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
@@ -179,6 +180,26 @@ namespace Mug.Generator.TargetGenerators.LLVM
                     ToImplement<object>(instruction.Kind.ToString(), nameof(EmitLoweredInstruction));
                     break;
             }
+        }
+
+        private void EmitNegInt(MIRInstruction instruction)
+        {
+            var lltype = LowerDataType(instruction.Type);
+            StackValuesPush(CurrentFunctionBuilder.BuildSub(CreateLLConstInt(lltype, 0), StackValuesPop()));
+        }
+
+        private void EmitNeg(MIRInstruction instruction)
+        {
+            if (instruction.Type.SolvedType.IsInt())
+                EmitNegInt(instruction);
+            else
+                EmitNegBool();
+        }
+
+        private void EmitNegBool()
+        {
+            var value = CurrentFunctionBuilder.BuildXor(StackValuesPop(), CreateLLConstInt(LLType.Int1, 1));
+            StackValuesPush(value);
         }
 
         private void EmitPop()
@@ -291,6 +312,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 or TypeKind.UInt16
                 or TypeKind.UInt32
                 or TypeKind.UInt64 => CreateLLConstInt(lltype, instruction.ConstantIntValue),
+                TypeKind.Bool => CreateLLConstInt(lltype, Convert.ToInt64(instruction.ConstantBoolValue)),
                 _ => ToImplement<LLValue>(instruction.Type.SolvedType.Kind.ToString(), nameof(EmitLoadConstant))
             });
         }

@@ -35,7 +35,8 @@ namespace Mug.Models.Generator.IR
         Geq = -20,
         Greater = '>',
         Less = '<',
-        LoadValueFromPointer = 63
+        LoadValueFromPointer = 63,
+        Neg = 64,
     }
 
     public struct MIRInstruction
@@ -51,6 +52,7 @@ namespace Mug.Models.Generator.IR
             Value = value;
         }
 
+        public bool ConstantBoolValue => (bool)Value;
         internal long ConstantIntValue => (long)Value;
         internal MIRInstruction ParameterValue => (MIRInstruction)Value;
 

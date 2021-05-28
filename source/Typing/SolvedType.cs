@@ -122,11 +122,19 @@ namespace Mug.TypeSystem
         public bool IsSignedInt()
         {
             return
-                IsInt() &&
                 Kind is TypeKind.Int8
                 or TypeKind.Int16
                 or TypeKind.Int32
                 or TypeKind.Int64;
+        }
+
+        public bool IsUnsignedInt()
+        {
+            return
+                Kind is TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64;
         }
     }
 }

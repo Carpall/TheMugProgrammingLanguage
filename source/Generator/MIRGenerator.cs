@@ -189,23 +189,6 @@ namespace Mug.Models.Generator
             return false;
         }
 
-        /*private void StoreInHiddenBufferIfNeeded(DataType type, bool isLastOfBlock, ModulePosition position)
-        {
-            FixAndCheckTypes(ContextType, type, position);
-
-            if (type.SolvedType.IsVoid())
-                return;
-            
-            if (!isLastOfBlock)
-                FunctionBuilder.EmitPop();
-            else
-            {
-                SetupOrStoreInHiddenBuffer(type, position);
-                if (CurrentScope.IsInFunctionBlock)
-                    FunctionBuilder.EmitAutoReturn();
-            }
-        }*/
-
         private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
         {
             var type = EvaluateNodeCall(statement);
@@ -382,6 +365,7 @@ namespace Mug.Models.Generator
                 BlockNode expression => GenerateNodeBlockInExpression(expression),
                 CallStatement expression => EvaluateNodeCall(expression),
                 ConditionalStatement expression => EvaluateConditionalStatement(expression, true),
+                PrefixOperator expression => EvaluatePrefixOperator(expression),
                 _ => ToImplement<DataType>(body.ToString(), nameof(EvaluateExpression)),
             };
 
@@ -391,11 +375,71 @@ namespace Mug.Models.Generator
             return type;
         }
 
+        private DataType EvaluatePrefixOperator(PrefixOperator expression)
+        {
+            var expr =
+                !IsConstant(expression.Expression) ?
+                    expression.Expression :
+                    FoldConstantIntoToken(expression.Expression);
+
+            var type = EvaluateExpression(expr);
+            var result = type;
+
+            switch (expression.Prefix.Kind)
+            {
+                case TokenKind.Plus:
+                    ExpectIntTypeForPlusPrefixOperator(type, expression.Prefix.Position);
+                    break;
+                case TokenKind.Minus:
+                    EvaluateMinusPrefixOperator(expression, type);
+                    break;
+                case TokenKind.Negation:
+                    EvaluateNegationPrefixOperator(expression, type, ref result);
+                    break;
+                /*case TokenKind.Star:
+                    break;
+                case TokenKind.BooleanAND:
+                    break;*/
+                default:
+                    ToImplement<object>(expression.Prefix.ToString(), nameof(EvaluatePrefixOperator));
+                    break;
+            }
+
+            return result;
+        }
+
+        private void ExpectIntTypeForPlusPrefixOperator(DataType type, ModulePosition position)
+        {
+            if (type.SolvedType.IsInt())
+                Tower.Report(position, $"Unable to apply operator '+' over type '{type}'");
+        }
+
+        private void EvaluateMinusPrefixOperator(PrefixOperator expression, DataType type)
+        {
+            ExpectSignedIntForMinusPrefixOperator(type, expression.Prefix.Position);
+            FunctionBuilder.EmitNeg(type);
+        }
+
+        private void EvaluateNegationPrefixOperator(PrefixOperator expression, DataType type, ref DataType result)
+        {
+            FixAndCheckTypes(DataType.Bool, type, expression.Prefix.Position);
+            FunctionBuilder.EmitNeg(DataType.Bool);
+
+            result = DataType.Bool;
+        }
+
+        private void ExpectSignedIntForMinusPrefixOperator(DataType type, ModulePosition position)
+        {
+            if (!type.SolvedType.IsSignedInt())
+                Tower.Report(position, $"Unable to apply operator '-' over type '{type}'");
+        }
+
         private DataType EvaluateToken(Token expression)
         {
-            return expression.Kind == TokenKind.Identifier ?
-                EvaluateIdentifier(expression.Value, expression.Position) :
-                EvaluateConstant(expression);
+            return
+                expression.Kind == TokenKind.Identifier ?
+                    EvaluateIdentifier(expression.Value, expression.Position) :
+                    EvaluateConstant(expression);
         }
 
         private DataType EvaluateBooleanBinaryExpression(BooleanBinaryExpressionNode expression)
@@ -457,7 +501,7 @@ namespace Mug.Models.Generator
             var right = FoldConstantIntoToken(expression.Right);
 
             var leftType = EvaluateExpression(expression.Left);
-            var constantRight = ulong.Parse(right.Value);
+            var constantRight = long.Parse(right.Value);
 
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
 
@@ -550,6 +594,7 @@ namespace Mug.Models.Generator
             {
                 Token expression => IsTokenConstant(expression),
                 BooleanBinaryExpressionNode expression => IsConstantBinary(expression.Left, expression.Right),
+                PrefixOperator expression => IsConstant(expression.Expression),
                 _ => false
             };
         }
@@ -857,7 +902,7 @@ namespace Mug.Models.Generator
             var right = FoldConstantIntoToken(expression.Right);
 
             var leftType = EvaluateExpression(expression.Left);
-            var constantRight = ulong.Parse(right.Value);
+            var constantRight = long.Parse(right.Value);
 
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
             ReportWhenDividingByZero(constantRight, expression.Operator.Kind == TokenKind.Slash, expression.Position);
@@ -879,7 +924,7 @@ namespace Mug.Models.Generator
                 ReportIncompatibleTypes("int literal", type.ToString(), position);
         }
 
-        private bool ReportWhenDividingByZero(ulong right, bool isDividing, ModulePosition position)
+        private bool ReportWhenDividingByZero(long right, bool isDividing, ModulePosition position)
         {
             var dividingByZero = right == 0 && isDividing;
 
@@ -954,15 +999,15 @@ namespace Mug.Models.Generator
             return new(
                 TokenKind.ConstantDigit,
                 FoldConstants(
-                    ulong.Parse(FoldConstantIntoToken(expression.Left).Value),
-                    ulong.Parse(FoldConstantIntoToken(expression.Right).Value),
+                    long.Parse(FoldConstantIntoToken(expression.Left).Value),
+                    long.Parse(FoldConstantIntoToken(expression.Right).Value),
                     expression.Operator.Kind,
                     expression.Position).ToString(),
                 expression.Position,
                 false);
         }
 
-        private ulong FoldConstants(ulong left, ulong right, TokenKind op, ModulePosition position)
+        private long FoldConstants(long left, long right, TokenKind op, ModulePosition position)
         {
             return op switch
             {
@@ -973,7 +1018,7 @@ namespace Mug.Models.Generator
             };
         }
 
-        private ulong EvaluateDivideConstants(ulong left, ulong right, ModulePosition position)
+        private long EvaluateDivideConstants(long left, long right, ModulePosition position)
         {
             return !ReportWhenDividingByZero(right, true, position) ? left / right : 0;
         }

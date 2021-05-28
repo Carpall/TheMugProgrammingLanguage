@@ -8,23 +8,23 @@ namespace Mug.Models.Lexer
     public enum TokenKind
     {
         [Description("bad")]
-        Bad = -1,
+        Bad = 0,
         [Description("ident")]
-        Identifier = -2,
+        Identifier = -1,
         [Description("literal string")]
-        ConstantString = -3,
+        ConstantString = -2,
         [Description("literal int")]
-        ConstantDigit = -4,
+        ConstantDigit = -3,
         [Description("eof")]
-        EOF = -5,
+        EOF = -4,
         [Description("literal char")]
-        ConstantChar = -6,
+        ConstantChar = -5,
         [Description("func")]
-        KeyFunc = -7,
+        KeyFunc = -6,
         [Description("var")]
-        KeyVar = -8,
+        KeyVar = -7,
         [Description("const")]
-        KeyConst = -9,
+        KeyConst = -8,
         [Description("(")]
         OpenPar = '(',
         [Description(")")]
@@ -40,13 +40,13 @@ namespace Mug.Models.Lexer
         [Description("]")]
         CloseBracket = ']',
         [Description("literal float")]
-        ConstantFloatDigit = -10,
+        ConstantFloatDigit = -9,
         [Description(".")]
         Dot = '.',
         [Description(",")]
         Comma = ',',
         [Description("==")]
-        BooleanEQ = -1,
+        BooleanEQ = -10,
         [Description("=")]
         Equal = '=',
         [Description("/")]

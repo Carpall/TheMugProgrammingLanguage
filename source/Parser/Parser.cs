@@ -620,7 +620,12 @@ namespace Mug.Models.Parser
                 return false;
             }
 
-            e = new PrefixOperator() { Expression = e, Position = prefixOP.Position, Prefix = prefixOP.Kind };
+            e = new PrefixOperator()
+            {
+                Expression = e,
+                Prefix = prefixOP,
+                Position = GetModulePositionRange(prefixOP.Position, e.Position)
+            };
 
             return true;
         }

@@ -34,6 +34,8 @@ using Mug.Models.Generator.IR;
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
 //       - add a check to avoid type allocations of size 0 byte
 //       - add compiler symbols and use them to get target int size
+//       - add support for '+=' '-=' '*=' etc... in mirgenerator
+//       - 
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 

@@ -201,5 +201,10 @@ namespace Mug.Models.Generator.IR.Builder
         {
             EmitInstruction(MIRInstructionKind.LoadValueFromPointer);
         }
+
+        public void EmitNeg(DataType type)
+        {
+            EmitInstruction(MIRInstructionKind.Neg, type);
+        }
     }
 }
