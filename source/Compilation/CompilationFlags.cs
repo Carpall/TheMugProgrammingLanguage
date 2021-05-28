@@ -56,7 +56,7 @@ How To Use:
         private const string SRC_HELP = @"
 USAGE: mug <action> <options> *src <file>
 
-HELP: uses the next argument as source file to compile, curretly only one file at compilation supported
+HELP: uses the next argument as source file to compile
 ";
         private const string MODE_HELP = @"
 USAGE: mug <action> <file> <options> *mode (debug | release)
@@ -92,7 +92,7 @@ HELP: uses the next argument as output file name. The extension is not required
         private const string ARGS_HELP = @"
 USAGE: mug run <file> <options> *args ""<arg1> <arg2> ...""
 
-HELP: uses the next argument as arguments to pass to the compiled program, available only whe compilation action is 'run'
+HELP: uses the next argument as arguments to pass to the compiled program, available only when compilation action is 'run'
 ";
 
         private string[] _arguments = null;
@@ -155,10 +155,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return GetFlag<object>(flag) is null;
         }
 
-        private void DumpBytecode()
+        private void DumpBytecode(LLVMModuleRef llvmmodule)
         {
-            CompilationTower.Todo($"implement {nameof(DumpBytecode)}");
-            // File.WriteAllText(GetOutputPath(), _unit.Tower.LLVMModule.ToString());
+            File.WriteAllText(GetOutputPath(), llvmmodule.ToString());
         }
 
         private void DumpAbstractSyntaxTree(INode head)
@@ -207,9 +206,8 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Compile(onlyBitcode: true);
                     break;
                 case CompilationTarget.LL:
-                    CompilationTower.Todo("fix bytecode target");
-                    // _unit.Generate(false);
-                    DumpBytecode();
+                    PrintAlertsIfNeeded(_unit.GenerateLLVMIR(out var llvmmodule));
+                    DumpBytecode(llvmmodule);
                     break;
                 case CompilationTarget.TAST:
                     PrintAlertsIfNeeded(_unit.GenerateTAST(out var head));
@@ -228,7 +226,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case CompilationTarget.MIRJSON:
                 case CompilationTarget.MIR:
                     PrintAlertsIfNeeded(_unit.GenerateIR(out var ir));
-                    DumpMIR(ir, target == CompilationTarget.MIRJSON);
+                    DumpMIR(ir, target is CompilationTarget.MIRJSON);
                     break;
                 default:
                     CompilationTower.Throw("Unsupported target, try with another");
@@ -274,7 +272,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             ParseArguments();
 
-            if (GetFlag<CompilationTarget>("target") != CompilationTarget.EXE)
+            if (GetFlag<CompilationTarget>("target") is not CompilationTarget.EXE)
                 CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
 
             Build(false);
@@ -371,8 +369,22 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             SetDefault("target", CompilationTarget.EXE);
             SetDefault("mode", CompilationMode.Debug);
-            SetDefault("output", IsDefault("output") ?
-                Path.GetFileName(Environment.CurrentDirectory) : GetFlag<string>("output"));
+            SetDefault("output",
+                Path.ChangeExtension(
+                    IsDefault("output") ?
+                        GetDefaultOutput() :
+                        GetFlag<string>("output"), GetOutputExtension())
+                );
+        }
+
+        private string GetDefaultOutput()
+        {
+            var src = GetFlag<string[]>("src");
+
+            if (src is null || src.Length > 1)
+                return Path.GetFileName(Environment.CurrentDirectory);
+
+            return Path.GetFileName(src.First());
         }
 
         private void InterpretArgument(string argument)

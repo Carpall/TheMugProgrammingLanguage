@@ -357,7 +357,10 @@ namespace Mug.Models.Generator
             var rightsolved = expected.SolvedType;
             var leftsolved = gottype.SolvedType;
 
-            return rightsolved.Kind != leftsolved.Kind || rightsolved.Base is not null && !rightsolved.Base.Equals(leftsolved.Base);
+            return
+                rightsolved.Kind != leftsolved.Kind
+                || rightsolved.Base is not null
+                && !rightsolved.Base.Equals(leftsolved.Base);
         }
 
         private static void FixAuto(DataType type, DataType expressiontype)
@@ -653,9 +656,14 @@ namespace Mug.Models.Generator
             else
                 typeName = baseToken.Value;
 
-            var type = Tower.Symbols.GetSymbol<TypeStatement>(typeName, baseToken.Position, "type");
+            var type = GetType(typeName, baseToken.Position);
 
             return type is null ? null : SearchForMethod(name.Member.Value, type, name.Member.Position);
+        }
+
+        private TypeStatement GetType(string typeName, ModulePosition position)
+        {
+            return Tower.Symbols.GetSymbol<TypeStatement>(typeName, position, "type");
         }
 
         private FunctionStatement ReportPrimitiveCannotHaveMethods(ModulePosition position)
@@ -978,6 +986,39 @@ namespace Mug.Models.Generator
         }
 
         private DataType EvaluateMemberNode(MemberNode expression)
+        {
+            return
+                expression.Base is Token { Kind: TokenKind.Identifier } expressionBase
+                && !GetLocalVariable(expressionBase.Value, out _) ?
+                    EvaluateStaticMemberNode(expressionBase.Value, expression) :
+                    EvaluateInstanceMemberNode(expression);
+        }
+
+        private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
+        {
+            var type = GetType(baseValue, expression.Base.Position);
+            if (type is null || !GetStaticConstantFromType(type, expression.Member.Value, out var staticConstant))
+                return ContextType;
+
+            CompilationTower.Todo($"implement {nameof(EvaluateStaticMemberNode)}");
+            throw new();
+            // return staticConstant.Body;
+        }
+
+        private static bool GetStaticConstantFromType(TypeStatement type, string member, out VariableStatement constant)
+        {
+            for (int i = 0; i < type.BodyConstants.Count; i++)
+            {
+                constant = type.BodyConstants[i];
+                if (constant.Name == member)
+                    return true;
+            }
+
+            constant = null;
+            return false;
+        }
+
+        private DataType EvaluateInstanceMemberNode(MemberNode expression)
         {
             var baseType = EvaluateExpression(expression.Base);
             if (!baseType.SolvedType.IsNewOperatorAllocable())

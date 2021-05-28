@@ -80,6 +80,9 @@ namespace Mug.Compilation
                 {
                     var alert = alerts[i];
 
+                    if (alert.Bad.Lexer is null)
+                        continue;
+
                     WriteSourceLineStyle(
                         alert.Kind,
                         alert.Bad.Lexer.ModuleName,

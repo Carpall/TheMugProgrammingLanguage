@@ -5,13 +5,13 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using Mug.Models.Parser.AST.Statements;
+using Mug.Models.Parser.AST;
 
 using LLModule = LLVMSharp.Interop.LLVMModuleRef;
 using LLType = LLVMSharp.Interop.LLVMTypeRef;
 using LLValue = LLVMSharp.Interop.LLVMValueRef;
 using LLBuilder = LLVMSharp.Interop.LLVMBuilderRef;
 using LLVMC = LLVMSharp.Interop.LLVM;
-using Mug.Models.Parser.AST;
 
 namespace Mug.Generator.TargetGenerators.LLVM
 {
@@ -53,10 +53,14 @@ namespace Mug.Generator.TargetGenerators.LLVM
             return type.SolvedType.Kind switch
             {
                 TypeKind.Bool => LLType.Int1,
-                TypeKind.Int8 => LLType.Int8,
-                TypeKind.Int16 => LLType.Int16,
-                TypeKind.Int32 => LLType.Int32,
-                TypeKind.Int64 => LLType.Int64,
+                TypeKind.Int8
+                or TypeKind.UInt8 => LLType.Int8,
+                TypeKind.Int16
+                or TypeKind.UInt16 => LLType.Int16,
+                TypeKind.Int32
+                or TypeKind.UInt32 => LLType.Int32,
+                TypeKind.Int64
+                or TypeKind.UInt64 => LLType.Int64,
                 TypeKind.Void => LLType.Void,
                 TypeKind.DefinedType => LowerStruct(type.SolvedType.GetStruct()),
                 _ => ToImplement<LLType>(type.SolvedType.Kind.ToString(), nameof(LowerDataType))
@@ -136,45 +140,19 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             switch (instruction.Kind)
             {
-                case MIRInstructionKind.Return:
-                    EmitReturn(instruction);
-                    break;
-                case MIRInstructionKind.Load:
-                    EmitLoadConstant(instruction);
-                    break;
-                case MIRInstructionKind.StoreLocal:
-                    EmitStoreLocal(instruction);
-                    break;
-                case MIRInstructionKind.LoadLocal:
-                    EmitLoadLocal(instruction);
-                    break;
-                case MIRInstructionKind.Dupplicate:
-                    EmitDupplicate();
-                    break;
-                case MIRInstructionKind.LoadZeroinitialized:
-                    EmitLoadZeroinitialized(instruction);
-                    break;
-                case MIRInstructionKind.LoadValueFromPointer:
-                    EmitLoadFromPointer();
-                    break;
-                case MIRInstructionKind.Add:
-                    EmitAdd(instruction);
-                    break;
-                case MIRInstructionKind.Sub:
-                    EmitSub(instruction);
-                    break;
-                case MIRInstructionKind.Mul:
-                    EmitMul(instruction);
-                    break;
-                case MIRInstructionKind.Div:
-                    EmitDiv(instruction);
-                    break;
-                case MIRInstructionKind.Call:
-                    EmitCall(instruction);
-                    break;
-                case MIRInstructionKind.Pop:
-                    EmitPop();
-                    break;
+                case MIRInstructionKind.Return:               EmitReturn(instruction);              break;
+                case MIRInstructionKind.Load:                 EmitLoadConstant(instruction);        break;
+                case MIRInstructionKind.StoreLocal:           EmitStoreLocal(instruction);          break;
+                case MIRInstructionKind.LoadLocal:            EmitLoadLocal(instruction);           break;
+                case MIRInstructionKind.Dupplicate:           EmitDupplicate();                     break;
+                case MIRInstructionKind.LoadZeroinitialized:  EmitLoadZeroinitialized(instruction); break;
+                case MIRInstructionKind.LoadValueFromPointer: EmitLoadFromPointer();                break;
+                case MIRInstructionKind.Add:                  EmitAdd(instruction);                 break;
+                case MIRInstructionKind.Sub:                  EmitSub(instruction);                 break;
+                case MIRInstructionKind.Mul:                  EmitMul(instruction);                 break;
+                case MIRInstructionKind.Div:                  EmitDiv(instruction);                 break;
+                case MIRInstructionKind.Call:                 EmitCall(instruction);                break;
+                case MIRInstructionKind.Pop:                  EmitPop();                            break;
                 /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
@@ -308,7 +286,11 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 TypeKind.Int8
                 or TypeKind.Int16
                 or TypeKind.Int32
-                or TypeKind.Int64 => CreateLLConstInt(lltype, instruction.ConstantIntValue),
+                or TypeKind.Int64
+                or TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64 => CreateLLConstInt(lltype, instruction.ConstantIntValue),
                 _ => ToImplement<LLValue>(instruction.Type.SolvedType.Kind.ToString(), nameof(EmitLoadConstant))
             });
         }

@@ -283,7 +283,12 @@ namespace Mug.Models.Parser
             return
                 MatchSpecificIdentifier("str") ||
                 MatchSpecificIdentifier("chr") ||
-                MatchSpecificIdentifier("u8") ||
+                MatchSpecificIdentifier("u8")  ||
+                MatchSpecificIdentifier("u16") ||
+                MatchSpecificIdentifier("u32") ||
+                MatchSpecificIdentifier("u64") ||
+                MatchSpecificIdentifier("i8") ||
+                MatchSpecificIdentifier("i16") ||
                 MatchSpecificIdentifier("i32") ||
                 MatchSpecificIdentifier("i64") ||
                 MatchSpecificIdentifier("f32") ||
@@ -502,14 +507,31 @@ namespace Mug.Models.Parser
             {
                 var parameters = CollectParameters();
 
-                e = new CallStatement() { Generics = generics, IsBuiltIn = builtin, Position = name.Position, Name = new MemberNode() { Base = e, Member = name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) }, Parameters = parameters };
+                e = new CallStatement()
+                {
+                    Generics = generics,
+                    IsBuiltIn = builtin,
+                    Position = name.Position,
+                    Name = new MemberNode()
+                    {
+                        Base = e,
+                        Member = name,
+                        Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End)
+                    },
+                    Parameters = parameters
+                };
             }
             else
             {
                 if (generics.Count != 0)
                     ParseError("Expected call after generic parameter specification");
 
-                e = new MemberNode() { Base = e, Member = name, Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End) };
+                e = new MemberNode()
+                {
+                    Base = e,
+                    Member = name,
+                    Position = new(e.Position.Lexer, e.Position.Position.Start..name.Position.Position.End)
+                };
             }
         }
 
@@ -885,7 +907,14 @@ namespace Mug.Models.Parser
             var type = ExpectVariableType();
             var body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : CreateBadNode();
 
-            statement = new VariableStatement() { Body = body, Name = name.Value.ToString(), Position = name.Position, Type = type, IsConst = token.Kind == TokenKind.KeyConst };
+            statement = new VariableStatement()
+            {
+                Body = body,
+                Name = name.Value.ToString(),
+                Position = name.Position,
+                Type = type,
+                IsConst = token.Kind == TokenKind.KeyConst
+            };
 
             return true;
         }
@@ -1337,11 +1366,24 @@ namespace Mug.Models.Parser
                 CollectModifier();
                 CollectPragmas();
 
-                if (FunctionDefinition(out var functionstatement))
-                    statement.BodyMethods.Add(functionstatement as FunctionStatement);
+                if (FunctionDefinition(out var node))
+                    statement.BodyMethods.Add(node as FunctionStatement);
+                else if (VariableDefinition(out node))
+                    statement.BodyConstants.Add(CheckConstInTypeDefinitionAndEatComma(node));
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
             }
+        }
+
+        private VariableStatement CheckConstInTypeDefinitionAndEatComma(INode opaque)
+        {
+            var node = opaque as VariableStatement;
+            if (!node.IsConst)
+                Report(opaque.Position, "Expected keyword 'const' not 'var'");
+
+            EatComma();
+
+            return node;
         }
 
         private EnumMemberNode ExpectMemberDefinition(bool basetypeisint, int lastvalue)

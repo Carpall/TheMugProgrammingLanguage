@@ -1,5 +1,5 @@
-func a(a: i32, b: i32): i32 { a / b }
+func div(a: u8, b: u8): u8 { a / b }
 
-func main(): i32 {
-  a(1, 2)
+func main(): u8 {
+  div(255, 255)
 }

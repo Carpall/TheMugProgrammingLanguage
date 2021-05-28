@@ -33,6 +33,7 @@ using Mug.Models.Generator.IR;
 //       - add a warn for user defined types named like primitives
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
 //       - add a check to avoid type allocations of size 0 byte
+//       - add compiler symbols and use them to get target int size
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
@@ -60,7 +61,7 @@ else
 {
     options.SetArguments(args[1..]);
 
-    options.InterpretAction(args[0]);
+    try { options.InterpretAction(args[0]); } catch (CompilationException e) { PrettyPrinter.PrintAlerts(e); }
 }
 
 #endif
