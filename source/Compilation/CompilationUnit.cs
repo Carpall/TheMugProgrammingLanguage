@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using Mug.Generator.TargetGenerators.C;
 using Mug.Models.Generator.IR;
 using Mug.Models.Lexer;
 using Mug.Models.Parser;
@@ -159,11 +160,18 @@ namespace Mug.Compilation
             Tower.MIRModule = Tower.Generator.Generate();
         }
 
-        private void InternalGenerateLLVMMIR()
+        private void InternalGenerateLLVMIR()
         {
             InternalGenerateMIR();
             if (!HasErrors())
-                Tower.LLVMModule = Tower.TargetGenerator.Lower();
+                Tower.LLVMModule = (LLVMModuleRef)Tower.TargetGenerator.Lower();
+        }
+
+        private void InternalGenerateC()
+        {
+            InternalGenerateMIR();
+            if (!HasErrors())
+                Tower.CModule = (string)Tower.TargetGenerator.Lower();
         }
 
         private CompilationException GenerateCatched(Action action)
@@ -199,8 +207,16 @@ namespace Mug.Compilation
 
         public CompilationException GenerateLLVMIR(out LLVMModuleRef ir)
         {
-            var result = GenerateCatched(InternalGenerateLLVMMIR);
+            var result = GenerateCatched(InternalGenerateLLVMIR);
             ir = Tower.LLVMModule;
+            return result;
+        }
+
+        public CompilationException GenerateC(out string code)
+        {
+            Tower.SetGenerator(new CGenerator(Tower));
+            var result = GenerateCatched(InternalGenerateC);
+            code = Tower.CModule;
             return result;
         }
     }

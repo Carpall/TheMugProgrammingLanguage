@@ -11,6 +11,7 @@ namespace Mug.Models.Generator.IR.Builder
     public class MIRModuleBuilder
     {
         private readonly List<MIRFunction> _functions = new();
+        private readonly List<MIRStructure> _structures = new();
 
         public void DefineFunction(MIRFunction function)
         {
@@ -19,7 +20,12 @@ namespace Mug.Models.Generator.IR.Builder
 
         public MIR Build()
         {
-            return new(_functions.ToArray());
+            return new(_functions.ToArray(), _structures.ToArray());
+        }
+
+        internal void DefineStruct(MIRStructure structure)
+        {
+            _structures.Add(structure);
         }
     }
 }

@@ -20,7 +20,6 @@ namespace Mug.Models.Generator.IR
         StoreLocal,
         LoadField,
         StoreField,
-        Comment,
         Div = '/',
         Add = '+',
         Sub = '-',
@@ -29,7 +28,7 @@ namespace Mug.Models.Generator.IR
         Pop,
         JumpFalse,
         Jump,
-        Ceq = -1,
+        Ceq = -10,
         Neq = -11,
         Leq = -19,
         Geq = -20,
@@ -37,15 +36,16 @@ namespace Mug.Models.Generator.IR
         Less = '<',
         LoadValueFromPointer = 63,
         Neg = 64,
+        Label = 65,
     }
 
     public struct MIRInstruction
     {
         public MIRInstructionKind Kind { get; internal set; }
-        public DataType Type { get; }
+        public MIRType Type { get; }
         public object Value { get; }
 
-        internal MIRInstruction(MIRInstructionKind kind, DataType type = null, object value = null)
+        internal MIRInstruction(MIRInstructionKind kind, MIRType type = default, object value = null)
         {
             Kind = kind;
             Type = type;
@@ -58,8 +58,8 @@ namespace Mug.Models.Generator.IR
 
         public override string ToString()
         {
-            if (Kind == MIRInstructionKind.Comment)
-                return Value is not null ? $"~ {Value}" : "";
+            if (Kind == MIRInstructionKind.Label)
+                return $"~ {Value}:";
 
             return $"{Kind} {Type} ({Value ?? "_"})";
         }
@@ -77,6 +77,11 @@ namespace Mug.Models.Generator.IR
         public string GetName()
         {
             return (string)Value;
+        }
+
+        public MIRLabel GetLabel()
+        {
+            return (MIRLabel)Value;
         }
     }
 }

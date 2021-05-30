@@ -1,3 +1,9 @@
+type A {
+  pub a: i32
+}
+
 func main() {
-  var u: u8 = -2 + 1
+  /*var x = 10
+  x += 1*/
+  var x: A = new { a: 1 }
 }

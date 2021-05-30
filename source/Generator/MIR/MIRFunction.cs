@@ -10,26 +10,23 @@ namespace Mug.Models.Generator.IR
     public struct MIRFunction
     {
         public string Name { get; }
-        public DataType ReturnType { get; }
-        public DataType[] ParameterTypes { get; }
+        public MIRType ReturnType { get; }
+        public MIRType[] ParameterTypes { get; }
         public MIRInstruction[] Body { get; }
         public MIRAllocation[] Allocations { get; }
-        public MIRLabel[] Labels { get; }
 
         public MIRFunction(
             string name,
-            DataType returntype,
-            DataType[] parametertypes,
+            MIRType returntype,
+            MIRType[] parametertypes,
             MIRInstruction[] body,
-            MIRAllocation[] allocations,
-            MIRLabel[] labels)
+            MIRAllocation[] allocations)
         {
             Name = name;
             ReturnType = returntype;
             ParameterTypes = parametertypes;
             Body = body;
             Allocations = allocations;
-            Labels = labels;
         }
 
         public override string ToString()
@@ -37,7 +34,7 @@ namespace Mug.Models.Generator.IR
             var locals = GetAllocationsReppresentation();
             var body = GetBodyReppresentation();
 
-            return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}:
+            return $@".fn {Name}({string.Join(", ", ParameterTypes)}) {ReturnType}:
   .locals:
     {locals}
 
@@ -65,8 +62,7 @@ namespace Mug.Models.Generator.IR
             if (Body.Length == 0)
                 body.Append(".empty");
 
-            for (var i = 0; i < Body.Length; i++)
-                body.AppendFormat("L{0}: {1}{2}", i, Body[i], i < Body.Length - 1 ? "\n  " : "");
+            body.Append(string.Join("\n  ", Body));
 
             return body.ToString();
         }

@@ -39,24 +39,73 @@ namespace Mug.Models.Generator
             return Module.Build();
         }
 
-        private static DataType[] GetParameterTypes(ParameterListNode parameters)
+        private MIRType[] GetParameterTypes(ParameterListNode parameters)
         {
-            var result = new DataType[parameters.Length];
+            var result = new MIRType[parameters.Length];
 
             for (var i = 0; i < parameters.Length; i++)
-                result[i] = parameters.Parameters[i].Type;
+                result[i] = LowerDataType(parameters.Parameters[i].Type);
 
             return result;
+        }
+
+        private MIRType LowerDataType(DataType type)
+        {
+            var kind = type.SolvedType.Kind;
+            return kind switch
+            {
+                TypeKind.Int8
+                or TypeKind.Int16
+                or TypeKind.Int32
+                or TypeKind.Int64 => new(MIRTypeKind.Int, GetIntBitSize(kind)),
+
+                TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64 => new(MIRTypeKind.UInt, GetIntBitSize(kind)),
+
+                TypeKind.Bool => new(MIRTypeKind.Bool),
+                TypeKind.Void => new(MIRTypeKind.Void),
+
+                TypeKind.DefinedType => new(
+                    MIRTypeKind.Struct,
+                    LowerStruct(type.SolvedType.GetStruct())),
+
+                _ => ToImplement<MIRType>(kind.ToString(), nameof(LowerDataType))
+            };
+        }
+
+        private MIRStructure LowerStruct(TypeStatement type)
+        {
+            if (type.LoweredStructCache.HasValue)
+                return type.LoweredStructCache.Value;
+
+            var result = new MIRStructure(type.IsPacked, type.Name, LowerStructBody(type.BodyFields));
+
+            type.CacheLoweredStruct(result);
+            Module.DefineStruct(result);
+            return result;
+        }
+
+        private MIRType[] LowerStructBody(List<FieldNode> bodyFields)
+        {
+            var result = new MIRType[bodyFields.Count];
+            for (int i = 0; i < bodyFields.Count; i++)
+                result[i] = LowerDataType(bodyFields[i].Type);
+
+            return result;
+        }
+
+        private static int GetIntBitSize(TypeKind kind)
+        {
+            var value = kind.ToString();
+            return value.Last() == '8' ? 8 : int.Parse(value.Substring(value.Length - 2, 2));
         }
 
         private void GenerateBlock(BlockNode block)
         {
             for (var i = 0; i < block.Statements.Count; i++)
-            {
-                var statement = block.Statements[i];
-                FunctionBuilder.EmitComment($"node: {statement.NodeName}");
-                RecognizeStatement(statement, i == block.Statements.Count - 1);
-            }
+                RecognizeStatement(block.Statements[i], i == block.Statements.Count - 1);
         }
 
         private void RecognizeStatement(INode opaque, bool isLastNodeOfBlock)
@@ -102,44 +151,39 @@ namespace Mug.Models.Generator
             ManageScopeType(statement.Position, isLastOfBlock, type);
         }
 
-        private MIRLabel CreateLabel(string label)
-        {
-            return FunctionBuilder.CreateLabel(label);
-        }
-
         private void LocateLabelHere(MIRLabel label)
         {
             if (label is not null)
-                label.BodyIndex = FunctionBuilder.CurrentIndex();
+                label.BodyIndex = FunctionBuilder.CreateLabelHere();
         }
 
-        private static bool ConditionNodeIsOmitted(ConditionalStatement expression)
+        private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression = false, MIRLabel firstEndLabel = null)
         {
-            return expression is null;
-        }
-
-        private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression = false)
-        {
-            ReportMissingElseNode(node, isExpression);
-
-            if (ConditionNodeIsOmitted(node))
-                return ContextType;
-
             EvaluateConditionExpression(node.Expression, out var otherwiseLabel);
 
-            var endLabel = CreateLabel("end");
-
+            var isFirst = firstEndLabel is null;
+            var isNotLast = node.ElseNode is not null;
+            var endLabel = isFirst ? CreateLabel("end") : firstEndLabel;
             var conditionBlock = GenerateNodeBlockInExpression(node.Body);
 
-            FunctionBuilder.EmitJump(endLabel);
+            if (isNotLast) FunctionBuilder.EmitJump(endLabel);
 
             LocateLabelHere(otherwiseLabel);
 
-            EvaluateConditionalElseNode(node, conditionBlock);
+            if (isNotLast) EvaluateConditionalElseNode(node, conditionBlock, endLabel);
 
-            LocateLabelHere(endLabel);
+            if (isFirst)
+            {
+                LocateLabelHere(endLabel);
+                ReportMissingElseNode(node, isExpression);
+            }
 
             return conditionBlock;
+        }
+
+        private MIRLabel CreateLabel(string name)
+        {
+            return new(FunctionBuilder.CurrentIndex(), name);
         }
 
         private void ReportMissingElseNode(ConditionalStatement expression, bool isExpression)
@@ -148,12 +192,11 @@ namespace Mug.Models.Generator
                 Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
         }
 
-        private void EvaluateConditionalElseNode(ConditionalStatement expression, DataType conditionBlock)
+        private void EvaluateConditionalElseNode(ConditionalStatement expression, DataType conditionBlock, MIRLabel endLabel)
         {
-            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode);
-            
-            if (expression.ElseNode is not null)
-                FixAndCheckTypes(conditionBlock, elseConditionBlock, expression.ElseNode.Position);
+            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode, firstEndLabel: endLabel);
+
+            FixAndCheckTypes(conditionBlock, elseConditionBlock, expression.ElseNode.Position);
         }
 
         private void EvaluateConditionExpression(INode expression, out MIRLabel otherwiseLabel)
@@ -217,7 +260,7 @@ namespace Mug.Models.Generator
         private void EmitReturnIfExpressionAsStatementIsInFunctionBlock(DataType type)
         {
             if (CurrentScope.IsInFunctionBlock)
-                FunctionBuilder.EmitReturn(type);
+                FunctionBuilder.EmitReturn(LowerDataType(type));
         }
 
         private void GenerateReturnStatement(ReturnStatement statement)
@@ -231,7 +274,7 @@ namespace Mug.Models.Generator
                 ContextTypes.Pop();
             }
 
-            FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
+            FunctionBuilder.EmitReturn(LowerDataType(CurrentFunction.ReturnType));
         }
 
         private void GenerateAssignmentStatement(AssignmentStatement statement)
@@ -307,7 +350,7 @@ namespace Mug.Models.Generator
             FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
             var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, statement.IsConst);
 
-            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, allocation.Type);
+            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, LowerDataType(allocation.Type));
 
             ContextTypes.Pop();
         }
@@ -417,7 +460,7 @@ namespace Mug.Models.Generator
         private void EvaluateMinusPrefixOperator(PrefixOperator expression, DataType type)
         {
             ExpectSignedIntForMinusPrefixOperator(type, expression.Prefix.Position);
-            FunctionBuilder.EmitNeg(type);
+            FunctionBuilder.EmitNeg(LowerDataType(type));
         }
 
         private void EvaluateConstantMinusPrefixOperator(PrefixOperator expression, DataType type, ref string resultValue)
@@ -430,7 +473,7 @@ namespace Mug.Models.Generator
         private void EvaluateNegationPrefixOperator(PrefixOperator expression, DataType type, ref DataType result)
         {
             FixAndCheckTypes(DataType.Bool, type, expression.Prefix.Position);
-            FunctionBuilder.EmitNeg(DataType.Bool);
+            FunctionBuilder.EmitNeg(LowerDataType(DataType.Bool));
 
             result = DataType.Bool;
         }
@@ -523,7 +566,7 @@ namespace Mug.Models.Generator
 
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(constantRight, leftType);
+            FunctionBuilder.EmitLoadConstantValue(constantRight, LowerDataType(leftType));
 
             return leftType;
         }
@@ -538,7 +581,7 @@ namespace Mug.Models.Generator
             var rightType = EvaluateExpression(expression.Right);
 
             ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), rightType);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), LowerDataType(rightType));
 
             ContextTypes.Pop();
 
@@ -554,7 +597,7 @@ namespace Mug.Models.Generator
                 expression.Operator.Kind,
                 expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(result, DataType.Bool);
+            FunctionBuilder.EmitLoadConstantValue(result, LowerDataType(DataType.Bool));
         }
 
         private bool FoldConstantBooleanExpressionIntoBool(INode left, INode right, TokenKind op, ModulePosition position)
@@ -761,7 +804,7 @@ namespace Mug.Models.Generator
             for (var i = 0; i < expression.Parameters.Count; i++)
                 CheckAndEvaluateParameter(func, i, expression.Parameters[i]);
 
-            FunctionBuilder.EmitCall(func.Name, func.ReturnType);
+            FunctionBuilder.EmitCall(func.Name, LowerDataType(func.ReturnType));
         }
 
         private void CheckAndEvaluateParameter(FunctionStatement func, int i, INode parameter)
@@ -887,7 +930,7 @@ namespace Mug.Models.Generator
             var constant = long.Parse(FoldConstantIntoToken(expression).Value);
 
             var type = CoercedOr(DataType.Int32);
-            FunctionBuilder.EmitLoadConstantValue(constant, type);
+            FunctionBuilder.EmitLoadConstantValue(constant, LowerDataType(type));
             CheckUnsignedOverflow(constant, expression.Position);
 
             return type;
@@ -927,7 +970,7 @@ namespace Mug.Models.Generator
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
             ReportWhenDividingByZero(constantRight, expression.Operator.Kind == TokenKind.Slash, expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(constantRight, leftType);
+            FunctionBuilder.EmitLoadConstantValue(constantRight, LowerDataType(leftType));
 
             return leftType;
         }
@@ -975,7 +1018,7 @@ namespace Mug.Models.Generator
             var rightType = EvaluateExpression(expression.Right);
 
             ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), rightType);
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), LowerDataType(rightType));
 
             ContextTypes.Pop();
 
@@ -1077,13 +1120,11 @@ namespace Mug.Models.Generator
 
         private Token FoldConstantBinaryExpressionIntoToken(BinaryExpressionNode expression)
         {
-            var l = FoldConstantIntoToken(expression.Left).Value;
-            var r = FoldConstantIntoToken(expression.Right).Value;
             return new(
                 TokenKind.ConstantDigit,
                 FoldConstants(
-                    long.Parse(l),
-                    long.Parse(r),
+                    long.Parse(FoldConstantIntoToken(expression.Left).Value),
+                    long.Parse(FoldConstantIntoToken(expression.Right).Value),
                     expression.Operator.Kind,
                     expression.Position).ToString(),
                 expression.Position,
@@ -1172,7 +1213,7 @@ namespace Mug.Models.Generator
                     $"Type '{structure.Name}' does not contain a definition for '{expression.Member.Value}'");
             }
             else
-                FunctionBuilder.EmitLoadField(index, type);
+                FunctionBuilder.EmitLoadField(index, LowerDataType(type));
         }
 
         private void ExpectPublicFieldOrInternal(FieldNode field, TypeStatement type, ModulePosition position)
@@ -1205,7 +1246,7 @@ namespace Mug.Models.Generator
 
             ReportStaticTypeAllocationIfNeeded(expression, structure);
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(type);
+            FunctionBuilder.EmitLoadZeroinitializedStruct(LowerDataType(type));
             EvaluateTypeInitialization(expression, structure, assignedFields);
             FunctionBuilder.EmitLoadValueFromPointer();
 
@@ -1296,7 +1337,7 @@ namespace Mug.Models.Generator
 
             FunctionBuilder.EmitDupplicate();
             FixAndCheckTypes(fieldType, EvaluateExpression(field.Body), field.Position);
-            FunctionBuilder.EmitStoreField(fieldIndex, fieldType);
+            FunctionBuilder.EmitStoreField(fieldIndex, LowerDataType(fieldType));
 
             ContextTypes.Pop();
         }
@@ -1341,7 +1382,7 @@ namespace Mug.Models.Generator
             if (allocation.IsConst && LeftValueChecker.IsLeftValue)
                 Tower.Report(LeftValueChecker.Position, "Constant allocation in left side of assignement");
 
-            FunctionBuilder.EmitLoadLocal(allocation.StackIndex, allocation.Type);
+            FunctionBuilder.EmitLoadLocal(allocation.StackIndex, LowerDataType(allocation.Type));
         }
 
         private AllocationData ReportVariableNotDeclared(string value, ModulePosition position)
@@ -1378,7 +1419,7 @@ namespace Mug.Models.Generator
                     break;
             }
 
-            FunctionBuilder.EmitLoadConstantValue(value, result);
+            FunctionBuilder.EmitLoadConstantValue(value, LowerDataType(result));
 
             return result;
         }
@@ -1394,7 +1435,7 @@ namespace Mug.Models.Generator
             var allocation = new AllocationData(localindex, type, isconst);
             CheckForRedeclaration(name, position, allocation);
 
-            FunctionBuilder.DeclareAllocation((MIRAllocationAttribute)Convert.ToInt32(isconst), type);
+            FunctionBuilder.DeclareAllocation((MIRAllocationAttribute)Convert.ToInt32(isconst), LowerDataType(type));
 
             return allocation;
         }
@@ -1407,12 +1448,12 @@ namespace Mug.Models.Generator
 
         private int GetAllocationsNumber()
         {
-            return FunctionBuilder.GetAllocationNumbers();
+            return FunctionBuilder.GetAllocationsNumber();
         }
 
         private void GenerateFunction(FunctionStatement func, string irFunctionName)
         {
-            FunctionBuilder = new MIRFunctionBuilder(irFunctionName, func.ReturnType, GetParameterTypes(func.ParameterList));
+            FunctionBuilder = new(irFunctionName, LowerDataType(func.ReturnType), GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(func.ReturnType, true, new());
 

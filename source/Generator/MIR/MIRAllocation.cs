@@ -19,9 +19,9 @@ namespace Mug.Models.Generator.IR
     public struct MIRAllocation
     {
         public MIRAllocationAttribute Attributes { get; }
-        public DataType Type { get; }
+        public MIRType Type { get; }
 
-        public MIRAllocation(MIRAllocationAttribute attributes, DataType type)
+        public MIRAllocation(MIRAllocationAttribute attributes, MIRType type)
         {
             Attributes = attributes;
             Type = type;

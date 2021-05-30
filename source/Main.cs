@@ -24,18 +24,19 @@ using Mug.Models.Generator.IR;
 //       - fix '//' at the start of the line is not recognized as comment by the lexer
 //       - consider changing generic parameters from '<>' to '[]'
 //       - add check for uninitialized memory
-//       - add warnings
-//       - add calls to supported hidden allocation expressions
 //       - add implicit type for parameters 'function(a, b: i32)'
-//       - add optional parameter
+//       - add optional parameters
 //       - add varargs
+//       - add arrays
 //       - change is into a new node, not boolean
 //       - add a warn for user defined types named like primitives
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
-//       - add a check to avoid type allocations of size 0 byte
 //       - add compiler symbols and use them to get target int size
-//       - add support for '+=' '-=' '*=' etc... in mirgenerator
-//       - 
+//       - add support for '+=' '-=' '*=' etc... in mirgenerator via lowering
+//       - fix 'return /x'
+//       - add function prototypes
+//       - fix folding '2 * 3 * 3'
+//       - add import global statement
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 
@@ -46,12 +47,12 @@ if (!unit.HasErrors())
 
 // var e = unit.GenerateIR(out var ir);
 
-var e = unit.GenerateLLVMIR(out var ir);
-
-if (!unit.HasErrors())
-    Console.WriteLine(ir.ToString());
+var e = unit.GenerateC(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
+
+if (!unit.HasErrors() /*&& ir is not null*/)
+    Console.WriteLine(ir.ToString());
 
 #else
 

@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using Mug.Generator.TargetGenerators;
 using Mug.Generator.TargetGenerators.LLVM;
 using Mug.Models.Generator;
 using Mug.Models.Generator.IR;
@@ -22,7 +23,7 @@ namespace Mug.Compilation
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
         public MIRGenerator Generator { get; }
-        public LLVMGenerator TargetGenerator { get; }
+        public TargetGenerator TargetGenerator { get; set; }
         public SymbolTable Symbols { get; }
         public List<DataType> Types { get; }
         public string OutputFilename { get; }
@@ -31,6 +32,7 @@ namespace Mug.Compilation
         public NamespaceNode TAST { get; internal set; }
         public MIR MIRModule { get; internal set; }
         public LLVMModuleRef LLVMModule { get; internal set; }
+        public string CModule { get; internal set; }
 
         public CompilationTower(string outputFilename)
         {
@@ -40,8 +42,12 @@ namespace Mug.Compilation
             TypeInstaller = new(this);
             Generator = new(this);
             Symbols = new(this);
-            TargetGenerator = new(this);
             Types = new();
+        }
+
+        public void SetGenerator(TargetGenerator generator)
+        {
+            TargetGenerator = generator;
         }
 
         [DoesNotReturn()]

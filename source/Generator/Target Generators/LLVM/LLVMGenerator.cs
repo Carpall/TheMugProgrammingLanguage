@@ -11,6 +11,7 @@ using LLModule = LLVMSharp.Interop.LLVMModuleRef;
 using LLType = LLVMSharp.Interop.LLVMTypeRef;
 using LLValue = LLVMSharp.Interop.LLVMValueRef;
 using LLBuilder = LLVMSharp.Interop.LLVMBuilderRef;
+using LLBlock = LLVMSharp.Interop.LLVMBasicBlockRef;
 using LLVMC = LLVMSharp.Interop.LLVM;
 
 namespace Mug.Generator.TargetGenerators.LLVM
@@ -48,26 +49,20 @@ namespace Mug.Generator.TargetGenerators.LLVM
             Module.AddFunction(function.Name, CreateLLVMFunctionModel(function));
         }
 
-        private LLType LowerDataType(DataType type)
+        private LLType LowerDataType(MIRType type)
         {
-            return type.SolvedType.Kind switch
+            return type.Kind switch
             {
-                TypeKind.Bool => LLType.Int1,
-                TypeKind.Int8
-                or TypeKind.UInt8 => LLType.Int8,
-                TypeKind.Int16
-                or TypeKind.UInt16 => LLType.Int16,
-                TypeKind.Int32
-                or TypeKind.UInt32 => LLType.Int32,
-                TypeKind.Int64
-                or TypeKind.UInt64 => LLType.Int64,
-                TypeKind.Void => LLType.Void,
-                TypeKind.DefinedType => LowerStruct(type.SolvedType.GetStruct()),
-                _ => ToImplement<LLType>(type.SolvedType.Kind.ToString(), nameof(LowerDataType))
+                MIRTypeKind.Bool => LLType.Int1,
+                MIRTypeKind.Int
+                or MIRTypeKind.UInt => LLType.CreateInt((uint)type.GetIntBitSize()),
+                MIRTypeKind.Void => LLType.Void,
+                MIRTypeKind.Struct => LowerStruct(type.GetStruct()),
+                _ => ToImplement<LLType>(type.Kind.ToString(), nameof(LowerDataType))
             };
         }
 
-        private LLType LowerStruct(TypeStatement type)
+        private LLType LowerStruct(MIRStructure type)
         {
             var lltype = Module.GetTypeByName(type.Name);
             if (!IsUnsafeNull(lltype))
@@ -78,8 +73,8 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 lltype = LLVMC.StructCreateNamed(Module.Context, new SByteString(type.Name));
                 LLVMC.StructSetBody(
                     lltype,
-                    ArrayToPointer(LowerParameterDataTypes(type.BodyFields)),
-                    (uint)type.BodyFields.Count,
+                    ArrayToPointer(LowerDataTypes(type.Body)),
+                    (uint)type.Body.Length,
                     Convert.ToInt32(type.IsPacked));
 
                 return lltype;
@@ -97,11 +92,11 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 return (LLVMOpaqueType**)fixedTypes;
         }
 
-        private LLType[] LowerParameterDataTypes(List<FieldNode> fields)
+        private LLType[] LowerDataTypes(MIRType[] types)
         {
-            var results = new LLType[fields.Count];
-            for (int i = 0; i < fields.Count; i++)
-                results[i] = LowerDataType(fields[i].Type);
+            var results = new LLType[types.Length];
+            for (int i = 0; i < types.Length; i++)
+                results[i] = LowerDataType(types[i]);
 
             return results;
         }
@@ -115,7 +110,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void LowerFunction(MIRFunction function)
         {
             CurrentFunction = function;
-            CurrentLLVMFunction = GetLLVMFunction(function.Name);
+            CurrentLLVMFunction = GetLLVMFunction(CurrentFunction.Name);
             CurrentFunctionBuilder = CreateBuilder();
             Allocations = new(LLValue, MIRAllocationAttribute)[function.Allocations.Length];
 
@@ -154,32 +149,84 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.Call:                 EmitCall(instruction);                break;
                 case MIRInstructionKind.Pop:                  EmitPop();                            break;
                 case MIRInstructionKind.Neg:                  EmitNeg(instruction);                 break;
+                case MIRInstructionKind.Ceq:                  EmitCeq(instruction);                 break;
+                case MIRInstructionKind.Neq:                  EmitNeq(instruction);                 break;
+                case MIRInstructionKind.Geq:                  EmitGeq(instruction);                 break;
+                case MIRInstructionKind.Leq:                  EmitLeq(instruction);                 break;
+                case MIRInstructionKind.Greater:              EmitGreater(instruction);             break;
+                case MIRInstructionKind.Less:                 EmitLess(instruction);                break;
+                case MIRInstructionKind.Jump:                 EmitJump(instruction);                break;
+                case MIRInstructionKind.JumpFalse:            EmitJumpFalse(instruction);           break;
                 /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
-                    break;
-                case MIRInstructionKind.Comment:
-                    break;
-                case MIRInstructionKind.JumpFalse:
-                    break;
-                case MIRInstructionKind.Jump:
-                    break;
-                case MIRInstructionKind.Ceq:
-                    break;
-                case MIRInstructionKind.Neq:
-                    break;
-                case MIRInstructionKind.Leq:
-                    break;
-                case MIRInstructionKind.Geq:
-                    break;
-                case MIRInstructionKind.Greater:
-                    break;
-                case MIRInstructionKind.Less:
                     break;*/
                 default:
                     ToImplement<object>(instruction.Kind.ToString(), nameof(EmitLoweredInstruction));
                     break;
             }
+        }
+
+        private void EmitJumpFalse(MIRInstruction instruction)
+        {
+            /*var value = StackValuesPop();
+
+            CurrentFunctionBuilder.BuildCondBr(value, , instruction.GetLabel());
+
+            SwitchBlockAndSetBuilder();*/
+        }
+
+        private void EmitJump(MIRInstruction instruction)
+        {
+            
+        }
+
+        private void EmitGeq(MIRInstruction instruction)
+        {
+            EmitCmp(
+                instruction.Type.IsSignedInt() ?
+                    LLVMIntPredicate.LLVMIntSGE :
+                    LLVMIntPredicate.LLVMIntUGE);
+        }
+
+        private void EmitLeq(MIRInstruction instruction)
+        {
+            EmitCmp(
+                instruction.Type.IsSignedInt() ?
+                    LLVMIntPredicate.LLVMIntSLE :
+                    LLVMIntPredicate.LLVMIntULE);
+        }
+
+        private void EmitGreater(MIRInstruction instruction)
+        {
+            EmitCmp(
+                instruction.Type.IsSignedInt() ?
+                    LLVMIntPredicate.LLVMIntSGT :
+                    LLVMIntPredicate.LLVMIntUGT);
+        }
+
+        private void EmitLess(MIRInstruction instruction)
+        {
+            EmitCmp(
+                instruction.Type.IsSignedInt() ?
+                    LLVMIntPredicate.LLVMIntSLT :
+                    LLVMIntPredicate.LLVMIntULT);
+        }
+
+        private void EmitCeq(MIRInstruction instruction)
+        {
+            EmitCmp(LLVMIntPredicate.LLVMIntEQ);
+        }
+
+        private void EmitNeq(MIRInstruction instruction)
+        {
+            EmitCmp(LLVMIntPredicate.LLVMIntNE);
+        }
+
+        private void EmitCmp(LLVMIntPredicate kind)
+        {
+            var right = StackValuesPop();
+            StackValuesPush(CurrentFunctionBuilder.BuildICmp(kind, StackValuesPop(), right));
         }
 
         private void EmitNegInt(MIRInstruction instruction)
@@ -190,7 +237,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void EmitNeg(MIRInstruction instruction)
         {
-            if (instruction.Type.SolvedType.IsInt())
+            if (instruction.Type.IsInt())
                 EmitNegInt(instruction);
             else
                 EmitNegBool();
@@ -232,7 +279,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             var right = StackValuesPop();
             StackValuesPush(
-                instruction.Type.SolvedType.IsSignedInt() ?
+                instruction.Type.IsSignedInt() ?
                     CurrentFunctionBuilder.BuildSDiv(StackValuesPop(), right) :
                     CurrentFunctionBuilder.BuildUDiv(StackValuesPop(), right));
         }
@@ -302,18 +349,12 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void EmitLoadConstant(MIRInstruction instruction)
         {
             var lltype = LowerDataType(instruction.Type);
-            StackValuesPush(instruction.Type.SolvedType.Kind switch
+            StackValuesPush(instruction.Type.Kind switch
             {
-                TypeKind.Int8
-                or TypeKind.Int16
-                or TypeKind.Int32
-                or TypeKind.Int64
-                or TypeKind.UInt8
-                or TypeKind.UInt16
-                or TypeKind.UInt32
-                or TypeKind.UInt64 => CreateLLConstInt(lltype, instruction.ConstantIntValue),
-                TypeKind.Bool => CreateLLConstInt(lltype, Convert.ToInt64(instruction.ConstantBoolValue)),
-                _ => ToImplement<LLValue>(instruction.Type.SolvedType.Kind.ToString(), nameof(EmitLoadConstant))
+                MIRTypeKind.Int
+                or MIRTypeKind.UInt => CreateLLConstInt(lltype, instruction.ConstantIntValue),
+                MIRTypeKind.Bool => CreateLLConstInt(lltype, Convert.ToInt64(instruction.ConstantBoolValue)),
+                _ => ToImplement<LLValue>(instruction.Type.Kind.ToString(), nameof(EmitLoadConstant))
             });
         }
 
@@ -334,7 +375,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void EmitReturn(MIRInstruction instruction)
         {
-            if (instruction.Type.SolvedType.IsVoid())
+            if (instruction.Type.IsVoid())
                 CurrentFunctionBuilder.BuildRetVoid();
             else
                 CurrentFunctionBuilder.BuildRet(StackValuesPop());
@@ -363,19 +404,10 @@ namespace Mug.Generator.TargetGenerators.LLVM
                     LowerDataTypes(function.ParameterTypes));
         }
 
-        private LLType[] LowerDataTypes(DataType[] parameterTypes)
-        {
-            var result = new LLType[parameterTypes.Length];
-            for (int i = 0; i < parameterTypes.Length; i++)
-                result[i] = LowerDataType(parameterTypes[i]);
-
-            return result;
-        }
-
         private LLBuilder CreateBuilder()
         {
             var builder = LLBuilder.Create(Module.Context);
-            builder.PositionAtEnd(CurrentLLVMFunction.AppendBasicBlock(""));
+            builder.PositionAtEnd(CurrentLLVMFunction.AppendBasicBlock("entry"));
 
             return builder;
         }
@@ -394,7 +426,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 Allocations[index].Value = CurrentFunctionBuilder.BuildAlloca(LowerDataType(allocation.Type));
         }
 
-        public LLModule Lower()
+        public object Lower()
         {
             DeclareFunctionPrototypes();
             WalkFunctions();

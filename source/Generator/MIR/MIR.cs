@@ -11,10 +11,12 @@ namespace Mug.Models.Generator.IR
     public struct MIR
     {
         public MIRFunction[] Functions { get; }
+        public MIRStructure[] Structures { get; }
 
-        public MIR(MIRFunction[] functions)
+        public MIR(MIRFunction[] functions, MIRStructure[] structures)
         {
             Functions = functions;
+            Structures = structures;
         }
 
         public string DumpJSON()
@@ -24,10 +26,10 @@ namespace Mug.Models.Generator.IR
 
         public string Dump()
         {
-            if (Functions is null)
-                return null;
+            var functions = Functions ?? Array.Empty<MIRFunction>();
+            var structures = Structures ?? Array.Empty<MIRStructure>();
 
-            return $"{string.Join("\n", Functions)}";
+            return $"{string.Join("\n", structures)}\n{string.Join("\n", functions)}";
         }
 
         public override string ToString()

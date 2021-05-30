@@ -1,6 +1,8 @@
 ﻿using Mug.Compilation;
+using Mug.Models.Generator.IR;
 using Mug.Models.Lexer;
 using Mug.Symbols;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.Models.Parser.AST.Statements
@@ -17,10 +19,16 @@ namespace Mug.Models.Parser.AST.Statements
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }
         public bool IsPacked => Pragmas.PragmaIsTrue("packed");
+        internal MIRStructure? LoweredStructCache { get; set; }
 
         public override string ToString()
         {
             return Name;
+        }
+
+        public void CacheLoweredStruct(MIRStructure MIRStructure)
+        {
+            LoweredStructCache = MIRStructure;
         }
     }
 }
