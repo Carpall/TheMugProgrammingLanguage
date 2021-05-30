@@ -37,6 +37,8 @@ using Mug.Models.Generator.IR;
 //       - add function prototypes
 //       - fix folding '2 * 3 * 3'
 //       - add import global statement
+//       - add c to compilation target in compilationflags
+//       - add a check for entrypoint
 
 var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
 

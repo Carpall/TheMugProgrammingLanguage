@@ -1,9 +1,5 @@
-type A {
-  pub a: i32
-}
+func fib(n: u8): u8 { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
 
 func main() {
-  /*var x = 10
-  x += 1*/
-  var x: A = new { a: 1 }
+        fib(50)
 }

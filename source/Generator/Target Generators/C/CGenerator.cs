@@ -32,7 +32,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitAllocations()
         {
-            for (int i = 0; i < CurrentFunction.Allocations.Length; i++)
+            for (int i = CurrentFunction.ParameterTypes.Length; i < CurrentFunction.Allocations.Length; i++)
                 EmitStatement($"{CurrentFunction.Allocations[i].Type} _{i}");
         }
 
@@ -139,13 +139,24 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var call = GetTempName();
             var isvoid = instruction.Type.IsVoid();
-            if (!isvoid)
-                AppendExpression(call);
 
             EmitStatement(
                 !isvoid ?
                     $"{instruction.Type} {call} =" :
-                    "", $"{instruction.GetName()}()");
+                    "", $"{BuildFunctionName(instruction.GetName())}({string.Join(", ", PopFunctionArgs(instruction.GetName()))})");
+
+            if (!isvoid)
+                AppendExpression(call);
+        }
+
+        private string[] PopFunctionArgs(string functionName)
+        {
+            var count = Tower.MIRModule.GetFunction(functionName).ParameterTypes.Length;
+            var result = new string[count];
+            while (count-- > 0)
+                result[count] = GetExpression();
+
+            return result;
         }
 
         private string GetTempName()
@@ -277,7 +288,7 @@ namespace Mug.Generator.TargetGenerators.C
                 if (i > 0)
                     result.Append(", ");
 
-                result.Append($"{parameterTypes[i]} p_{i}");
+                result.Append($"{parameterTypes[i]} _{i}");
             }
 
             return result.ToString();
@@ -285,10 +296,19 @@ namespace Mug.Generator.TargetGenerators.C
 
         override public object Lower()
         {
+            GenerateMain();
             LowerFunctions();
             LowerStructures();
 
             return Module.Build();
+        }
+
+        private void GenerateMain()
+        {
+            var entrypointBuilder = new CFunctionBuilder("int __main()");
+            entrypointBuilder.Body.AppendLine("    mug__main(); return 0;");
+
+            Module.Functions.Add(entrypointBuilder);
         }
 
         private void LowerFunctions()

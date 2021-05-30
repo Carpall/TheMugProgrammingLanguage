@@ -203,7 +203,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             switch (target)
             {
                 case CompilationTarget.BC:
-                    Compile(onlyBitcode: true);
+                    CompileLLVM(onlyBitcode: true);
                     break;
                 case CompilationTarget.LL:
                     PrintAlertsIfNeeded(_unit.GenerateLLVMIR(out var llvmmodule));
@@ -218,10 +218,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     DumpAbstractSyntaxTree(head);
                     break;
                 case CompilationTarget.ASM:
-                    Compile("-S");
+                    CompileC("-S");
                     break;
                 case CompilationTarget.EXE:
-                    Compile();
+                    CompileC();
                     break;
                 case CompilationTarget.MIRJSON:
                 case CompilationTarget.MIR:
@@ -259,12 +259,20 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             // _unit.DeclareCompilerSymbol(name);
         }
 
-        private void Compile(string flag = "", bool onlyBitcode = false)
+        private void CompileLLVM(string flag = "", bool onlyBitcode = false)
         {
-            _unit.Compile(
+            _unit.CompileLLVMIR(
                 (int)GetFlag<CompilationMode>("mode"),
                 GetFlag<string>("output"),
                 onlyBitcode,
+                flag);
+        }
+
+        private void CompileC(string flag = "")
+        {
+            _unit.CompileC(
+                (int)GetFlag<CompilationMode>("mode"),
+                GetFlag<string>("output"),
                 flag);
         }
 
@@ -431,7 +439,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", GetFiles());
-            var e = _unit.GenerateLLVMIR(out _);
+            var e = _unit.GenerateIR(out _);
             PrintAlertsIfNeeded(e);
         }
 

@@ -36,5 +36,14 @@ namespace Mug.Models.Generator.IR
         {
             return Dump();
         }
+
+        public MIRFunction GetFunction(string functionName)
+        {
+            for (int i = 0; i < Functions.Length; i++)
+                if (Functions[i].Name == functionName)
+                    return Functions[i];
+
+            return default;
+        }
     }
 }
