@@ -1,9 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public struct ParameterNode : INode
     {

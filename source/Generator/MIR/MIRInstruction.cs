@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR
+namespace Mug.Generator.IR
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum MIRInstructionKind

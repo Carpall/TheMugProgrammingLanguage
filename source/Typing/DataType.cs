@@ -1,5 +1,5 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using System;
 using System.Collections.Generic;
 

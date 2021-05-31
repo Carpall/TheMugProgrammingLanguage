@@ -2,7 +2,7 @@
 using Mug.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class TypeAllocationNode : INode
     {

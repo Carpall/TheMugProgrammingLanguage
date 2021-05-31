@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Mug.TypeSystem;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class FieldNode : INode
     {

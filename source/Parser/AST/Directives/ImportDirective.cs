@@ -1,12 +1,13 @@
 ﻿using Mug.Compilation;
 
-namespace Mug.Models.Parser.AST.Directives
+namespace Mug.Parser.AST.Directives
 {
-  public enum ImportMode
+    public enum ImportMode
     {
         FromPackages,
         FromLocal
     }
+
     public class ImportDirective : INode
     {
         public string NodeName => "ImportDirective";

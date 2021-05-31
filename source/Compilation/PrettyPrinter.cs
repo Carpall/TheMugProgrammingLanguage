@@ -1,4 +1,4 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Lexer;
 using Pastel;
 using System;
 using System.Drawing;

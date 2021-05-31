@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
     public struct SwitchNode : INode
     {

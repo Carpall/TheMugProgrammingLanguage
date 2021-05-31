@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR
+namespace Mug.Generator.IR
 {
     public struct MIR
     {

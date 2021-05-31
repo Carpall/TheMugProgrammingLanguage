@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Generator.TargetGenerators
+namespace Mug.TargetGenerators
 {
     public abstract class TargetGenerator : CompilerComponent
     {

@@ -1,11 +1,11 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
+using Mug.Generator.IR;
+using Mug.Lexer;
 using Mug.Symbols;
 using System;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
     public class TypeStatement : INode, ISymbol
     {

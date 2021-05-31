@@ -1,13 +1,13 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
+using Mug.Lexer;
+using Mug.Parser;
 using Mug.Symbols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Mug.Models.Parser.AST.Statements;
+using Mug.Parser.AST.Statements;
 
 namespace Mug.TypeSystem
 {

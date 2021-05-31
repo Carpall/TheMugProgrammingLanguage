@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class MemberNode : INode
     {

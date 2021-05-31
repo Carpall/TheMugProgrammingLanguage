@@ -1,11 +1,11 @@
-﻿using Mug.Models.Parser.AST.Statements;
+﻿using Mug.Parser.AST.Statements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR
+namespace Mug.Generator.IR
 {
     public enum MIRTypeKind
     {

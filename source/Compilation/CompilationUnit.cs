@@ -1,9 +1,9 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Generator.TargetGenerators.C;
-using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
+using Mug.Generator.IR;
+using Mug.Lexer;
+using Mug.Parser;
+using Mug.Parser.AST;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -147,7 +147,7 @@ namespace Mug.Compilation
                     continue;
 
                 var subtower = new CompilationTower(path);
-                (subtower.Lexer = new Lexer(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
+                (subtower.Lexer = new(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
 
                 var head = subtower.Parser.Parse();
 

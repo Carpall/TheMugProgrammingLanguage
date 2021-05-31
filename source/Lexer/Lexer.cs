@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Mug.Models.Lexer
+namespace Mug.Lexer
 {
     public class Lexer : CompilerComponent
     {

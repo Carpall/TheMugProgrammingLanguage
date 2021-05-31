@@ -1,6 +1,6 @@
 ﻿using Mug.TypeSystem;
 
-namespace Mug.Models.Generator
+namespace Mug.Generator
 {
     public class MIRLabel
     {

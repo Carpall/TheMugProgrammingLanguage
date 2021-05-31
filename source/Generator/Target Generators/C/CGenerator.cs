@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Generator.IR;
+using Mug.Generator.IR;
+using Mug.TargetGenerators;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -80,12 +81,12 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitStoreField(MIRInstruction instruction)
         {
             var expression = GetExpression();
-            EmitStatement($"{GetExpression()}->{GetLocal(instruction.GetStackIndex())} =", expression);
+            EmitStatement($"{GetExpression()}.{GetLocal(instruction.GetStackIndex())} =", expression);
         }
 
         private void EmitLoadField(MIRInstruction instruction)
         {
-            AppendExpression($"{instruction.Type}->{GetLocal(instruction.GetStackIndex())}");
+            AppendExpression($"{GetExpression()}.{GetLocal(instruction.GetStackIndex())}");
         }
 
         private void EmitLoadFromPointer()
@@ -97,7 +98,7 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var temp = GetTempName();
             EmitStatement($"{instruction.Type} {temp}");
-            AppendExpression($"&{temp}");
+            AppendExpression(temp);
         }
 
         private void EmitLess(MIRInstruction instruction)

@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Directives;
-using Mug.Models.Parser.AST.Statements;
+using Mug.Lexer;
+using Mug.Parser.AST;
+using Mug.Parser.AST.Directives;
+using Mug.Parser.AST.Statements;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +10,7 @@ using System.Text;
 using System;
 using System.Data;
 
-namespace Mug.Models.Parser
+namespace Mug.Parser
 {
     public class Parser : CompilerComponent
     {

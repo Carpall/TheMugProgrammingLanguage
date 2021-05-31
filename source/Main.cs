@@ -1,11 +1,11 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Parser;
+using Mug.Parser;
 using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using System.Linq;
-using Mug.Models.Generator.IR;
+using Mug.Generator.IR;
 
 #if DEBUG
 

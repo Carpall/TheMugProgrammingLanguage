@@ -1,10 +1,10 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Mug.Symbols;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
     public class FunctionStatement : INode, ISymbol
     {

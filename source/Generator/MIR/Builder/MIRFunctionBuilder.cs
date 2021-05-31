@@ -1,11 +1,11 @@
-﻿using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
+﻿using Mug.Generator.IR;
+using Mug.Lexer;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Mug.Models.Generator.IR.Builder
+namespace Mug.Generator.IR.Builder
 {
     internal class MIRFunctionBuilder
     {

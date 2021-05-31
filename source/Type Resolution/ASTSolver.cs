@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
+using Mug.Parser.AST;
+using Mug.Parser.AST.Statements;
 using Mug.Symbols;
 using Mug.TypeSystem;
 

@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
+using Mug.Lexer;
+using Mug.Parser;
+using Mug.Parser.AST;
+using Mug.Parser.AST.Statements;
 using Mug.Symbols;
 using Mug.TypeSystem;
 using System;

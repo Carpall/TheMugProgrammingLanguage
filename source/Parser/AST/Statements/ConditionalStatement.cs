@@ -1,9 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
     public class ConditionalStatement : INode
     {

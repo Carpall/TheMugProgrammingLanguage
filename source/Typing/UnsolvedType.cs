@@ -1,6 +1,7 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
+using Mug.Lexer;
+using Mug.Parser;
+using Mug.Parser.AST;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;

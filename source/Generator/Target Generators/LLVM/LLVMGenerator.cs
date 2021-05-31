@@ -1,11 +1,11 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Compilation;
-using Mug.Models.Generator.IR;
+using Mug.Generator.IR;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
-using Mug.Models.Parser.AST.Statements;
-using Mug.Models.Parser.AST;
+using Mug.Parser.AST.Statements;
+using Mug.Parser.AST;
 
 using LLModule = LLVMSharp.Interop.LLVMModuleRef;
 using LLType = LLVMSharp.Interop.LLVMTypeRef;

@@ -1,4 +1,4 @@
-﻿using Mug.Models.Lexer;
+﻿using Mug.Lexer;
 using Newtonsoft.Json;
 using System;
 
@@ -7,10 +7,10 @@ namespace Mug.Compilation
   public struct ModulePosition
     {
         [JsonIgnore]
-        public Lexer Lexer { get; }
+        public Lexer.Lexer Lexer { get; }
         public Range Position { get; }
 
-        public ModulePosition(Lexer lexer, Range position)
+        public ModulePosition(Lexer.Lexer lexer, Range position)
         {
             Lexer = lexer;
             Position = position;

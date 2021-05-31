@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Newtonsoft.Json;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class NamespaceNode : INode
     {

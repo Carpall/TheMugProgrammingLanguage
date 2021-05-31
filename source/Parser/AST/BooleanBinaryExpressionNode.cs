@@ -1,10 +1,10 @@
 ﻿using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Lexer;
 using Mug.TypeSystem;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class BooleanBinaryExpressionNode : INode
     {

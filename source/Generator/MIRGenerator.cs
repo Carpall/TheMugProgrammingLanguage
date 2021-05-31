@@ -1,18 +1,18 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Compilation;
-using Mug.Models.Generator.IR;
-using Mug.Models.Generator.IR.Builder;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
-using Mug.Models.Parser.AST.Statements;
+using Mug.Generator.IR;
+using Mug.Generator.IR.Builder;
+using Mug.Lexer;
+using Mug.Parser;
+using Mug.Parser.AST;
+using Mug.Parser.AST.Statements;
 using Mug.Symbols;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Mug.Models.Generator
+namespace Mug.Generator
 {
     public class MIRGenerator : CompilerComponent
     {
@@ -1248,7 +1248,7 @@ namespace Mug.Models.Generator
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(LowerDataType(type));
             EvaluateTypeInitialization(expression, structure, assignedFields);
-            FunctionBuilder.EmitLoadValueFromPointer();
+            // FunctionBuilder.EmitLoadValueFromPointer();
 
             return DataType.Solved(SolvedType.Struct(structure));
         }

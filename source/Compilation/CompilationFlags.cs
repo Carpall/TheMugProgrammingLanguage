@@ -1,6 +1,7 @@
 ﻿using LLVMSharp.Interop;
-using Mug.Models.Generator.IR;
-using Mug.Models.Parser;
+using Mug.Generator.IR;
+using Mug.Parser;
+using Mug.Parser.AST;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

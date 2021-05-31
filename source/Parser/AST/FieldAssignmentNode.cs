@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using System;
 
-namespace Mug.Models.Parser.AST
+namespace Mug.Parser.AST
 {
     public class FieldAssignmentNode : IStatement
     {

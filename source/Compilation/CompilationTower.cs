@@ -1,25 +1,26 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Generator.TargetGenerators;
 using Mug.Generator.TargetGenerators.LLVM;
-using Mug.Models.Generator;
-using Mug.Models.Generator.IR;
-using Mug.Models.Lexer;
-using Mug.Models.Parser;
-using Mug.Models.Parser.AST;
+using Mug.Generator;
+using Mug.Generator.IR;
+using Mug.Lexer;
+using Mug.Parser;
+using Mug.Parser.AST;
 using Mug.Symbols;
 using Mug.TypeResolution;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Mug.TargetGenerators;
 
 namespace Mug.Compilation
 {
     public class CompilationTower
     {
         public Diagnostic Diagnostic { get; } = new();
-        public Lexer Lexer { get; set; }
-        public Parser Parser { get; }
+        public Lexer.Lexer Lexer { get; set; }
+        public Parser.Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
         public MIRGenerator Generator { get; }
@@ -62,7 +63,7 @@ namespace Mug.Compilation
         }
 
         [DoesNotReturn()]
-        public void Throw(Lexer lexer, int pos, string error)
+        public void Throw(Lexer.Lexer lexer, int pos, string error)
         {
             Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
         }
@@ -90,7 +91,7 @@ namespace Mug.Compilation
             Diagnostic.Report(position, error);
         }
 
-        public void Report(Lexer lexer, int position, string error)
+        public void Report(Lexer.Lexer lexer, int position, string error)
         {
             Report(new(lexer, position..(position + 1)), error);
         }

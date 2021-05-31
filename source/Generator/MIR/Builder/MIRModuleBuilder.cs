@@ -1,4 +1,4 @@
-﻿using Mug.Models.Generator.IR;
+﻿using Mug.Generator.IR;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Models.Generator.IR.Builder
+namespace Mug.Generator.IR.Builder
 {
     public class MIRModuleBuilder
     {

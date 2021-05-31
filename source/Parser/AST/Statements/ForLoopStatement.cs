@@ -1,8 +1,8 @@
 ﻿using Mug.Compilation;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
-  public struct ForLoopStatement : INode
+    public struct ForLoopStatement : INode
     {
         public string NodeName => "ForLoop";
         public VariableStatement LeftExpression { get; set; }

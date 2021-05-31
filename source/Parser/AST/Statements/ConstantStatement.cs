@@ -2,7 +2,7 @@
 using Mug.TypeSystem;
 using System;
 
-namespace Mug.Models.Parser.AST.Statements
+namespace Mug.Parser.AST.Statements
 {
     public struct ConstantStatement : INode
     {
