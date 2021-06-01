@@ -31,6 +31,12 @@ namespace Mug.Compilation
         MIRJSON
     }
 
+    public enum CompilationMeans
+    {
+        LLVM,
+        C
+    }
+
     public class CompilationFlags
     {
         private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "mir", "mir-json" };
@@ -104,6 +110,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             ["output"]      = null, // output filename
             ["target"]      = null, // extension
+            ["means"]       = null, // extension
             ["mode"  ]      = null, // debug | release
             ["src"   ]      = null, // file to compile
             ["args"  ]      = null, // arguments
@@ -219,10 +226,16 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     DumpAbstractSyntaxTree(head);
                     break;
                 case CompilationTarget.ASM:
-                    CompileC("-S");
+                    if (GetMeans() is CompilationMeans.C)
+                        CompileC("-S");
+                    else
+                        CompileLLVM("-S");
                     break;
                 case CompilationTarget.EXE:
-                    CompileC();
+                    if (GetMeans() is CompilationMeans.C)
+                        CompileC();
+                    else
+                        CompileLLVM();
                     break;
                 case CompilationTarget.MIRJSON:
                 case CompilationTarget.MIR:
@@ -233,6 +246,11 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     CompilationTower.Throw("Unsupported target, try with another");
                     break;
             }
+        }
+
+        private CompilationMeans GetMeans()
+        {
+            return GetFlag<CompilationMeans>("means");
         }
 
         private void DeclareCompilerSymbols()
@@ -342,7 +360,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             _arguments = arguments;
         }
 
-        private static CompilationTarget GetTarget(string target)
+        private static CompilationTarget ParseCompilationTarget(string target)
         {
             for (var i = 0; i < _targets.Length; i++)
                 if (_targets[i] == target)
@@ -406,11 +424,14 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     case "src":
                         ConfigureFlag(arg, CheckMugFiles(NextArgument().Split(' ')));
                         break;
+                    case "means":
+                        ConfigureFlag(arg, ParseCompilationMeans(NextArgument()));
+                        break;
                     case "mode":
                         ConfigureFlag(arg, GetMode(NextArgument()));
                         break;
                     case "target":
-                        ConfigureFlag(arg, GetTarget(NextArgument()));
+                        ConfigureFlag(arg, ParseCompilationTarget(NextArgument()));
                         break;
                     case "output":
                         ConfigureFlag(arg, NextArgument());
@@ -431,6 +452,22 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             }
             else
                 AddSourceFilename(CheckMugFile(argument));
+        }
+
+        private CompilationMeans ParseCompilationMeans(string value)
+        {
+            return value switch
+            {
+                "llvm" => CompilationMeans.LLVM,
+                "c" => CompilationMeans.C,
+                _ => error()
+            };
+
+            CompilationMeans error()
+            {
+                CompilationTower.Throw($"Invalid compilation means '{value}'");
+                return default;
+            }
         }
 
         private void Check()

@@ -8,6 +8,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Mug.Generator.TargetGenerators.LLVM;
 
 namespace Mug.Compilation
 {
@@ -216,6 +217,8 @@ namespace Mug.Compilation
 
         public CompilationException GenerateLLVMIR(out LLVMModuleRef ir)
         {
+            Tower.SetGenerator(new LLVMGenerator(Tower));
+
             var result = GenerateCatched(InternalGenerateLLVMIR);
             ir = Tower.LLVMModule;
             return result;
