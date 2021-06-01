@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using Mug.Parser.AST.Statements;
 using Mug.Parser.AST;
+using Mug.Generator.TargetGenerators;
 
 using LLModule = LLVMSharp.Interop.LLVMModuleRef;
 using LLType = LLVMSharp.Interop.LLVMTypeRef;
@@ -16,7 +17,7 @@ using LLVMC = LLVMSharp.Interop.LLVM;
 
 namespace Mug.Generator.TargetGenerators.LLVM
 {
-    public class LLVMGenerator : CompilerComponent
+    public class LLVMGenerator : TargetGenerator
     {
         public LLModule Module { get; }
         
@@ -426,7 +427,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 Allocations[index].Value = CurrentFunctionBuilder.BuildAlloca(LowerDataType(allocation.Type));
         }
 
-        public object Lower()
+        public override object Lower()
         {
             DeclareFunctionPrototypes();
             WalkFunctions();

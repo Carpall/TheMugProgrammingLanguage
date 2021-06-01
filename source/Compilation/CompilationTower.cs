@@ -12,7 +12,7 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Mug.TargetGenerators;
+using Mug.Generator.TargetGenerators;
 
 namespace Mug.Compilation
 {

@@ -1,5 +1,7 @@
-func fib(n: u8): u8 { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
+func fib(n: u8): u8 {
+  if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
+}
 
 func main() {
-        fib(50)
+  fib(50)
 }

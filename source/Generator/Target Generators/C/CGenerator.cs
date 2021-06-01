@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Generator.IR;
-using Mug.TargetGenerators;
+using Mug.Generator.TargetGenerators;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -19,16 +19,26 @@ namespace Mug.Generator.TargetGenerators.C
         private MIRFunction CurrentFunction { get; set; }
 
         private uint _temporaryElementCounter = 0;
+        private uint _virtualStackCounter = 0;
+
+        private const uint VIRTUAL_REGISTERS_MAX_COUNT = 10;
 
         private void LowerFunction(MIRFunction function)
         {
             CurrentFunction = function;
             CurrenFunctionBuilder = new(BuildCFunctionPrototype());
 
+            AllocateVirtualRegisters();
             EmitAllocations();
             LowerFunctionBody();
 
             Module.Functions.Add(CurrenFunctionBuilder);
+        }
+
+        private void AllocateVirtualRegisters()
+        {
+            for (int i = 0; i < VIRTUAL_REGISTERS_MAX_COUNT; i++)
+                EmitStatement($"register uint64 R{i}");
         }
 
         private void EmitAllocations()
@@ -124,11 +134,17 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitJump(MIRInstruction instruction)
         {
             EmitStatement($"goto", BuildLabel(instruction.GetLabel().BodyIndex));
+            ResetVirtualStackCounter();
         }
 
         private void EmitJumpFalse(MIRInstruction instruction)
         {
             EmitStatement($"if (!({GetExpression()})) goto", BuildLabel(instruction.GetLabel().BodyIndex));
+        }
+
+        private void ResetVirtualStackCounter()
+        {
+            _virtualStackCounter = 0;
         }
 
         private static string BuildLabel(int bodyIndex)
@@ -227,8 +243,8 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitOperation(string op)
         {
-            var right = CurrentCExpression.Pop();
-            AppendExpression($"{CurrentCExpression.Pop()} {op} {right}");
+            var right = GetExpression();
+            AppendExpression($"{GetExpression()} {op} {right}");
         }
 
         private void EmitLoadLocal(MIRInstruction instruction)
@@ -258,17 +274,24 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void AppendExpression(string expression)
         {
-            CurrentCExpression.Push($"({expression})");
+            MovInVirtualReg(_virtualStackCounter++, expression);
+            // CurrentCExpression.Push(expression);
         }
 
         private string GetExpression()
         {
-            return CurrentCExpression.Pop();
+            return $"R{--_virtualStackCounter}";
+            // return CurrentCExpression.Pop();
         }
 
         private void EmitStatement(string statement, string expression = "")
         {
             CurrenFunctionBuilder.Body.AppendLine($"    {statement} {expression};");
+        }
+
+        private void MovInVirtualReg(uint index, string expression)
+        {
+            EmitStatement($"R{index} =", $"(uint64)({expression})");
         }
 
         private string BuildCFunctionPrototype()
@@ -297,9 +320,9 @@ namespace Mug.Generator.TargetGenerators.C
 
         override public object Lower()
         {
-            GenerateMain();
-            LowerFunctions();
             LowerStructures();
+            LowerFunctions();
+            GenerateMain();
 
             return Module.Build();
         }

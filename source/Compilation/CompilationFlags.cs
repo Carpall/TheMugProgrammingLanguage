@@ -394,6 +394,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void SetDefaultIFNeeded()
         {
+            SetDefault("means", CompilationMeans.C);
             SetDefault("target", CompilationTarget.EXE);
             SetDefault("mode", CompilationMode.Debug);
             SetDefault("output",
