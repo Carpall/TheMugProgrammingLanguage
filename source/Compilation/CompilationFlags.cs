@@ -23,6 +23,7 @@ namespace Mug.Compilation
         EXE,
         Library, // not available yet
         BC,
+        C,
         ASM,
         AST,
         LL,
@@ -39,7 +40,7 @@ namespace Mug.Compilation
 
     public class CompilationFlags
     {
-        private static readonly string[] _targets = { "exe", "lib", "bc", "asm", "ast", "ll", "tast", "mir", "mir-json" };
+        private static readonly string[] _targets = { "exe", "lib", "bc", "c", "asm", "ast", "ll", "tast", "mir", "mir-json" };
 
         private const string USAGE = "\nUSAGE: mug <action> <file> <options>\n";
         private static readonly string HELP = @$"
@@ -109,8 +110,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private readonly Dictionary<string, object> _flags = new()
         {
             ["output"]      = null, // output filename
-            ["target"]      = null, // extension
-            ["means"]       = null, // extension
+            ["target"]      = null,
+            ["nostrip"]     = null,
+            ["means"]       = null,
             ["mode"  ]      = null, // debug | release
             ["src"   ]      = null, // file to compile
             ["args"  ]      = null, // arguments
@@ -147,7 +149,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             _flags[flag] = value;
         }
 
-        private T GetFlag<T>(string flag)
+        internal T GetFlag<T>(string flag)
         {
             return (T)_flags[flag];
         }
@@ -203,7 +205,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             var output = GetFlag<string>("output");
             var target = GetFlag<CompilationTarget>("target");
 
-            _unit = new CompilationUnit(output, path);
+            _unit = new CompilationUnit(output, this, path);
 
             DeclareSymbol(GetFlag<CompilationMode>("mode").ToString());
             DeclareSymbol(target.ToString());
@@ -231,6 +233,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     else
                         CompileLLVM("-S");
                     break;
+                case CompilationTarget.C:
+                    PrintAlertsIfNeeded(_unit.GenerateC(out var ccode));
+                    DumpCCode(ccode);
+                    break;
                 case CompilationTarget.EXE:
                     if (GetMeans() is CompilationMeans.C)
                         CompileC();
@@ -246,6 +252,11 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     CompilationTower.Throw("Unsupported target, try with another");
                     break;
             }
+        }
+
+        private void DumpCCode(string ccode)
+        {
+            File.WriteAllText(GetOutputPath(), ccode);
         }
 
         private CompilationMeans GetMeans()
@@ -282,7 +293,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             _unit.CompileLLVMIR(
                 (int)GetFlag<CompilationMode>("mode"),
-                GetFlag<string>("output"),
+                GetOutputPath(),
                 onlyBitcode,
                 flag);
         }
@@ -291,7 +302,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             _unit.CompileC(
                 (int)GetFlag<CompilationMode>("mode"),
-                GetFlag<string>("output"),
+                GetOutputPath(),
                 flag);
         }
 
@@ -397,6 +408,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             SetDefault("means", CompilationMeans.C);
             SetDefault("target", CompilationTarget.EXE);
             SetDefault("mode", CompilationMode.Debug);
+            SetDefault("nostrip", false);
             SetDefault("output",
                 Path.ChangeExtension(
                     IsDefault("output") ?
@@ -422,6 +434,9 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 var arg = argument[1..];
                 switch (arg)
                 {
+                    case "nostrip":
+                        ConfigureFlag(arg, true);
+                        break;
                     case "src":
                         ConfigureFlag(arg, CheckMugFiles(NextArgument().Split(' ')));
                         break;
@@ -474,10 +489,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Check()
         {
             ParseArguments();
-            CheckForUnusableFlags("check", "output", "target", "mode", "args");
+            CheckForUnusableFlags("check", "output", "target", "mode", "args", "nostrip", "means");
             DeclareCompilerSymbols();
 
-            _unit = new CompilationUnit("", GetFiles());
+            _unit = new CompilationUnit("", this, GetFiles());
             var e = _unit.GenerateIR(out _);
             PrintAlertsIfNeeded(e);
         }

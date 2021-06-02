@@ -29,12 +29,29 @@ namespace Mug.TypeSystem
             return tower.Types[^1];
         }
 
+        public static UnsolvedType Create(TypeKind type, object baseType = null)
+        {
+            var result = new UnsolvedType
+            {
+                Kind = type,
+                BaseType = baseType
+            };
+
+            return result;
+        }
+
         /// <summary>
         /// converts a keyword token into a type
         /// </summary>
-        public static DataType FromToken(CompilationTower tower, Token t, bool isInEnum = false)
+        public static DataType FromToken(CompilationTower tower, Token token, bool isInEnum = false)
         {
-            var type = t.Value switch
+            var type = GetTypeKindFromToken(token, isInEnum);
+            return Create(tower, token.Position, type, token.Value);
+        }
+
+        public static TypeKind GetTypeKindFromToken(Token token, bool isInEnum = false)
+        {
+            return token.Value switch
             {
                 "str" => TypeKind.String,
                 "chr" => TypeKind.Char,
@@ -52,9 +69,8 @@ namespace Mug.TypeSystem
                 "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
                 "unk" => TypeKind.Unknown,
-                _ => isInEnum && t.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
+                _ => isInEnum && token.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
             };
-            return Create(tower, t.Position, type, t.Value);
         }
 
         /// <summary>

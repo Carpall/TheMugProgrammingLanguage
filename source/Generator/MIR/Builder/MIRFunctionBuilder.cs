@@ -190,5 +190,15 @@ namespace Mug.Generator.IR.Builder
         {
             EmitInstruction(MIRInstructionKind.Neg, type);
         }
+
+        public void StoreGlobal(string name, MIRType type)
+        {
+            EmitInstruction(new MIRInstruction(MIRInstructionKind.StoreGlobal, type, name));
+        }
+
+        public void EmitCastIntToInt(MIRType type)
+        {
+            EmitInstruction(MIRInstructionKind.CastIntToInt, type);
+        }
     }
 }

@@ -12,13 +12,13 @@ using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Mug.Generator.TargetGenerators;
 
 namespace Mug.Compilation
 {
     public class CompilationTower
     {
         public Diagnostic Diagnostic { get; } = new();
+        public string OutputFilename { get; }
         public Lexer.Lexer Lexer { get; set; }
         public Parser.Parser Parser { get; }
         public ASTSolver Solver { get; }
@@ -27,7 +27,7 @@ namespace Mug.Compilation
         public TargetGenerator TargetGenerator { get; set; }
         public SymbolTable Symbols { get; }
         public List<DataType> Types { get; }
-        public string OutputFilename { get; }
+        public CompilationFlags Flags { get; }
         public List<Token> TokenCollection => Lexer.TokenCollection;
         public NamespaceNode AST => Parser.Module;
         public NamespaceNode TAST { get; internal set; }
@@ -35,7 +35,7 @@ namespace Mug.Compilation
         public LLVMModuleRef LLVMModule { get; internal set; }
         public string CModule { get; internal set; }
 
-        public CompilationTower(string outputFilename)
+        public CompilationTower(string outputFilename, CompilationFlags flags = null)
         {
             OutputFilename = outputFilename;
             Parser = new(this);
@@ -44,6 +44,7 @@ namespace Mug.Compilation
             Generator = new(this);
             Symbols = new(this);
             Types = new();
+            Flags = flags;
         }
 
         public void SetGenerator(TargetGenerator generator)
@@ -110,6 +111,11 @@ namespace Mug.Compilation
         internal static void Todo(string todo)
         {
             Throw($"TODO: {todo}");
+        }
+
+        internal bool IsExpectingEntryPoint()
+        {
+            return Flags is not null && Flags.GetFlag<CompilationTarget>("target") is CompilationTarget.EXE;
         }
     }
 }

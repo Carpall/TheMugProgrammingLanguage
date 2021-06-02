@@ -82,10 +82,17 @@ namespace Mug.Generator.TargetGenerators.C
                 case MIRInstructionKind.LoadValueFromPointer: EmitLoadFromPointer(); break;
                 case MIRInstructionKind.LoadField: EmitLoadField(instruction); break;
                 case MIRInstructionKind.StoreField: EmitStoreField(instruction); break;
+                case MIRInstructionKind.StoreGlobal: EmitStoreGlobal(instruction); break;
+                case MIRInstructionKind.CastIntToInt: break;
                 default:
                     CompilationTower.Todo($"implement {instruction.Kind} in {nameof(EmitLoweredInstruction)}");
                     break;
             }
+        }
+
+        private void EmitStoreGlobal(MIRInstruction instruction)
+        {
+            EmitStatement($"{instruction.GetName()} =", GetExpression());
         }
 
         private void EmitStoreField(MIRInstruction instruction)
@@ -321,16 +328,28 @@ namespace Mug.Generator.TargetGenerators.C
         override public object Lower()
         {
             LowerStructures();
+            LowerGlobals();
             LowerFunctions();
             GenerateMain();
 
             return Module.Build();
         }
 
+        private void LowerGlobals()
+        {
+            foreach (var global in Tower.MIRModule.Globals)
+                LowerGlobal(global);
+        }
+
+        private void LowerGlobal(MIRGlobal global)
+        {
+            Module.Globals.Add($"{global.Type} {global.Name};");
+        }
+
         private void GenerateMain()
         {
-            var entrypointBuilder = new CFunctionBuilder("int __main()");
-            entrypointBuilder.Body.AppendLine("    mug__main(); return 0;");
+            var entrypointBuilder = new CFunctionBuilder("int main()");
+            entrypointBuilder.Body.Append("    mug__main();\n    return exit_code;");
 
             Module.Functions.Add(entrypointBuilder);
         }

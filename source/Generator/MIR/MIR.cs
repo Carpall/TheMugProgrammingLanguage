@@ -10,11 +10,13 @@ namespace Mug.Generator.IR
 {
     public struct MIR
     {
+        public MIRGlobal[] Globals { get; }
         public MIRFunction[] Functions { get; }
         public MIRStructure[] Structures { get; }
 
-        public MIR(MIRFunction[] functions, MIRStructure[] structures)
+        public MIR(MIRGlobal[] globals, MIRFunction[] functions, MIRStructure[] structures)
         {
+            Globals = globals;
             Functions = functions;
             Structures = structures;
         }
@@ -26,10 +28,11 @@ namespace Mug.Generator.IR
 
         public string Dump()
         {
+            var globals = Globals ?? Array.Empty<MIRGlobal>();
             var functions = Functions ?? Array.Empty<MIRFunction>();
             var structures = Structures ?? Array.Empty<MIRStructure>();
 
-            return $"{string.Join("\n", structures)}\n{string.Join("\n", functions)}";
+            return $"{string.Join("\n", globals)}\n{string.Join("\n", structures)}\n{string.Join("\n", functions)}";
         }
 
         public override string ToString()

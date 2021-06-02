@@ -1,7 +1,11 @@
-func fib(n: u8): u8 {
-  if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
+type A {
+  a: i32,
+  b: i32,
+  c: i32,
+  d: i32,
+  e: i32,
+  f: i32,
+  g: i32
 }
 
-func main() {
-  fib(50)
-}
+func main() { ecode!(1) }

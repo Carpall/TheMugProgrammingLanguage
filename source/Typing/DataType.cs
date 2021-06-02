@@ -26,6 +26,7 @@ namespace Mug.TypeSystem
 
         internal static DataType Bool => Primitive(TypeKind.Bool);
         internal static DataType Int32 => Primitive(TypeKind.Int32);
+        internal static DataType Int64 => Primitive(TypeKind.Int64);
         internal static DataType Void => Primitive(TypeKind.Void);
         internal static DataType Auto => Primitive(TypeKind.Auto);
         internal static DataType String => Primitive(TypeKind.String);

@@ -140,7 +140,7 @@ namespace Mug.Parser
         {
             if (MatchAdvance(TokenKind.OpenPar, out var token, true))
                 return CollectTupleType(token);
-            if (MatchAdvance(TokenKind.OpenBracket, out token, true))
+            else if (MatchAdvance(TokenKind.OpenBracket, out token, true))
                 return CollectArrayType(token);
             else if (MatchAdvance(TokenKind.Star, out token, true) || MatchAdvance(TokenKind.QuestionMark, out token, true))
                 return CollectPointerType(token);
@@ -408,37 +408,29 @@ namespace Mug.Parser
 
         private List<DataType> CollectGenericParameters(ref bool builtin)
         {
-            /*var oldindex = CurrentIndex;
+            var oldindex = CurrentIndex;
             List<DataType> generics = new();
 
-            if (MatchAdvance(TokenKind.BooleanLess, true))
+            if (MatchAdvance(TokenKind.Pipe, true))
             {
                 if (builtin)
                     Report(UnexpectedToken);
 
-                if ((out var type))
+                do
+                    generics.Add(ExpectType());
+                while (MatchAdvance(TokenKind.Comma));
+
+                if (MatchAdvance(TokenKind.Pipe))
                 {
-                    generics.Add(type);
-
-                    while (MatchAdvance(TokenKind.Comma))
-                        generics.Add(ExpectType());
-
-                    if (MatchAdvance(TokenKind.BooleanGreater))
-                    {
-                        builtin = CollectBuiltInSymbol();
-                        hasToReturn = false;
-                        return generics;
-                    }
-                    else
-                        RemoveLastUnsolvedTypes(generics.Count);
+                    builtin = CollectBuiltInSymbol();
+                    return generics;
                 }
             }
 
-            hasToReturn = true;
-            CurrentIndex = oldindex;*/
-            return new();
+            CurrentIndex = oldindex;
+            return generics;
         }
-        
+
         private bool CollectBuiltInSymbol()
         {
             return MatchAdvance(TokenKind.Negation, true);
@@ -450,7 +442,7 @@ namespace Mug.Parser
 
             var builtin = CollectBuiltInSymbol();
 
-            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.BooleanLess, true))
+            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.Pipe, true))
                 return false;
             
             var generics = CollectGenericParameters(ref builtin);

@@ -12,7 +12,7 @@ namespace Mug.TypeResolution
         {   
         }
 
-        private SolvedType ResolveType(DataType type)
+        internal SolvedType ResolveType(DataType type)
         {
             if (type.IsSolved)
                 return type.SolvedType;

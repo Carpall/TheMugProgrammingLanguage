@@ -39,8 +39,10 @@ using Mug.Generator.IR;
 //       - add import global statement
 //       - add c to compilation target in compilationflags
 //       - add a check for entrypoint
+//       - add a error for functions with more than 10 parameters
+//       - design in compilation flags a way not to update the help message
 
-var unit = new CompilationUnit("test.mir", @"../../../../tests/main_test.mug");
+var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.mug");
 
 /*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
 

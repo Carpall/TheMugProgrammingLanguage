@@ -30,7 +30,7 @@ namespace Mug.Compilation
             }
         }
 
-        public CompilationUnit(string outputFilename, params string[] paths) : base(new(outputFilename))
+        public CompilationUnit(string outputFilename, CompilationFlags flags, params string[] paths) : base(new(outputFilename, flags))
         {
             Paths = paths;
         }
@@ -79,7 +79,7 @@ namespace Mug.Compilation
             if (File.Exists(bitcode)) File.Delete(bitcode);
         }
 
-        private static void WriteCModule(
+        private void WriteCModule(
             int optimizazioneLevel, string output, string optionalArgs, string ccode)
         {
             var cfile = GetTempCachePath();
@@ -90,7 +90,11 @@ namespace Mug.Compilation
             while (!File.Exists(cfile))
                 ;
 
-            CallCompilerFromShell($"gcc", $"{cfile} -o {Path.GetFullPath(output)} -nostdlib {optionalArgs}", optimizazioneLevel);
+            output = Path.GetFullPath(output);
+            CallCompilerFromShell($"gcc", $"{cfile} -o {output} {optionalArgs}", optimizazioneLevel);
+
+            if (!Tower.Flags.GetFlag<bool>("nostrip"))
+                CallCompilerFromShell("strip", output);
         }
 
         private static string GetTempCachePath()
@@ -103,7 +107,7 @@ namespace Mug.Compilation
             return Tower.HasErrors();
         }
 
-        public static void CallCompilerFromShell(string compiler, string args, int optimizazioneLevel)
+        public static void CallCompilerFromShell(string compiler, string args, int optimizazioneLevel = 0)
         {
             // checks the clang execuatble exists
             if (!File.Exists(ClangFilename))
@@ -114,7 +118,7 @@ namespace Mug.Compilation
                 new ProcessStartInfo
                 {
                     FileName = compiler,
-                    Arguments = $"-O{optimizazioneLevel} {args}",
+                    Arguments = $"{(optimizazioneLevel > 0 ? $"-O{optimizazioneLevel}" : "")} {args}",
                     // invisible window
                     CreateNoWindow = true,
                     UseShellExecute = false,

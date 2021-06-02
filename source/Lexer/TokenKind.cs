@@ -77,6 +77,8 @@ namespace Mug.Lexer
         BooleanLess = '<',
         [Description(">")]
         BooleanGreater = '>',
+        [Description("|")]
+        Pipe = '|',
         [Description("<=")]
         BooleanLEQ = -19,
         [Description(">=")]
@@ -87,8 +89,6 @@ namespace Mug.Lexer
         QuestionMark = '?',
         [Description("while")]
         KeyWhile = -21,
-        [Description("to")]
-        KeyTo = -22,
         [Description("in")]
         KeyIn = -23,
         [Description("for")]
@@ -97,6 +97,10 @@ namespace Mug.Lexer
         RangeDots = -25,
         [Description("as")]
         KeyAs = -26,
+        [Description("or")]
+        BooleanOR = -46,
+        [Description("and")]
+        BooleanAND = -45,
         [Description("continue")]
         KeyContinue = -27,
         [Description("break")]
@@ -119,10 +123,6 @@ namespace Mug.Lexer
         OperatorIncrement = -35,
         [Description("--")]
         OperatorDecrement = -36,
-        [Description("|")]
-        BooleanOR = '|',
-        [Description("&")]
-        BooleanAND = '&',
         [Description("priv")]
         KeyPriv = -37,
         [Description("enum")]

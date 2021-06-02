@@ -7,6 +7,7 @@ using Mug.Parser;
 using Mug.Parser.AST;
 using Mug.Parser.AST.Statements;
 using Mug.Symbols;
+using Mug.TypeResolution;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,8 @@ namespace Mug.Generator
 {
     public class MIRGenerator : CompilerComponent
     {
+        private const string EntryPointName = "main";
+
         public MIRModuleBuilder Module { get; } = new();
 
         private MIRFunctionBuilder FunctionBuilder { get; set; }
@@ -33,10 +36,16 @@ namespace Mug.Generator
 
         public MIR Generate()
         {
+            SetUpGlobals();
             WalkDeclarations();
             Tower.CheckDiagnostic();
 
             return Module.Build();
+        }
+
+        private void SetUpGlobals()
+        {
+            Module.DefineGlobal(new("exit_code", new(MIRTypeKind.Int, 64)));
         }
 
         private MIRType[] GetParameterTypes(ParameterListNode parameters)
@@ -234,7 +243,7 @@ namespace Mug.Generator
 
         private void GenerateCallStatement(CallStatement statement, bool isLastOfBlock)
         {
-            var type = EvaluateNodeCall(statement);
+            var type = EvaluateNodeCall(statement, !isLastOfBlock | ContextType.SolvedType.IsVoid());
             ManageScopeType(statement.Position, isLastOfBlock, type);
         }
 
@@ -406,7 +415,7 @@ namespace Mug.Generator
                 MemberNode expression => EvaluateMemberNode(expression),
                 BinaryExpressionNode expression => EvaluateNodeBinaryExpression(expression),
                 BlockNode expression => GenerateNodeBlockInExpression(expression),
-                CallStatement expression => EvaluateNodeCall(expression),
+                CallStatement expression => EvaluateNodeCall(expression, false),
                 ConditionalStatement expression => EvaluateConditionalStatement(expression, true),
                 PrefixOperator expression => EvaluatePrefixOperator(expression),
                 _ => ToImplement<DataType>(body.ToString(), nameof(EvaluateExpression)),
@@ -681,8 +690,11 @@ namespace Mug.Generator
             return default;
         }
 
-        private DataType EvaluateNodeCall(CallStatement expression)
+        private DataType EvaluateNodeCall(CallStatement expression, bool isStatement)
         {
+            if (expression.IsBuiltIn)
+                return EvaluateNodeCallBuiltIn(expression, isStatement);
+
             var parameters = expression.Parameters;
             var func = EvaluateFunctionName(expression.Name, ref parameters);
             expression.Parameters = parameters;
@@ -693,6 +705,87 @@ namespace Mug.Generator
             EvaluateCallParameters(expression, func);
 
             return func.ReturnType;
+        }
+
+        private DataType EvaluateNodeCallBuiltIn(CallStatement expression, bool isStatement)
+        {
+            if (expression.Name is not Token name)
+            {
+                Tower.Report(expression.Position, "Unsupported composed name");
+                return ContextType;
+            }
+
+            var type = ContextType;
+
+            switch (name.Value)
+            {
+                case "size":
+                    WarnWhenStatement(isStatement);
+                    type = EvaluateCompTimeSize(expression);
+                    break;
+                case "ecode":
+                    type = EvaluateCompTimeEcode(expression);
+                    break;
+                default:
+                    Tower.Report(expression.Position, "Unknown builtin function");
+                    break;
+            }
+
+            return type;
+
+            void WarnWhenStatement(bool isStatement)
+            {
+                if (isStatement)
+                    Tower.Warn(expression.Position, "Useless call to builtin function here");
+            }
+        }
+
+        private DataType EvaluateCompTimeEcode(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, 0, expression.Position);
+            ExpectParametersNumber(expression.Parameters, 1, expression.Parameters.Position);
+            var value = expression.Parameters.FirstOrDefault();
+
+            if (value is null)
+                return ContextType;
+
+            ContextTypes.Push(DataType.Int64);
+            var type = EvaluateExpression(value);
+            var exitcodeType = LowerDataType(DataType.Int64);
+            ContextTypes.Pop();
+
+            if (!type.SolvedType.IsInt())
+                Tower.Report(value.Position, "Program's exit code must be of type int");
+            else if (type.SolvedType.Kind is not TypeKind.Int64)
+                FunctionBuilder.EmitCastIntToInt(exitcodeType);
+
+            FunctionBuilder.StoreGlobal("exit_code", exitcodeType);
+            return DataType.Void;
+        }
+
+        private DataType EvaluateCompTimeSize(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, 1, expression.Position);
+            ExpectParametersNumber(expression.Parameters, 0, expression.Parameters.Position);
+            var type = expression.Generics.FirstOrDefault();
+            var returnType = CoercedOr(DataType.Int32);
+
+            if (type is not null)
+                FunctionBuilder.EmitLoadConstantValue(GetTypeByteSize(type, type.Position), LowerDataType(returnType));
+
+            return returnType;
+        }
+
+        private void ExpectParametersNumber(NodeBuilder parameters, int expectedNumber, ModulePosition position)
+        {
+            if (parameters.Count != expectedNumber)
+                Tower.Report(position, $"Expected '{expectedNumber}' parameters, but got '{parameters.Count}'");
+        }
+
+        private void ExpectGenericsNumber(List<DataType> generics, int expectedNumber, ModulePosition position)
+        {
+            if (generics.Count != expectedNumber)
+                Tower.Report(position, $"Expected '{expectedNumber}' generic parameters, but got '{generics.Count}'");
         }
 
         private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters)
@@ -747,7 +840,7 @@ namespace Mug.Generator
 
         private FunctionStatement EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken)
         {
-            if (baseToken.Kind != TokenKind.Identifier)
+            if (baseToken.Kind is not TokenKind.Identifier)
                 return ReportPrimitiveCannotHaveMethods(baseToken.Position);
 
             string typeName;
@@ -1218,7 +1311,7 @@ namespace Mug.Generator
 
         private void ExpectPublicFieldOrInternal(FieldNode field, TypeStatement type, ModulePosition position)
         {
-            if (field.Modifier != TokenKind.KeyPub && !ProcessingMethodOf(type))
+            if (field.Modifier is not TokenKind.KeyPub && !ProcessingMethodOf(type))
                 Tower.Report(position, $"Field '{field.Name}' is a private member of type '{type.Name}'");
         }
 
@@ -1259,7 +1352,7 @@ namespace Mug.Generator
                 Tower.Report(expression.Position, "Unable to allocate a static type");
         }
 
-        private int GetTypeByteSize(DataType type)
+        private int GetTypeByteSize(DataType type, ModulePosition position = default)
         {
             return type.SolvedType.Kind switch
             {
@@ -1279,7 +1372,7 @@ namespace Mug.Generator
                 TypeKind.UInt16 => 2,
                 TypeKind.Bool => 1,
                 TypeKind.Array => PointerSize(),
-                TypeKind.DefinedType => GetStructByteSize(type.SolvedType.GetStruct()),
+                TypeKind.DefinedType => GetStructByteSize(type.SolvedType.GetStruct(), position),
                 TypeKind.GenericDefinedType => throw new NotImplementedException(),
                 TypeKind.Void => 0,
                 TypeKind.Unknown => PointerSize(),
@@ -1290,13 +1383,21 @@ namespace Mug.Generator
             };
         }
 
-        private int GetStructByteSize(TypeStatement type)
+        private int GetStructByteSize(TypeStatement type, ModulePosition position = default)
         {
             var result = 0;
             for (int i = 0; i < type.BodyFields.Count; i++)
-                result += GetTypeByteSize(type.BodyFields[i].Type);
-            
+                result += GetTypeByteSize(type.BodyFields[i].Type, position);
+
+            if (IsValidPosition(position) && result == 0)
+                Tower.Report(position, "Unable to calculate size of a static type");
+
             return result;
+        }
+
+        private static bool IsValidPosition(ModulePosition position)
+        {
+            return position.Position.End.Value > 0;
         }
 
         private int PointerSize()
@@ -1499,7 +1600,7 @@ namespace Mug.Generator
                 
                 var fieldStructType =
                 (
-                    fieldType.Kind == TypeKind.Pointer ?
+                    fieldType.Kind is TypeKind.Pointer ?
                         ((DataType)fieldType.Base).SolvedType :
                         fieldType
                 ).GetStruct();
@@ -1526,11 +1627,37 @@ namespace Mug.Generator
 
         private void WalkDeclarations()
         {
+            FunctionStatement entrypoint = null;
             foreach (var symbol in Tower.Symbols.GetCache())
-                RecognizeSymbol(symbol.Value);
+                RecognizeSymbol(symbol.Value, ref entrypoint);
+
+            CheckEntryPoint(entrypoint);
         }
 
-        private void RecognizeSymbol(ISymbol value)
+        private void CheckEntryPoint(FunctionStatement entryPoint)
+        {
+            if (entryPoint is null)
+                ReportMissingEntryPoint();
+            else
+            {
+                if (entryPoint.ParameterList.Length > 0)
+                    Tower.Report(entryPoint.Position, "Entrypoint cannot have parameters");
+                if (entryPoint.Generics.Count > 0)
+                    Tower.Report(entryPoint.Position, "Entrypoint cannot have generic parameters");
+                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Void)
+                    Tower.Report(entryPoint.Position, "Entrypoint cannot return a value");
+                if (entryPoint.Modifier is TokenKind.KeyPub)
+                    Tower.Report(entryPoint.Position, "Entrypoint cannot have a public modifier");
+            }
+        }
+
+        private void ReportMissingEntryPoint()
+        {
+            if (Tower.IsExpectingEntryPoint())
+                Tower.Report(null, 0, "Missing entrypoint");
+        }
+
+        private void RecognizeSymbol(ISymbol value, ref FunctionStatement entrypoint)
         {
             switch (value)
             {
@@ -1539,6 +1666,9 @@ namespace Mug.Generator
                     GenerateStruct(structSymbol);
                     break;
                 case FunctionStatement funcSymbol:
+                    if (funcSymbol.Name is EntryPointName)
+                        entrypoint = funcSymbol;
+
                     GenerateFunction(funcSymbol, funcSymbol.Name);
                     break;
                 default:

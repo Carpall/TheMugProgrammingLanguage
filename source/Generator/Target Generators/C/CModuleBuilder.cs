@@ -12,6 +12,7 @@ namespace Mug.Generator.TargetGenerators.C
         public List<CFunctionBuilder> Functions { get; } = new();
         public List<CStructureBuilder> Structures { get; } = new();
         public List<(string Symbol, string Value)> Defines { get; } = new();
+        public List<string> Globals { get; } = new();
 
         public CModuleBuilder(string name)
         {
@@ -53,7 +54,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         public string Build()
         {
-            return $"{BuildDefines()}\n{string.Join("\n;", Structures)};\n\n{string.Join("\n", Functions)}";
+            return $"{BuildDefines()}\n{string.Join("\n;", Structures)};\n\n{string.Join("\n", Globals)}\n\n{string.Join("\n", Functions)}";
         }
     }
 }

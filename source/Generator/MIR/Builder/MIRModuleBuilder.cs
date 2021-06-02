@@ -10,8 +10,9 @@ namespace Mug.Generator.IR.Builder
 {
     public class MIRModuleBuilder
     {
-        private readonly List<MIRFunction> _functions = new();
+        private readonly List<MIRGlobal> _globals = new();
         private readonly List<MIRStructure> _structures = new();
+        private readonly List<MIRFunction> _functions = new();
 
         public void DefineFunction(MIRFunction function)
         {
@@ -20,12 +21,17 @@ namespace Mug.Generator.IR.Builder
 
         public MIR Build()
         {
-            return new(_functions.ToArray(), _structures.ToArray());
+            return new(_globals.ToArray(), _functions.ToArray(), _structures.ToArray());
         }
 
-        internal void DefineStruct(MIRStructure structure)
+        public void DefineStruct(MIRStructure structure)
         {
             _structures.Add(structure);
+        }
+
+        public void DefineGlobal(MIRGlobal name)
+        {
+            _globals.Add(name);
         }
     }
 }

@@ -37,6 +37,8 @@ namespace Mug.Generator.IR
         LoadValueFromPointer = 63,
         Neg = 64,
         Label = 65,
+        StoreGlobal = 66,
+        CastIntToInt = 67,
     }
 
     public struct MIRInstruction

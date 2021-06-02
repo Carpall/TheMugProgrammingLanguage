@@ -81,15 +81,15 @@ namespace Mug.Compilation
                     var alert = alerts[i];
 
                     if (alert.Bad.Lexer is null)
-                        continue;
-
-                    WriteSourceLineStyle(
-                        alert.Kind,
-                        alert.Bad.Lexer.ModuleName,
-                        alert.Bad.Position,
-                        alert.Bad.LineAt(),
-                        alert.Bad.Lexer.Source,
-                        alert.Message);
+                        WriteFail("", alert.Message);
+                    else
+                        WriteSourceLineStyle(
+                            alert.Kind,
+                            alert.Bad.Lexer.ModuleName,
+                            alert.Bad.Position,
+                            alert.Bad.LineAt(),
+                            alert.Bad.Lexer.Source,
+                            alert.Message);
                 }
             }
             catch
