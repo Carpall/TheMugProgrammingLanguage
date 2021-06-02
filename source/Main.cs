@@ -38,7 +38,6 @@ using Mug.Generator.IR;
 //       - fix folding '2 * 3 * 3'
 //       - add import global statement
 //       - add c to compilation target in compilationflags
-//       - add a check for entrypoint
 //       - add a error for functions with more than 10 parameters
 //       - design in compilation flags a way not to update the help message
 

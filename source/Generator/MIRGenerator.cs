@@ -45,7 +45,6 @@ namespace Mug.Generator
 
         private void SetUpGlobals()
         {
-            Module.DefineGlobal(new("exit_code", new(MIRTypeKind.Int, 64)));
         }
 
         private MIRType[] GetParameterTypes(ParameterListNode parameters)
@@ -723,9 +722,6 @@ namespace Mug.Generator
                     WarnWhenStatement(isStatement);
                     type = EvaluateCompTimeSize(expression);
                     break;
-                case "ecode":
-                    type = EvaluateCompTimeEcode(expression);
-                    break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
                     break;
@@ -738,29 +734,6 @@ namespace Mug.Generator
                 if (isStatement)
                     Tower.Warn(expression.Position, "Useless call to builtin function here");
             }
-        }
-
-        private DataType EvaluateCompTimeEcode(CallStatement expression)
-        {
-            ExpectGenericsNumber(expression.Generics, 0, expression.Position);
-            ExpectParametersNumber(expression.Parameters, 1, expression.Parameters.Position);
-            var value = expression.Parameters.FirstOrDefault();
-
-            if (value is null)
-                return ContextType;
-
-            ContextTypes.Push(DataType.Int64);
-            var type = EvaluateExpression(value);
-            var exitcodeType = LowerDataType(DataType.Int64);
-            ContextTypes.Pop();
-
-            if (!type.SolvedType.IsInt())
-                Tower.Report(value.Position, "Program's exit code must be of type int");
-            else if (type.SolvedType.Kind is not TypeKind.Int64)
-                FunctionBuilder.EmitCastIntToInt(exitcodeType);
-
-            FunctionBuilder.StoreGlobal("exit_code", exitcodeType);
-            return DataType.Void;
         }
 
         private DataType EvaluateCompTimeSize(CallStatement expression)
@@ -1644,8 +1617,8 @@ namespace Mug.Generator
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have parameters");
                 if (entryPoint.Generics.Count > 0)
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have generic parameters");
-                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Void)
-                    Tower.Report(entryPoint.Position, "Entrypoint cannot return a value");
+                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Int32)
+                    Tower.Report(entryPoint.Position, "Entrypoint must return a value of type 'i32'");
                 if (entryPoint.Modifier is TokenKind.KeyPub)
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have a public modifier");
             }

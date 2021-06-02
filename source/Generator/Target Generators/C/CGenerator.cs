@@ -349,7 +349,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void GenerateMain()
         {
             var entrypointBuilder = new CFunctionBuilder("int main()");
-            entrypointBuilder.Body.Append("    mug__main();\n    return exit_code;");
+            entrypointBuilder.Body.Append("    return mug__main();\n    /*return exit_code;*/");
 
             Module.Functions.Add(entrypointBuilder);
         }
