@@ -395,12 +395,16 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private static string GetExecutableExtension()
         {
-            return Environment.OSVersion.Platform == PlatformID.Win32NT ? ".exe" : null;
+            return Environment.OSVersion.Platform is PlatformID.Win32NT ? ".exe" : null;
         }
 
         private string GetOutputExtension()
         {
-            return $".{_targets[(int)GetFlag<CompilationTarget>("target")]}";
+            var ext = GetFlag<CompilationTarget>("target");
+            return
+                ext is CompilationTarget.EXE ?
+                    GetExecutableExtension() :
+                    $".{_targets[(int)ext]}";
         }
 
         private void SetDefaultIFNeeded()

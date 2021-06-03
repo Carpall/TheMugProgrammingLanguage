@@ -19,17 +19,6 @@ namespace Mug.Compilation
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
 
-        private static string ClangFilename
-        {
-            get
-            {
-                if (Environment.OSVersion.Platform is PlatformID.Win32NT)
-                    return "C:/Program Files/LLVM/bin/clang.exe";
-                else
-                    return "/usr/bin/clang";
-            }
-        }
-
         public CompilationUnit(string outputFilename, CompilationFlags flags, params string[] paths) : base(new(outputFilename, flags))
         {
             Paths = paths;
@@ -109,12 +98,7 @@ namespace Mug.Compilation
 
         public static void CallCompilerFromShell(string compiler, string args, int optimizazioneLevel = 0)
         {
-            // checks the clang execuatble exists
-            if (!File.Exists(ClangFilename))
-                CompilationTower.Throw($"Cannot find the clang executable at: '{ClangFilename}'");
-
-            // call clang
-            var clang = Process.Start(
+            var call = Process.Start(
                 new ProcessStartInfo
                 {
                     FileName = compiler,
@@ -128,14 +112,13 @@ namespace Mug.Compilation
                     RedirectStandardError = true,
                 });
 
-            // the program will wait until clang works
-            clang.WaitForExit();
-            if (clang.ExitCode != 0)
+            call.WaitForExit();
+            if (call.ExitCode != 0)
             {
-                var output = clang.StandardOutput.ReadToEnd();
+                var output = call.StandardOutput.ReadToEnd();
 
                 if (string.IsNullOrEmpty(output))
-                    output = clang.StandardError.ReadToEnd();
+                    output = call.StandardError.ReadToEnd();
 
                 CompilationTower.Throw($"External compiler: {output}");
             }
