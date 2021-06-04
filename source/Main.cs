@@ -32,14 +32,16 @@ using Mug.Generator.IR;
 //       - add a warn for user defined types named like primitives
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
 //       - add compiler symbols and use them to get target int size
-//       - add support for '+=' '-=' '*=' etc... in mirgenerator via lowering
 //       - fix 'return /x'
 //       - add function prototypes
 //       - fix folding '2 * 3 * 3'
+//       - fix bool folding
+//       - add condition folding
 //       - add import global statement
 //       - add c to compilation target in compilationflags
 //       - add a error for functions with more than 10 parameters
 //       - design in compilation flags a way not to update the help message
+//       - int converters
 
 var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.mug");
 

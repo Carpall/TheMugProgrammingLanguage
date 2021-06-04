@@ -21,8 +21,4 @@ namespace Mug.Parser.AST
             return Rebuild();
         }*/
     }
-
-    public interface IStatement : INode
-    {
-    }
 }

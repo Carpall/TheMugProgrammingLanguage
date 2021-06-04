@@ -1,11 +1,11 @@
-﻿using LLVMSharp.Interop;
-using Mug.Compilation;
+﻿using Mug.Compilation;
 using Mug.Generator.IR;
 using Mug.Generator.IR.Builder;
 using Mug.Lexer;
 using Mug.Parser;
 using Mug.Parser.AST;
 using Mug.Parser.AST.Statements;
+using Mug.Parser.ASTLowerer;
 using Mug.Symbols;
 using Mug.TypeResolution;
 using Mug.TypeSystem;
@@ -21,17 +21,20 @@ namespace Mug.Generator
 
         public MIRModuleBuilder Module { get; } = new();
 
+        private Lowerer Lowerer { get; set; }
         private MIRFunctionBuilder FunctionBuilder { get; set; }
         private FunctionStatement CurrentFunction { get; set; }
         private TypeStatement CurrentType { get; set; }
         private Stack<DataType> ContextTypes { get; set; } = new();
         
         private DataType ContextType => ContextTypes.Peek();
+
         private Scope CurrentScope = default;
         private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
 
         public MIRGenerator(CompilationTower tower) : base(tower)
         {
+            Lowerer = new(Tower);
         }
 
         public MIR Generate()
@@ -72,7 +75,8 @@ namespace Mug.Generator
                 or TypeKind.UInt32
                 or TypeKind.UInt64 => new(MIRTypeKind.UInt, GetIntBitSize(kind)),
 
-                TypeKind.Bool => new(MIRTypeKind.Bool),
+                TypeKind.Char => new(MIRTypeKind.UInt, 8),
+                TypeKind.Bool => new(MIRTypeKind.UInt, 1),
                 TypeKind.Void => new(MIRTypeKind.Void),
 
                 TypeKind.DefinedType => new(
@@ -136,13 +140,72 @@ namespace Mug.Generator
                 case ConditionalStatement statement:
                     GenerateConditionalStatement(statement, isLastNodeOfBlock, false);
                     break;
+                case ForLoopStatement statement:
+                    GenerateForLoopStatement(statement);
+                    break;
+                case PostfixOperator statement:
+                    GeneratePostfixOperator(statement);
+                    break;
                 default:
-                    if (!isLastNodeOfBlock)
-                        Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
-                    
+                    ReportExpressionAsStatementWhenNotLastOfBlock(opaque, isLastNodeOfBlock);
                     EvaluateExpressionAsStatement(opaque);
                     break;
             }
+        }
+
+        private void GeneratePostfixOperator(PostfixOperator statement)
+        {
+            GenerateAssignmentStatement(Lowerer.LowerPostfixStatementToAssignment(statement));
+        }
+
+        private void ReportExpressionAsStatementWhenNotLastOfBlock(INode opaque, bool isLastNodeOfBlock)
+        {
+            if (!isLastNodeOfBlock)
+                Tower.Report(opaque.Position, "Expression evaluable only when is last of a block");
+        }
+
+        private void GenerateForLoopStatement(ForLoopStatement statement)
+        {
+            SaveOldScope(out var oldScope);
+            ScopeCoveredForLoopStatement(statement);
+            RestoreOldScope(oldScope);
+        }
+
+        private void ScopeCoveredForLoopStatement(ForLoopStatement statement)
+        {
+            var endLabel = CreateLabel("end");
+            var conditionLabel = EvaluateForLoopConditionAndGetConditionLabel(statement.LeftExpression, statement.ConditionExpression, endLabel);
+
+            ContextTypes.Push(DataType.Void);
+            GenerateBlock(statement.Body);
+            ContextTypes.Pop();
+
+            RecognizeStatement(statement.RightExpression, false);
+            FunctionBuilder.EmitJump(conditionLabel);
+
+            LocateLabelHere(endLabel);
+        }
+
+        private MIRLabel EvaluateForLoopConditionAndGetConditionLabel(INode leftExpression, INode conditionExpression, MIRLabel endLabel)
+        {
+            var label = CreateLabel("cond");
+
+            RecognizeStatement(leftExpression, false);
+            LocateLabelHere(label);
+            EvaluateConditionInConditionalStatement(conditionExpression, endLabel);
+
+            return label;
+        }
+
+        private void EvaluateConditionInConditionalStatement(INode expression, MIRLabel endLabel)
+        {
+            ContextTypes.Push(DataType.Bool);
+            var condition = EvaluateExpression(expression);
+            ContextTypes.Pop();
+
+            FixAndCheckTypes(DataType.Bool, condition, expression.Position);
+
+            FunctionBuilder.EmitJumpFalse(endLabel);
         }
 
         private void EvaluateExpressionAsStatement(INode expression)
@@ -287,6 +350,8 @@ namespace Mug.Generator
 
         private void GenerateAssignmentStatement(AssignmentStatement statement)
         {
+            Lowerer.LowerAssignmentStatementOperator(ref statement);
+
             ContextTypesPushUndefined();
             SetLeftValueChecker(statement.Position);
 
@@ -369,7 +434,7 @@ namespace Mug.Generator
             
             if (statement.IsConst)
                 Tower.Report(statement.Position, "A constant declaration requires a body");
-            if (statement.Type.SolvedType.Kind == TypeKind.Auto)
+            if (statement.Type.SolvedType.Kind is TypeKind.Auto)
                 Tower.Report(statement.Position, "Type notation needed");
         }
 
@@ -719,8 +784,13 @@ namespace Mug.Generator
             switch (name.Value)
             {
                 case "size":
-                    WarnWhenStatement(isStatement);
+                    WarnWhenStatement();
                     type = EvaluateCompTimeSize(expression);
+                    break;
+                case "u8" or "u16" or "u32" or "u64"
+                or "i8" or "i16" or "i32" or "i64":
+                    WarnWhenStatement();
+                    type = EvaluateCompTimeIntCast(expression, name.Value);
                     break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
@@ -729,11 +799,38 @@ namespace Mug.Generator
 
             return type;
 
-            void WarnWhenStatement(bool isStatement)
+            void WarnWhenStatement()
             {
                 if (isStatement)
                     Tower.Warn(expression.Position, "Useless call to builtin function here");
             }
+        }
+
+        private DataType EvaluateCompTimeIntCast(CallStatement expression, string name)
+        {
+            ExpectGenericsNumber(expression.Generics, 0, expression.Position);
+            ExpectParametersNumber(expression.Parameters, 1, expression.Parameters.Position);
+            var value = expression.Parameters.FirstOrDefault();
+
+            if (value is null)
+                return ContextType;
+
+            var type = EvaluateExpression(value);
+
+            // or enum in the future
+            if (!type.SolvedType.IsInt())
+                Tower.Report(value.Position, "Expected a value of type 'int'");
+
+            type = IntTypeStringToMIRType(name);
+            FunctionBuilder.EmitCastIntToInt(LowerDataType(type));
+            return type;
+        }
+
+        private static DataType IntTypeStringToMIRType(string name)
+        {
+            var bitSize = int.Parse(name[1..]);
+            var isUnsigned = Convert.ToByte(name.First() is 'u');
+            return DataType.Primitive((TypeKind)(bitSize / 2 + isUnsigned));
         }
 
         private DataType EvaluateCompTimeSize(CallStatement expression)
@@ -944,6 +1041,17 @@ namespace Mug.Generator
             return CurrentType is not null;
         }
 
+        private void SaveOldScope(out Scope oldScope)
+        {
+            oldScope = CurrentScope;
+            CurrentScope = new(null, false, CurrentScope.VirtualMemory);
+        }
+
+        private void RestoreOldScope(Scope oldScope)
+        {
+            CurrentScope = oldScope;
+        }
+
         private DataType GenerateNodeBlockInExpression(BlockNode expression)
         {
             var oldScope = CurrentScope;
@@ -1094,7 +1202,7 @@ namespace Mug.Generator
 
         private void EmitOperation(TokenKind op, DataType type)
         {
-            FunctionBuilder.EmitInstruction((MIRInstructionKind)op, type);
+            FunctionBuilder.EmitInstruction((MIRInstructionKind)op, LowerDataType(type));
         }
 
         private Token FoldConstantIntoToken(INode opaque)

@@ -5,11 +5,11 @@ using Newtonsoft.Json.Converters;
 
 namespace Mug.Parser.AST
 {
-  public class PostfixOperator : IStatement
+    public class PostfixOperator : INode
     {
         public string NodeName => "PostfixOperator";
         public INode Expression { get; set; }
-        public TokenKind Postfix { get; set; }
+        public Token Postfix { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

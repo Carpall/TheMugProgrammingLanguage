@@ -54,9 +54,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             return type.Kind switch
             {
-                MIRTypeKind.Bool => LLType.Int1,
-                MIRTypeKind.Int
-                or MIRTypeKind.UInt => LLType.CreateInt((uint)type.GetIntBitSize()),
+                MIRTypeKind.Int or MIRTypeKind.UInt => LLType.CreateInt((uint)type.GetIntBitSize()),
                 MIRTypeKind.Void => LLType.Void,
                 MIRTypeKind.Struct => LowerStruct(type.GetStruct()),
                 _ => ToImplement<LLType>(type.Kind.ToString(), nameof(LowerDataType))
@@ -354,7 +352,6 @@ namespace Mug.Generator.TargetGenerators.LLVM
             {
                 MIRTypeKind.Int
                 or MIRTypeKind.UInt => CreateLLConstInt(lltype, instruction.ConstantIntValue),
-                MIRTypeKind.Bool => CreateLLConstInt(lltype, Convert.ToInt64(instruction.ConstantBoolValue)),
                 _ => ToImplement<LLValue>(instruction.Type.Kind.ToString(), nameof(EmitLoadConstant))
             });
         }

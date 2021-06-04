@@ -150,9 +150,9 @@ namespace Mug.Generator.IR.Builder
             _body.Insert(index, PopLastInstruction());
         }
 
-        public void EmitJump(MIRLabel labeò)
+        public void EmitJump(MIRLabel label)
         {
-            EmitInstruction(MIRInstructionKind.Jump, labeò);
+            EmitInstruction(MIRInstructionKind.Jump, label);
         }
 
         public int GetAllocationsNumber()

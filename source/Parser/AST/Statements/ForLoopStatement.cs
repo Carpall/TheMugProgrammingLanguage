@@ -5,7 +5,7 @@ namespace Mug.Parser.AST.Statements
     public struct ForLoopStatement : INode
     {
         public string NodeName => "ForLoop";
-        public VariableStatement LeftExpression { get; set; }
+        public INode LeftExpression { get; set; }
         public INode ConditionExpression { get; set; }
         public INode RightExpression { get; set; }
         public BlockNode Body { get; set; }

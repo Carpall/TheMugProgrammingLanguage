@@ -5,7 +5,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Mug.Parser.AST
 {
-    public class PrefixOperator : IStatement
+    public class PrefixOperator : INode
     {
         public string NodeName => "PrefixOperator";
         public INode Expression { get; set; }

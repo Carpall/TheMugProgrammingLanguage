@@ -54,8 +54,8 @@ namespace Mug.Generator.IR
             Value = value;
         }
 
-        public bool ConstantBoolValue => (bool)Value;
-        internal long ConstantIntValue => (long)Value;
+        internal long ConstantIntValue => Type.GetIntBitSize() != 1 ? (long)Value : Convert.ToInt64(Value);
+
         internal MIRInstruction ParameterValue => (MIRInstruction)Value;
 
         public override string ToString()

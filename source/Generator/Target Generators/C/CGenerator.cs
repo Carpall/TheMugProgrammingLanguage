@@ -92,18 +92,18 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitStoreGlobal(MIRInstruction instruction)
         {
-            EmitStatement($"{instruction.GetName()} =", GetExpression());
+            EmitStatement($"{instruction.GetName()} =", PopValue());
         }
 
         private void EmitStoreField(MIRInstruction instruction)
         {
-            var expression = GetExpression();
-            EmitStatement($"{GetExpression()}.{GetLocal(instruction.GetStackIndex())} =", expression);
+            var expression = PopValue();
+            EmitStatement($"{PopValue()}.{GetLocal(instruction.GetStackIndex())} =", expression);
         }
 
         private void EmitLoadField(MIRInstruction instruction)
         {
-            AppendExpression($"{GetExpression()}.{GetLocal(instruction.GetStackIndex())}");
+            PushValue($"{PopValue()}.{GetLocal(instruction.GetStackIndex())}");
         }
 
         private void EmitLoadFromPointer()
@@ -115,7 +115,7 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var temp = GetTempName();
             EmitStatement($"{instruction.Type} {temp}");
-            AppendExpression(temp);
+            PushValue(temp);
         }
 
         private void EmitLess(MIRInstruction instruction)
@@ -135,7 +135,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitDupplicate()
         {
-            AppendExpression(CurrentCExpression.Peek());
+            PushValue(CurrentCExpression.Peek());
         }
 
         private void EmitJump(MIRInstruction instruction)
@@ -146,7 +146,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitJumpFalse(MIRInstruction instruction)
         {
-            EmitStatement($"if (!({GetExpression()})) goto", BuildLabel(instruction.GetLabel().BodyIndex));
+            EmitStatement($"if (!({PopValue()})) goto", BuildLabel(instruction.GetLabel().BodyIndex));
         }
 
         private void ResetVirtualStackCounter()
@@ -161,16 +161,19 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitCall(MIRInstruction instruction)
         {
-            var call = GetTempName();
-            var isvoid = instruction.Type.IsVoid();
+            var isNotVoid = !instruction.Type.IsVoid();
+            var call = $"{BuildFunctionName(instruction.GetName())}({ string.Join(", ", PopFunctionArgs(instruction.GetName()))})";
+            var virtualRegister = GetAvailableVirtualRegister();
 
-            EmitStatement(
-                !isvoid ?
-                    $"{instruction.Type} {call} =" :
-                    "", $"{BuildFunctionName(instruction.GetName())}({string.Join(", ", PopFunctionArgs(instruction.GetName()))})");
+            if (isNotVoid)
+                MovInVirtualReg(virtualRegister, call);
+            else
+                EmitStatement(call);
+        }
 
-            if (!isvoid)
-                AppendExpression(call);
+        private uint GetAvailableVirtualRegister()
+        {
+            return _virtualStackCounter++;
         }
 
         private string[] PopFunctionArgs(string functionName)
@@ -178,7 +181,7 @@ namespace Mug.Generator.TargetGenerators.C
             var count = Tower.MIRModule.GetFunction(functionName).ParameterTypes.Length;
             var result = new string[count];
             while (count-- > 0)
-                result[count] = GetExpression();
+                result[count] = PopValue();
 
             return result;
         }
@@ -195,7 +198,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitPop()
         {
-            GetExpression();
+            PopValue();
         }
 
         private void EmitLeq(MIRInstruction instruction)
@@ -225,7 +228,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitUnaryOperation(string op)
         {
-            AppendExpression($"{op} {GetExpression()}");
+            PushValue($"{op} {PopValue()}");
         }
 
         private void EmitDiv(MIRInstruction instruction)
@@ -250,13 +253,13 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitOperation(string op)
         {
-            var right = GetExpression();
-            AppendExpression($"{GetExpression()} {op} {right}");
+            var right = PopValue();
+            PushValue($"{PopValue()} {op} {right}");
         }
 
         private void EmitLoadLocal(MIRInstruction instruction)
         {
-            AppendExpression(GetLocal(instruction.GetStackIndex()));
+            PushValue(GetLocal(instruction.GetStackIndex()));
         }
 
         private static string GetLocal(int stackindex)
@@ -266,26 +269,33 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitStoreLocal(MIRInstruction instruction)
         {
-            EmitStatement($"{GetLocal(instruction.GetStackIndex())} =", GetExpression());
+            EmitStatement($"{GetLocal(instruction.GetStackIndex())} =", PopValue());
         }
 
         private void EmitReturn(MIRInstruction instruction)
         {
-            EmitStatement("return", !instruction.Type.IsVoid() ? GetExpression() : "");
+            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue() : "");
         }
 
         private void EmitLoadConstant(MIRInstruction instruction)
         {
-            AppendExpression(instruction.Value.ToString());
+            PushValue(MIRConstantToCConstant(instruction));
         }
 
-        private void AppendExpression(string expression)
+        private static string MIRConstantToCConstant(MIRInstruction instruction)
+        {
+            return instruction.Type.Kind switch
+            {
+                MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString()
+            };
+        }
+        
+        private void PushValue(string expression)
         {
             MovInVirtualReg(_virtualStackCounter++, expression);
-            // CurrentCExpression.Push(expression);
         }
 
-        private string GetExpression()
+        private string PopValue()
         {
             return $"R{--_virtualStackCounter}";
             // return CurrentCExpression.Pop();

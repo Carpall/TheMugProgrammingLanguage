@@ -3,7 +3,7 @@ using System;
 
 namespace Mug.Parser.AST
 {
-    public class FieldAssignmentNode : IStatement
+    public class FieldAssignmentNode : INode
     {
         public string NodeName => "FieldAssignment";
         public String Name { get; set; }

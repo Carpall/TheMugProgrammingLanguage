@@ -625,7 +625,7 @@ namespace Mug.Parser
         private void CollectPostfixOperator(ref INode e)
         {
             if (MatchAdvance(TokenKind.OperatorIncrement, true) || MatchAdvance(TokenKind.OperatorDecrement, true))
-                e = new PostfixOperator() { Expression = e, Position = Back.Position, Postfix = Back.Kind };
+                e = new PostfixOperator() { Expression = e, Position = Back.Position, Postfix = Back };
         }
 
         private void CollectPossibleDotExpression(ref INode e)
@@ -871,7 +871,7 @@ namespace Mug.Parser
                 e = new AssignmentStatement()
                 {
                     Name = e,
-                    Operator = @operator.Kind,
+                    Operator = @operator,
                     Position = @operator.Position,
                     Body = ExpectExpression()
                 };
@@ -1015,42 +1015,6 @@ namespace Mug.Parser
             return true;
         }
 
-        private VariableStatement CollectForLeftExpression()
-        {
-            if (MatchAdvance(TokenKind.Comma))
-                return null;
-
-            var name = Expect("Expected left statement or comma", TokenKind.Identifier);
-            var result = new VariableStatement() { Name = name.Value, Position = name.Position };
-
-            if (MatchAdvance(TokenKind.Colon))
-            {
-                result.Type = ExpectType();
-                Expect("", TokenKind.Comma);
-            }
-            else
-            {
-                result.Type = UnsolvedType.Automatic(Tower, name.Position);
-                Expect("Type notation or body needed", TokenKind.Equal);
-                result.Body = ExpectExpression(end: TokenKind.Comma);
-            }
-
-            return result;
-        }
-
-        private T CollectOrNull<T>(string error, TokenKind end) where T: class, INode
-        {
-            if (MatchAdvance(end))
-                return null;
-
-            var pos = Current.Position;
-            var expr = ExpectExpression(end: end);
-            if (expr is not T)
-                ParseError(pos, error);
-
-            return (T)expr;
-        }
-
         private bool ForLoopDefinition(out INode statement)
         {
             statement = CreateBadNode();
@@ -1058,11 +1022,12 @@ namespace Mug.Parser
             if (!MatchAdvance(TokenKind.KeyFor, out var key))
                 return false;
 
-            var leftexpr = CollectForLeftExpression();
-            var conditionexpr = CollectOrNull<INode>("Expected condition expression or comma", TokenKind.Comma);
-            var rightexpr = CollectOrNull<IStatement>("Expected right statement or nothing", TokenKind.OpenBrace);
+            var leftexpr = ExpectStatement(true, true);
+            Expect("", TokenKind.Comma);
+            var conditionexpr = ExpectExpression(allowNullExpression: true, end: TokenKind.Comma);
+            var rightexpr = ExpectStatement(true, true);
 
-            CurrentIndex--; // returning on '{' token
+            // CurrentIndex--; // returning on '{' token
 
             statement = new ForLoopStatement()
             {
@@ -1089,7 +1054,7 @@ namespace Mug.Parser
             return true;
         }
 
-        private INode ExpectStatement(bool isfirst)
+        private INode ExpectStatement(bool isfirst, bool allowNull = false)
         {
             var multipleStatementsOnTheSameLine = !isfirst && !Current.IsOnNewLine;
 
@@ -1097,7 +1062,7 @@ namespace Mug.Parser
                 !ReturnDeclaration(out statement) && // return value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
-                statement = ExpectExpression(true);
+                statement = ExpectExpression(true, allowNullExpression: allowNull);
 
             if (multipleStatementsOnTheSameLine)
                 Tower.Warn(statement.Position, "Maintain statements on different lines");
