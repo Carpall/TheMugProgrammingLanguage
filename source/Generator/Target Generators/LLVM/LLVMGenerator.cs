@@ -14,13 +14,14 @@ using LLValue = LLVMSharp.Interop.LLVMValueRef;
 using LLBuilder = LLVMSharp.Interop.LLVMBuilderRef;
 using LLBlock = LLVMSharp.Interop.LLVMBasicBlockRef;
 using LLVMC = LLVMSharp.Interop.LLVM;
+using System.Linq;
 
 namespace Mug.Generator.TargetGenerators.LLVM
 {
     public class LLVMGenerator : TargetGenerator
     {
         public LLModule Module { get; }
-        
+
         private MIRFunction CurrentFunction { get; set; }
         private LLValue CurrentLLVMFunction { get; set; }
         private LLBuilder CurrentFunctionBuilder { get; set; }
@@ -110,12 +111,15 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             CurrentFunction = function;
             CurrentLLVMFunction = GetLLVMFunction(CurrentFunction.Name);
-            CurrentFunctionBuilder = CreateBuilder();
-            Allocations = new(LLValue, MIRAllocationAttribute)[function.Allocations.Length];
+            Allocations = new (LLValue, MIRAllocationAttribute)[function.Allocations.Length];
+            
+            LowerFunctionBody();
+        }
 
+        private void EmitAllocationsAndAssignParameters()
+        {
             EmitAllocations();
             EmitParametersAssign();
-            LowerFunctionBody();
         }
 
         private void EmitParametersAssign()
@@ -126,7 +130,40 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void LowerFunctionBody()
         {
-            foreach (var instruction in CurrentFunction.Body)
+            DeclareAllBlocks();
+            LowerAllBlocks();
+        }
+
+        private void LowerAllBlocks()
+        {
+            for (int i = 0; i < CurrentFunction.Body.Length; i++)
+            {
+                var block = CurrentFunction.Body[i];
+
+                CreateBuilder(block);
+
+                if (i == 0)
+                    EmitAllocationsAndAssignParameters();
+
+                LowerBlock(block);
+            }
+        }
+
+        private void CreateBuilder(MIRBlock block)
+        {
+            CurrentFunctionBuilder = LLBuilder.Create(Module.Context);
+            CurrentFunctionBuilder.PositionAtEnd(GetBlock(block.Index));
+        }
+
+        private void DeclareAllBlocks()
+        {
+            for (int i = 0; i < CurrentFunction.Body.Length; i++)
+                CurrentLLVMFunction.AppendBasicBlock(CurrentFunction.Body[i].Identifier);
+        }
+
+        private void LowerBlock(MIRBlock block)
+        {
+            foreach (var instruction in block.Instructions)
                 EmitLoweredInstruction(instruction);
         }
 
@@ -155,7 +192,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.Greater:              EmitGreater(instruction);             break;
                 case MIRInstructionKind.Less:                 EmitLess(instruction);                break;
                 case MIRInstructionKind.Jump:                 EmitJump(instruction);                break;
-                case MIRInstructionKind.JumpFalse:            EmitJumpFalse(instruction);           break;
+                case MIRInstructionKind.JumpConditional:      EmitJumpFalse(instruction);           break;
                 /*case MIRInstructionKind.LoadField:
                     break;
                 case MIRInstructionKind.StoreField:
@@ -165,19 +202,25 @@ namespace Mug.Generator.TargetGenerators.LLVM
                     break;
             }
         }
-
+        
         private void EmitJumpFalse(MIRInstruction instruction)
         {
-            /*var value = StackValuesPop();
+            var (then, otherwise) = instruction.GetConditionTuple();
+            var thenBlock = GetBlock(then);
+            var otherwiseBlock = GetBlock(otherwise);
+            var value = StackValuesPop();
 
-            CurrentFunctionBuilder.BuildCondBr(value, , instruction.GetLabel());
+            CurrentFunctionBuilder.BuildCondBr(value, thenBlock, otherwiseBlock);
+        }
 
-            SwitchBlockAndSetBuilder();*/
+        private LLBlock GetBlock(int blockIndex)
+        {
+            return CurrentLLVMFunction.BasicBlocks[blockIndex];
         }
 
         private void EmitJump(MIRInstruction instruction)
         {
-            
+            CurrentFunctionBuilder.BuildBr(GetBlock(instruction.GetInt()));
         }
 
         private void EmitGeq(MIRInstruction instruction)
@@ -402,14 +445,6 @@ namespace Mug.Generator.TargetGenerators.LLVM
                     LowerDataTypes(function.ParameterTypes));
         }
 
-        private LLBuilder CreateBuilder()
-        {
-            var builder = LLBuilder.Create(Module.Context);
-            builder.PositionAtEnd(CurrentLLVMFunction.AppendBasicBlock("entry"));
-
-            return builder;
-        }
-
         private void EmitAllocations()
         {
             for (int i = 0; i < CurrentFunction.Allocations.Length; i++)
@@ -420,7 +455,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             Allocations[index].Attributes = allocation.Attributes;
 
-            if (allocation.Attributes != MIRAllocationAttribute.Unmutable)
+            if (allocation.Attributes is not MIRAllocationAttribute.Unmutable)
                 Allocations[index].Value = CurrentFunctionBuilder.BuildAlloca(LowerDataType(allocation.Type));
         }
 

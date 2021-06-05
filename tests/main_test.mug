@@ -1,9 +1,17 @@
-func fib(n: u64): u64 {
-  if n < 2 { n } else {
-    fib(n - 1) + fib(n - 2)
+func fib(n: i32): i32 {
+  var i = n
+  var last = 1
+  var prelast = 0
+  while i >= 0 {
+    const tmplast = last
+    last += prelast
+    prelast = tmplast
+    i--
   }
+
+  last
 }
 
 func main(): i32 {
-  i32!(fib(44))
+  fib(44)
 }

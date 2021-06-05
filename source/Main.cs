@@ -38,10 +38,8 @@ using Mug.Generator.IR;
 //       - fix bool folding
 //       - add condition folding
 //       - add import global statement
-//       - add c to compilation target in compilationflags
 //       - add a error for functions with more than 10 parameters
 //       - design in compilation flags a way not to update the help message
-//       - int converters
 
 var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.mug");
 
@@ -52,7 +50,7 @@ if (!unit.HasErrors())
 
 // var e = unit.GenerateIR(out var ir);
 
-var e = unit.GenerateC(out var ir);
+var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

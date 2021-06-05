@@ -192,14 +192,13 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 DeclareSymbol(_preDeclaredSymbols[i]);
         }
 
-        private void Build(bool loadArgs = true)
+        private void Build(bool compilationActionIsRun = false)
         {
-            if (loadArgs)
-            {
-                ParseArguments();
+            if (!compilationActionIsRun)
                 CheckForUnusableFlags("build", "args");
-                DeclareCompilerSymbols();
-            }
+
+            ParseArguments();
+            DeclareCompilerSymbols();
 
             var path = GetFiles();
             var output = GetFlag<string>("output");
@@ -308,17 +307,19 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void BuildRun()
         {
-            ParseArguments();
-
-            if (GetFlag<CompilationTarget>("target") is not CompilationTarget.EXE)
-                CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
-
-            Build(false);
+            Build(true);
+            ReportIfCompilationTargetIsNotExe();
 
             var process = Process.Start(GetFlag<string>("output"), GetFlag<string>("args"));
 
             process.WaitForExit();
             Environment.ExitCode = process.ExitCode;
+        }
+
+        private void ReportIfCompilationTargetIsNotExe()
+        {
+            if (GetFlag<CompilationTarget>("target") is not CompilationTarget.EXE)
+                CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
         }
 
         private static string CheckPath(string path)
@@ -409,7 +410,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void SetDefaultIFNeeded()
         {
-            SetDefault("means", CompilationMeans.C);
+            SetDefault("means", CompilationMeans.LLVM);
             SetDefault("target", CompilationTarget.EXE);
             SetDefault("mode", CompilationMode.Debug);
             SetDefault("nostrip", false);

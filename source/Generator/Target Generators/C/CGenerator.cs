@@ -12,14 +12,14 @@ namespace Mug.Generator.TargetGenerators.C
 {
     class CGenerator : TargetGenerator
     {
-        private CModuleBuilder Module { get; }
+/*        private CModuleBuilder Module { get; }
         private CFunctionBuilder CurrenFunctionBuilder { get; set; }
-        private Stack<string> CurrentCExpression { get; } = new();
+        private Stack<string> VirtualStack { get; } = new();
 
         private MIRFunction CurrentFunction { get; set; }
 
         private uint _temporaryElementCounter = 0;
-        private uint _virtualStackCounter = 0;
+        private uint _registerCounter = 0;
 
         private const uint VIRTUAL_REGISTERS_MAX_COUNT = 10;
 
@@ -28,18 +28,18 @@ namespace Mug.Generator.TargetGenerators.C
             CurrentFunction = function;
             CurrenFunctionBuilder = new(BuildCFunctionPrototype());
 
-            AllocateVirtualRegisters();
+            // AllocateVirtualRegisters();
             EmitAllocations();
             LowerFunctionBody();
 
             Module.Functions.Add(CurrenFunctionBuilder);
         }
 
-        private void AllocateVirtualRegisters()
+        *//*private void AllocateVirtualRegisters()
         {
             for (int i = 0; i < VIRTUAL_REGISTERS_MAX_COUNT; i++)
                 EmitStatement($"register uint64 R{i}");
-        }
+        }*//*
 
         private void EmitAllocations()
         {
@@ -49,7 +49,13 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void LowerFunctionBody()
         {
-            foreach (var instruction in CurrentFunction.Body)
+            foreach (var block in CurrentFunction.Body)
+                EmitBlock(block);
+        }
+
+        private void EmitBlock(MIRBlock block)
+        {
+            foreach (var instruction in block.Instructions)
                 EmitLoweredInstruction(instruction);
         }
 
@@ -75,11 +81,10 @@ namespace Mug.Generator.TargetGenerators.C
                 case MIRInstructionKind.Jump: EmitJump(instruction); break;
                 case MIRInstructionKind.JumpFalse: EmitJumpFalse(instruction); break;
                 case MIRInstructionKind.Dupplicate: EmitDupplicate(); break;
-                case MIRInstructionKind.Label: EmitLabel(instruction); break;
                 case MIRInstructionKind.Greater: EmitGreater(instruction); break;
                 case MIRInstructionKind.Less: EmitLess(instruction); break;
                 case MIRInstructionKind.LoadZeroinitialized: EmitLoadZeroinitialized(instruction); break;
-                case MIRInstructionKind.LoadValueFromPointer: EmitLoadFromPointer(); break;
+                case MIRInstructionKind.LoadValueFromPointer: EmitLoadFromPointer(instruction); break;
                 case MIRInstructionKind.LoadField: EmitLoadField(instruction); break;
                 case MIRInstructionKind.StoreField: EmitStoreField(instruction); break;
                 case MIRInstructionKind.StoreGlobal: EmitStoreGlobal(instruction); break;
@@ -103,29 +108,29 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadField(MIRInstruction instruction)
         {
-            PushValue($"{PopValue()}.{GetLocal(instruction.GetStackIndex())}");
+            PushValue($"{PopValue()}.{GetLocal(instruction.GetStackIndex())}", instruction.Type);
         }
 
-        private void EmitLoadFromPointer()
+        private void EmitLoadFromPointer(MIRInstruction instruction)
         {
-            EmitUnaryOperation("*");
+            EmitUnaryOperation("*", instruction.Type);
         }
 
         private void EmitLoadZeroinitialized(MIRInstruction instruction)
         {
             var temp = GetTempName();
             EmitStatement($"{instruction.Type} {temp}");
-            PushValue(temp);
+            PushValue(temp, instruction.Type);
         }
 
         private void EmitLess(MIRInstruction instruction)
         {
-            EmitOperation("<");
+            EmitOperation("<", instruction.Type);
         }
 
         private void EmitGreater(MIRInstruction instruction)
         {
-            EmitOperation(">");
+            EmitOperation(">", instruction.Type);
         }
 
         private void EmitLabel(MIRInstruction instruction)
@@ -135,13 +140,13 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitDupplicate()
         {
-            PushValue(CurrentCExpression.Peek());
+            VirtualStack.Push(VirtualStack.Peek());
         }
 
         private void EmitJump(MIRInstruction instruction)
         {
             EmitStatement($"goto", BuildLabel(instruction.GetLabel().BodyIndex));
-            ResetVirtualStackCounter();
+            // ResetVirtualStackCounter();
         }
 
         private void EmitJumpFalse(MIRInstruction instruction)
@@ -149,10 +154,10 @@ namespace Mug.Generator.TargetGenerators.C
             EmitStatement($"if (!({PopValue()})) goto", BuildLabel(instruction.GetLabel().BodyIndex));
         }
 
-        private void ResetVirtualStackCounter()
+        *//*private void ResetVirtualStackCounter()
         {
-            _virtualStackCounter = 0;
-        }
+            _registerCounter = 0;
+        }*//*
 
         private static string BuildLabel(int bodyIndex)
         {
@@ -163,17 +168,11 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var isNotVoid = !instruction.Type.IsVoid();
             var call = $"{BuildFunctionName(instruction.GetName())}({ string.Join(", ", PopFunctionArgs(instruction.GetName()))})";
-            var virtualRegister = GetAvailableVirtualRegister();
 
             if (isNotVoid)
-                MovInVirtualReg(virtualRegister, call);
+                PushValue(call, instruction.Type);
             else
                 EmitStatement(call);
-        }
-
-        private uint GetAvailableVirtualRegister()
-        {
-            return _virtualStackCounter++;
         }
 
         private string[] PopFunctionArgs(string functionName)
@@ -203,63 +202,63 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLeq(MIRInstruction instruction)
         {
-            EmitOperation("<=");
+            EmitOperation("<=", instruction.Type);
         }
 
         private void EmitGeq(MIRInstruction instruction)
         {
-            EmitOperation(">=");
+            EmitOperation(">=", instruction.Type);
         }
 
         private void EmitNeq(MIRInstruction instruction)
         {
-            EmitOperation("!=");
+            EmitOperation("!=", instruction.Type);
         }
 
         private void EmitCeq(MIRInstruction instruction)
         {
-            EmitOperation("==");
+            EmitOperation("==", instruction.Type);
         }
 
         private void EmitNeg(MIRInstruction instruction)
         {
-            EmitUnaryOperation("!");
+            EmitUnaryOperation("!", instruction.Type);
         }
 
-        private void EmitUnaryOperation(string op)
+        private void EmitUnaryOperation(string op, MIRType type)
         {
-            PushValue($"{op} {PopValue()}");
+            PushValue($"{op} {PopValue()}", type);
         }
 
         private void EmitDiv(MIRInstruction instruction)
         {
-            EmitOperation("/");
+            EmitOperation("/", instruction.Type);
         }
 
         private void EmitMul(MIRInstruction instruction)
         {
-            EmitOperation("*");
+            EmitOperation("*", instruction.Type);
         }
 
         private void EmitSub(MIRInstruction instruction)
         {
-            EmitOperation("-");
+            EmitOperation("-", instruction.Type);
         }
 
         private void EmitAdd(MIRInstruction instruction)
         {
-            EmitOperation("+");
+            EmitOperation("+", instruction.Type);
         }
 
-        private void EmitOperation(string op)
+        private void EmitOperation(string op, MIRType type)
         {
             var right = PopValue();
-            PushValue($"{PopValue()} {op} {right}");
+            PushValue($"{PopValue()} {op} {right}", type);
         }
 
         private void EmitLoadLocal(MIRInstruction instruction)
         {
-            PushValue(GetLocal(instruction.GetStackIndex()));
+            PushValue(GetLocal(instruction.GetStackIndex()), instruction.Type);
         }
 
         private static string GetLocal(int stackindex)
@@ -279,7 +278,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadConstant(MIRInstruction instruction)
         {
-            PushValue(MIRConstantToCConstant(instruction));
+            PushValue(MIRConstantToCConstant(instruction), instruction.Type);
         }
 
         private static string MIRConstantToCConstant(MIRInstruction instruction)
@@ -290,15 +289,16 @@ namespace Mug.Generator.TargetGenerators.C
             };
         }
         
-        private void PushValue(string expression)
+        private void PushValue(string expression, MIRType type)
         {
-            MovInVirtualReg(_virtualStackCounter++, expression);
+            var reg = _registerCounter++;
+            MovInVirtualReg(reg, expression, type);
+            VirtualStack.Push($"R{reg}");
         }
 
         private string PopValue()
         {
-            return $"R{--_virtualStackCounter}";
-            // return CurrentCExpression.Pop();
+            return VirtualStack.Pop();
         }
 
         private void EmitStatement(string statement, string expression = "")
@@ -306,9 +306,9 @@ namespace Mug.Generator.TargetGenerators.C
             CurrenFunctionBuilder.Body.AppendLine($"    {statement} {expression};");
         }
 
-        private void MovInVirtualReg(uint index, string expression)
+        private void MovInVirtualReg(uint index, string expression, MIRType type)
         {
-            EmitStatement($"R{index} =", $"(uint64)({expression})");
+            EmitStatement($"const {type} R{index} =", expression);
         }
 
         private string BuildCFunctionPrototype()
@@ -335,15 +335,16 @@ namespace Mug.Generator.TargetGenerators.C
             return result.ToString();
         }
 
-        override public object Lower()
+        */override public object Lower()
         {
-            LowerStructures();
+            return null;
+            /*LowerStructures();
             LowerGlobals();
             LowerFunctions();
             GenerateMain();
 
-            return Module.Build();
-        }
+            return Module.Build();*/
+        }/*
 
         private void LowerGlobals()
         {
@@ -359,7 +360,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void GenerateMain()
         {
             var entrypointBuilder = new CFunctionBuilder("int main()");
-            entrypointBuilder.Body.Append("    return mug__main();\n    /*return exit_code;*/");
+            entrypointBuilder.Body.Append("    return mug__main();");
 
             Module.Functions.Add(entrypointBuilder);
         }
@@ -383,11 +384,11 @@ namespace Mug.Generator.TargetGenerators.C
                 structureBuilder.Body.Add($"    {structure.Body[i]} _{i};");
 
             Module.Structures.Add(structureBuilder);
-        }
+        }*/
 
         public CGenerator(CompilationTower tower) : base(tower)
         {
-            Module = new(Tower.OutputFilename);
+            // Module = new(Tower.OutputFilename);
         }
     }
 }

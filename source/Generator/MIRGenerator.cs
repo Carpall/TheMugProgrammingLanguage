@@ -138,7 +138,7 @@ namespace Mug.Generator
                     GenerateCallStatement(statement, isLastNodeOfBlock);
                     break;
                 case ConditionalStatement statement:
-                    GenerateConditionalStatement(statement, isLastNodeOfBlock, false);
+                    GenerateConditionalStatement(statement, isLastNodeOfBlock);
                     break;
                 case ForLoopStatement statement:
                     GenerateForLoopStatement(statement);
@@ -173,31 +173,33 @@ namespace Mug.Generator
 
         private void ScopeCoveredForLoopStatement(ForLoopStatement statement)
         {
-            var endLabel = CreateLabel("end");
-            var conditionLabel = EvaluateForLoopConditionAndGetConditionLabel(statement.LeftExpression, statement.ConditionExpression, endLabel);
+            var conditionBlock = CreateBlock("cond");
+            var thenBlock = CreateBlock("body");
+            var endBlock = CreateBlock("end");
 
+            EvaluateForLoopConditionAndGetConditionBlock(statement.LeftExpression, statement.ConditionExpression, conditionBlock, thenBlock, endBlock);
+
+            SwitchBlock(thenBlock);
             ContextTypes.Push(DataType.Void);
             GenerateBlock(statement.Body);
             ContextTypes.Pop();
 
             RecognizeStatement(statement.RightExpression, false);
-            FunctionBuilder.EmitJump(conditionLabel);
+            FunctionBuilder.EmitJump(conditionBlock.Index);
 
-            LocateLabelHere(endLabel);
+            SwitchBlock(endBlock);
         }
 
-        private MIRLabel EvaluateForLoopConditionAndGetConditionLabel(INode leftExpression, INode conditionExpression, MIRLabel endLabel)
+        private void EvaluateForLoopConditionAndGetConditionBlock(
+            INode leftExpression, INode conditionExpression, MIRBlock conditionBlock, MIRBlock thenBlock, MIRBlock endBlock)
         {
-            var label = CreateLabel("cond");
-
             RecognizeStatement(leftExpression, false);
-            LocateLabelHere(label);
-            EvaluateConditionInConditionalStatement(conditionExpression, endLabel);
 
-            return label;
+            SwitchBlock(conditionBlock);
+            EvaluateConditionInConditionalStatement(conditionExpression, thenBlock, endBlock);
         }
 
-        private void EvaluateConditionInConditionalStatement(INode expression, MIRLabel endLabel)
+        private void EvaluateConditionInConditionalStatement(INode expression, MIRBlock then, MIRBlock endBlock)
         {
             ContextTypes.Push(DataType.Bool);
             var condition = EvaluateExpression(expression);
@@ -205,7 +207,7 @@ namespace Mug.Generator
 
             FixAndCheckTypes(DataType.Bool, condition, expression.Position);
 
-            FunctionBuilder.EmitJumpFalse(endLabel);
+            FunctionBuilder.EmitJumpCondition(then.Index, endBlock.Index);
         }
 
         private void EvaluateExpressionAsStatement(INode expression)
@@ -216,45 +218,95 @@ namespace Mug.Generator
             ManageScopeType(expression.Position, true, type);
         }
 
-        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock, bool isExpression)
+        private void GenerateConditionalStatement(ConditionalStatement statement, bool isLastOfBlock)
         {
-            var type = EvaluateConditionalStatement(statement, (isLastOfBlock && !ContextType.SolvedType.IsVoid()) | isExpression);
+            if (statement.Kind is TokenKind.KeyWhile)
+                GenerateWhileLoopStatement(statement);
+            else
+                GenerateIFStatement(statement, isLastOfBlock);
+        }
+
+        private void GenerateWhileLoopStatement(ConditionalStatement statement)
+        {
+            var conditionBlock = CreateBlock("cond");
+            var then = CreateBlock("body");
+            var endBlock = CreateBlock("end");
+
+            FunctionBuilder.EmitJump(conditionBlock.Index);
+
+            SwitchBlock(conditionBlock);
+            EvaluateConditionInConditionalStatement(statement.Expression, then, endBlock);
+
+            SwitchBlock(then);
+            ContextTypes.Push(DataType.Void);
+            GenerateNodeBlockInExpression(statement.Body);
+            ContextTypes.Pop();
+
+            FunctionBuilder.EmitJump(conditionBlock.Index);
+
+            SwitchBlock(endBlock);
+        }
+
+        private void GenerateIFStatement(ConditionalStatement statement, bool isLastOfBlock)
+        {
+            var type = EvaluateConditionalStatement(statement, isLastOfBlock && !ContextType.SolvedType.IsVoid());
             ManageScopeType(statement.Position, isLastOfBlock, type);
         }
 
-        private void LocateLabelHere(MIRLabel label)
+        private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression, MIRBlock endBlock = null)
         {
-            if (label is not null)
-                label.BodyIndex = FunctionBuilder.CreateLabelHere();
-        }
+            if (!isExpression)
+                ContextTypes.Push(DataType.Void);
 
-        private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression = false, MIRLabel firstEndLabel = null)
-        {
-            EvaluateConditionExpression(node.Expression, out var otherwiseLabel);
+            ReportMissingElseNode(node, isExpression);
 
-            var isFirst = firstEndLabel is null;
-            var isNotLast = node.ElseNode is not null;
-            var endLabel = isFirst ? CreateLabel("end") : firstEndLabel;
-            var conditionBlock = GenerateNodeBlockInExpression(node.Body);
+            var thenBlock = CreateBlock("then");
+            endBlock ??= CreateBlock("end");
+            var elseBlock = node.ElseNode is not null ? CreateBlock("else") : endBlock;
 
-            if (isNotLast) FunctionBuilder.EmitJump(endLabel);
+            EvaluateConditionInConditionalStatement(node.Expression, thenBlock, elseBlock);
 
-            LocateLabelHere(otherwiseLabel);
+            SwitchBlock(thenBlock);
+            var type = GenerateNodeBlockInExpression(node.Body);
+            FunctionBuilder.EmitJump(endBlock.Index);
 
-            if (isNotLast) EvaluateConditionalElseNode(node, conditionBlock, endLabel);
-
-            if (isFirst)
+            if (elseBlock != endBlock)
             {
-                LocateLabelHere(endLabel);
-                ReportMissingElseNode(node, isExpression);
+                SwitchBlock(elseBlock);
+                FixAndCheckTypes(type, EvaluateElseNode(node.ElseNode, endBlock), node.ElseNode.Position);
             }
 
-            return conditionBlock;
+            SwitchBlock(endBlock);
+
+            if (!isExpression)
+                ContextTypes.Pop();
+
+            return type;
         }
 
-        private MIRLabel CreateLabel(string name)
+        private DataType EvaluateElseNode(ConditionalStatement elseNode, MIRBlock endBlock)
         {
-            return new(FunctionBuilder.CurrentIndex(), name);
+            if (elseNode.Kind is TokenKind.KeyElif)
+                return EvaluateConditionalStatement(elseNode, false, endBlock);
+
+            var type = GenerateNodeBlockInExpression(elseNode.Body);
+            FunctionBuilder.EmitJump(endBlock.Index);
+            return type;
+        }
+
+        private void SwitchBlock(MIRBlock block)
+        {
+            FunctionBuilder.SwitchBlock(block);
+        }
+
+        private MIRBlock CreateBlock(string identifier)
+        {
+            var index = FunctionBuilder.CurrentBlockIndex();
+            var block = new MIRBlock(index, identifier);
+
+            FunctionBuilder.AddBlock(block);
+
+            return block;
         }
 
         private void ReportMissingElseNode(ConditionalStatement expression, bool isExpression)
@@ -263,26 +315,21 @@ namespace Mug.Generator
                 Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
         }
 
-        private void EvaluateConditionalElseNode(ConditionalStatement expression, DataType conditionBlock, MIRLabel endLabel)
+        /*private void EvaluateConditionalElseNode(ConditionalStatement expression, MIRBlock elseBlock, MIRBlock endBlock, DataType resultType)
         {
-            var elseConditionBlock = EvaluateConditionalStatement(expression.ElseNode, firstEndLabel: endLabel);
+            SwitchBlock(elseBlock);
+            var elseResultType = EvaluateConditionalStatement(expression, false, false, elseBlock, endBlock);
 
-            FixAndCheckTypes(conditionBlock, elseConditionBlock, expression.ElseNode.Position);
-        }
+            FixAndCheckTypes(resultType, elseResultType, expression.Position);
+        }*/
 
-        private void EvaluateConditionExpression(INode expression, out MIRLabel otherwiseLabel)
+        private void EvaluateConditionExpression(INode expression)
         {
-            otherwiseLabel = null;
-            if (expression is BadNode or null) return;
-
             ContextTypes.Push(DataType.Bool);
             var condition = EvaluateExpression(expression);
             ContextTypes.Pop();
 
             FixAndCheckTypes(DataType.Bool, condition, expression.Position);
-
-            otherwiseLabel = CreateLabel("else");
-            FunctionBuilder.EmitJumpFalse(otherwiseLabel);
         }
 
         private DataType GetHiddenBufferTypeOrVoid()
@@ -1018,7 +1065,7 @@ namespace Mug.Generator
 
         private FunctionStatement CheckAndSearchForFunctionOrStaticMethod(Token name)
         {
-            if (name.Kind != TokenKind.Identifier)
+            if (name.Kind is not TokenKind.Identifier)
             {
                 Tower.Report(name.Position, $"Function cannot named with non-identifier tokens");
                 return new() { Name = name.Value, ReturnType = DataType.Int32 };
@@ -1639,6 +1686,8 @@ namespace Mug.Generator
             CurrentFunction = func;
             CurrentScope = new(func.ReturnType, true, new());
 
+            SetEntryBlock();
+
             ContextTypes.Push(func.ReturnType);
             AllocateParameters(func.ParameterList);
             GenerateBlock(func.Body);
@@ -1646,6 +1695,11 @@ namespace Mug.Generator
             ContextTypes.Pop();
 
             Module.DefineFunction(FunctionBuilder.Build());
+        }
+
+        private void SetEntryBlock()
+        {
+            FunctionBuilder.SwitchBlock(CreateBlock("entry"));
         }
 
         private void AllocateParameters(ParameterListNode parameters)

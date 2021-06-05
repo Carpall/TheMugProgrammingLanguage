@@ -9,9 +9,9 @@ namespace Mug.Generator.IR
 {
     public enum MIRTypeKind
     {
+        Void,
         UInt,
         Int,
-        Void,
         Struct
     }
 

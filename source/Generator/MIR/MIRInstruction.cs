@@ -26,7 +26,7 @@ namespace Mug.Generator.IR
         Mul = '*',
         Call = 50,
         Pop,
-        JumpFalse,
+        JumpConditional,
         Jump,
         Ceq = -10,
         Neq = -11,
@@ -36,7 +36,6 @@ namespace Mug.Generator.IR
         Less = '<',
         LoadValueFromPointer = 63,
         Neg = 64,
-        Label = 65,
         StoreGlobal = 66,
         CastIntToInt = 67,
     }
@@ -60,9 +59,6 @@ namespace Mug.Generator.IR
 
         public override string ToString()
         {
-            if (Kind == MIRInstructionKind.Label)
-                return $"~ {Value}:";
-
             return $"{Kind} {Type} ({Value ?? "_"})";
         }
 
@@ -81,9 +77,14 @@ namespace Mug.Generator.IR
             return (string)Value;
         }
 
-        public MIRLabel GetLabel()
+        public (int then, int otherwise) GetConditionTuple()
         {
-            return (MIRLabel)Value;
+            return ((int, int))Value;
+        }
+
+        public int GetInt()
+        {
+            return (int)Value;
         }
     }
 }

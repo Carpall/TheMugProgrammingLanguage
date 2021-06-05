@@ -12,14 +12,14 @@ namespace Mug.Generator.IR
         public string Name { get; }
         public MIRType ReturnType { get; }
         public MIRType[] ParameterTypes { get; }
-        public MIRInstruction[] Body { get; }
+        public MIRBlock[] Body { get; }
         public MIRAllocation[] Allocations { get; }
 
         public MIRFunction(
             string name,
             MIRType returntype,
             MIRType[] parametertypes,
-            MIRInstruction[] body,
+            MIRBlock[] body,
             MIRAllocation[] allocations)
         {
             Name = name;
@@ -38,7 +38,7 @@ namespace Mug.Generator.IR
   .locals:
     {locals}
 
-  {body}
+{body}
 ";
         }
 
@@ -62,7 +62,13 @@ namespace Mug.Generator.IR
             if (Body.Length == 0)
                 body.Append(".empty");
 
-            body.Append(string.Join("\n  ", Body));
+            for (int i = 0; i < Body.Length; i++)
+            {
+                if (i > 0)
+                    body.AppendLine("\n");
+
+                body.Append($" [{i}] % {Body[i]}");
+            }
 
             return body.ToString();
         }

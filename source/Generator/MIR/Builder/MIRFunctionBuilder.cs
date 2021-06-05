@@ -12,8 +12,10 @@ namespace Mug.Generator.IR.Builder
         private readonly string _name;
         private readonly MIRType _returnType;
         private readonly MIRType[] _parameterTypes;
-        private readonly List<MIRInstruction> _body = new();
+        private readonly List<MIRBlock> _body = new();
         private readonly List<MIRAllocation> _allocations = new();
+
+        private List<MIRInstruction> _currentBlock = null;
 
         public MIRFunctionBuilder(string name, MIRType returntype, MIRType[] parametertypes)
         {
@@ -41,14 +43,19 @@ namespace Mug.Generator.IR.Builder
             _allocations.Add(new(attributes, type));
         }
 
-        public void EmitInstruction(MIRInstruction instruction)
+        public void AddBlock(MIRBlock block)
         {
-            _body.Add(instruction);
+            _body.Add(block);
         }
 
-        public void EmitInstruction(MIRInstructionKind kind, MIRInstruction value)
+        public void SwitchBlock(MIRBlock block)
         {
-            EmitInstruction(new MIRInstruction(kind, value.Type, value));
+            _currentBlock = block.Instructions;
+        }
+
+        public void EmitInstruction(MIRInstruction instruction)
+        {
+            _currentBlock.Add(instruction);
         }
 
         public void EmitInstruction(MIRInstructionKind kind, object value)
@@ -103,7 +110,7 @@ namespace Mug.Generator.IR.Builder
 
         public MIRInstruction LastInstruction()
         {
-            return _body.Last();
+            return _currentBlock.Last();
         }
 
         public void EmitLoadField(int index, MIRType type)
@@ -118,16 +125,9 @@ namespace Mug.Generator.IR.Builder
 
         public MIRInstruction PopLastInstruction()
         {
-            var value = _body[^1];
-            _body.RemoveAt(_body.Count - 1);
+            var value = _currentBlock[^1];
+            _currentBlock.RemoveAt(_currentBlock.Count - 1);
             return value;
-        }
-
-        public int CreateLabelHere()
-        {
-            var currentBodyIndex = CurrentIndex();
-            EmitInstruction(MIRInstructionKind.Label, currentBodyIndex);
-            return currentBodyIndex;
         }
 
         public void EmitAutoReturn()
@@ -135,24 +135,29 @@ namespace Mug.Generator.IR.Builder
             EmitReturn(_returnType);
         }
 
-        public void EmitJumpFalse(MIRLabel label)
+        public void EmitJumpCondition(int thenBlockIndex, int otherwiseBlockIndex)
         {
-            EmitInstruction(MIRInstructionKind.JumpFalse, label);
+            EmitInstruction(MIRInstructionKind.JumpConditional, (thenBlockIndex, otherwiseBlockIndex));
         }
 
         public int CurrentIndex()
+        {
+            return _currentBlock.Count;
+        }
+
+        public int CurrentBlockIndex()
         {
             return _body.Count;
         }
 
         public void MoveLastInstructionTo(int index)
         {
-            _body.Insert(index, PopLastInstruction());
+            _currentBlock.Insert(index, PopLastInstruction());
         }
 
-        public void EmitJump(MIRLabel label)
+        public void EmitJump(int blockIndex)
         {
-            EmitInstruction(MIRInstructionKind.Jump, label);
+            EmitInstruction(MIRInstructionKind.Jump, blockIndex);
         }
 
         public int GetAllocationsNumber()
@@ -173,7 +178,7 @@ namespace Mug.Generator.IR.Builder
 
         private bool EmittedExplicitReturn()
         {
-            return _body.Count > 0 && _body[^1].Kind == MIRInstructionKind.Return;
+            return _currentBlock.Count > 0 && _currentBlock[^1].Kind is MIRInstructionKind.Return;
         }
 
         public void EmitCall(string name, MIRType type)
