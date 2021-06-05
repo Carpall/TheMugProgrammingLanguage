@@ -48,9 +48,9 @@ var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.m
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-// var e = unit.GenerateIR(out var ir);
+var e = unit.GenerateIR(out var ir);
 
-var e = unit.GenerateLLVMIR(out var ir);
+// var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

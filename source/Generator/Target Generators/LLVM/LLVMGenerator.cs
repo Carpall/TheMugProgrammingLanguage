@@ -14,7 +14,6 @@ using LLValue = LLVMSharp.Interop.LLVMValueRef;
 using LLBuilder = LLVMSharp.Interop.LLVMBuilderRef;
 using LLBlock = LLVMSharp.Interop.LLVMBasicBlockRef;
 using LLVMC = LLVMSharp.Interop.LLVM;
-using System.Linq;
 
 namespace Mug.Generator.TargetGenerators.LLVM
 {
@@ -329,13 +328,13 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void EmitMul(MIRInstruction instruction)
         {
             var right = StackValuesPop();
-            StackValuesPush(CurrentFunctionBuilder.BuildAdd(StackValuesPop(), right));
+            StackValuesPush(CurrentFunctionBuilder.BuildMul(StackValuesPop(), right));
         }
 
         private void EmitSub(MIRInstruction instruction)
         {
             var right = StackValuesPop();
-            StackValuesPush(CurrentFunctionBuilder.BuildAdd(StackValuesPop(), right));
+            StackValuesPush(CurrentFunctionBuilder.BuildSub(StackValuesPop(), right));
         }
 
         private void EmitAdd(MIRInstruction instruction)

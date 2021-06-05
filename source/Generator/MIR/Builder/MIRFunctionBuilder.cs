@@ -16,6 +16,7 @@ namespace Mug.Generator.IR.Builder
         private readonly List<MIRAllocation> _allocations = new();
 
         private List<MIRInstruction> _currentBlock = null;
+        private bool _currentBlockIsTerminated = false;
 
         public MIRFunctionBuilder(string name, MIRType returntype, MIRType[] parametertypes)
         {
@@ -51,11 +52,28 @@ namespace Mug.Generator.IR.Builder
         public void SwitchBlock(MIRBlock block)
         {
             _currentBlock = block.Instructions;
+            _currentBlockIsTerminated = false;
         }
 
         public void EmitInstruction(MIRInstruction instruction)
         {
+            if (IsTerminator(instruction.Kind))
+            {
+                if (_currentBlockIsTerminated)
+                    return;
+
+                _currentBlockIsTerminated = true;
+            }
+
             _currentBlock.Add(instruction);
+        }
+
+        private static bool IsTerminator(MIRInstructionKind kind)
+        {
+            return
+                kind is MIRInstructionKind.Return
+                or MIRInstructionKind.Jump
+                or MIRInstructionKind.JumpConditional;
         }
 
         public void EmitInstruction(MIRInstructionKind kind, object value)
