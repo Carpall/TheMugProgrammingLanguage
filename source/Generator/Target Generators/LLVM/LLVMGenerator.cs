@@ -25,8 +25,11 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private LLValue CurrentLLVMFunction { get; set; }
         private LLBuilder CurrentFunctionBuilder { get; set; }
         private (LLValue Value, MIRAllocationAttribute Attributes)[] Allocations { get; set; }
+        private MIRBlock CurrentBlock { get; set; }
 
         private Stack<LLValue> StackValues { get; } = new();
+
+        private List<LLValue> _stackBlocksHistory = new();
 
         public LLVMGenerator(CompilationTower tower) : base(tower)
         {
@@ -137,14 +140,14 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             for (int i = 0; i < CurrentFunction.Body.Length; i++)
             {
-                var block = CurrentFunction.Body[i];
+                CurrentBlock = CurrentFunction.Body[i];
 
-                CreateBuilder(block);
+                CreateBuilder(CurrentBlock);
 
                 if (i == 0)
                     EmitAllocationsAndAssignParameters();
 
-                LowerBlock(block);
+                LowerBlock(CurrentBlock);
             }
         }
 
@@ -164,6 +167,16 @@ namespace Mug.Generator.TargetGenerators.LLVM
         {
             foreach (var instruction in block.Instructions)
                 EmitLoweredInstruction(instruction);
+
+            SaveLastStackValueIfNeededAndClear();
+        }
+
+        private void SaveLastStackValueIfNeededAndClear()
+        {
+            _stackBlocksHistory.Add(
+                StackValues.Count == 1 ?
+                    StackValuesPop() :
+                    new());
         }
 
         private void EmitLoweredInstruction(MIRInstruction instruction)
@@ -227,7 +240,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
             EmitCmp(
                 instruction.Type.IsSignedInt() ?
                     LLVMIntPredicate.LLVMIntSGE :
-                    LLVMIntPredicate.LLVMIntUGE);
+                    LLVMIntPredicate.LLVMIntUGE, instruction.Type);
         }
 
         private void EmitLeq(MIRInstruction instruction)
@@ -235,7 +248,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
             EmitCmp(
                 instruction.Type.IsSignedInt() ?
                     LLVMIntPredicate.LLVMIntSLE :
-                    LLVMIntPredicate.LLVMIntULE);
+                    LLVMIntPredicate.LLVMIntULE, instruction.Type);
         }
 
         private void EmitGreater(MIRInstruction instruction)
@@ -243,7 +256,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
             EmitCmp(
                 instruction.Type.IsSignedInt() ?
                     LLVMIntPredicate.LLVMIntSGT :
-                    LLVMIntPredicate.LLVMIntUGT);
+                    LLVMIntPredicate.LLVMIntUGT, instruction.Type);
         }
 
         private void EmitLess(MIRInstruction instruction)
@@ -251,20 +264,20 @@ namespace Mug.Generator.TargetGenerators.LLVM
             EmitCmp(
                 instruction.Type.IsSignedInt() ?
                     LLVMIntPredicate.LLVMIntSLT :
-                    LLVMIntPredicate.LLVMIntULT);
+                    LLVMIntPredicate.LLVMIntULT, instruction.Type);
         }
 
         private void EmitCeq(MIRInstruction instruction)
         {
-            EmitCmp(LLVMIntPredicate.LLVMIntEQ);
+            EmitCmp(LLVMIntPredicate.LLVMIntEQ, instruction.Type);
         }
 
         private void EmitNeq(MIRInstruction instruction)
         {
-            EmitCmp(LLVMIntPredicate.LLVMIntNE);
+            EmitCmp(LLVMIntPredicate.LLVMIntNE, instruction.Type);
         }
 
-        private void EmitCmp(LLVMIntPredicate kind)
+        private void EmitCmp(LLVMIntPredicate kind, MIRType type)
         {
             var right = StackValuesPop();
             StackValuesPush(CurrentFunctionBuilder.BuildICmp(kind, StackValuesPop(), right));
@@ -423,7 +436,46 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private LLValue StackValuesPop()
         {
-            return StackValues.Pop();
+            if (!StackValues.TryPop(out var value))
+                value = CollectPhiNodesForCurrentBlock();
+
+            return value;
+        }
+
+        private LLValue CollectPhiNodesForCurrentBlock()
+        {
+            var (blocks, labels) = CollectPhiNodesRelatedToBlock(CurrentBlock.ReferredFrom, out var type);
+            var result = CurrentFunctionBuilder.BuildPhi(type);
+
+            result.AddIncoming(labels, blocks, (uint)blocks.Length);
+
+            return result;
+        }
+
+        private (LLBlock[] Blocks, LLValue[] Labels) CollectPhiNodesRelatedToBlock(List<int> currentBlockReferences, out LLType type)
+        {
+            var blocks = new List<LLBlock>();
+            var labels = new List<LLValue>();
+            var currentFunctionBlocks = CurrentLLVMFunction.BasicBlocks;
+            type = new();
+
+            foreach (var blockIndex in currentBlockReferences)
+            {
+                var currentFunctionBlock = currentFunctionBlocks[blockIndex];
+                var lastInstructionInBlock = GetLastStackValueOfBlock(blockIndex);
+
+                type = lastInstructionInBlock.TypeOf;
+
+                blocks.Add(currentFunctionBlock);
+                labels.Add(lastInstructionInBlock);
+            }
+
+            return (blocks.ToArray(), labels.ToArray());
+        }
+
+        private LLValue GetLastStackValueOfBlock(int blockIndex)
+        {
+            return _stackBlocksHistory[blockIndex];
         }
 
         private void StackValuesPopTop()

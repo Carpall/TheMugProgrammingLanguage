@@ -9,9 +9,10 @@ namespace Mug.Generator.IR
 {
     public class MIRBlock
     {
-        public int Index { get; }
+        public int Index { get; set; }
         public string Identifier { get; }
         public List<MIRInstruction> Instructions { get; }
+        public List<int> ReferredFrom { get; } = new();
 
         public MIRBlock(int index)
         {

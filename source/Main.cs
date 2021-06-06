@@ -19,6 +19,7 @@ using Mug.Generator.IR;
 //       - fix bugs with eof
 //       - add tuple types and 'new (,,)' for initialize them
 //       - fix tests
+//       - write tests for other compiler components
 //       - fix crash when error's position is on different lines
 //       - add implicit new operator with type inference 'new { }' and '[]', with context type
 //       - fix '//' at the start of the line is not recognized as comment by the lexer
@@ -48,9 +49,9 @@ var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.m
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-var e = unit.GenerateIR(out var ir);
+// var e = unit.GenerateIR(out var ir);
 
-// var e = unit.GenerateLLVMIR(out var ir);
+var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

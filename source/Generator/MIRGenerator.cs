@@ -255,14 +255,22 @@ namespace Mug.Generator
 
         private DataType EvaluateConditionalStatement(ConditionalStatement node, bool isExpression, MIRBlock endBlock = null)
         {
-            if (!isExpression)
-                ContextTypes.Push(DataType.Void);
-
-            ReportMissingElseNode(node, isExpression);
+            var isFirst = endBlock is null;
 
             var thenBlock = CreateBlock("then");
             endBlock ??= CreateBlock("end");
             var elseBlock = node.ElseNode is not null ? CreateBlock("else") : endBlock;
+
+            if (isFirst)
+            {
+                if (node.ElseNode is not null)
+                    FunctionBuilder.SwapTwoPreviousBlocks();
+
+                if (!isExpression)
+                    ContextTypes.Push(DataType.Void);
+
+                ReportMissingElseNode(node, isExpression);
+            }
 
             EvaluateConditionInConditionalStatement(node.Expression, thenBlock, elseBlock);
 
@@ -278,7 +286,7 @@ namespace Mug.Generator
 
             SwitchBlock(endBlock);
 
-            if (!isExpression)
+            if (isFirst && !isExpression)
                 ContextTypes.Pop();
 
             return type;

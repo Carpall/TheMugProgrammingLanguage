@@ -16,6 +16,7 @@ namespace Mug.Generator.IR.Builder
         private readonly List<MIRAllocation> _allocations = new();
 
         private List<MIRInstruction> _currentBlock = null;
+        private int _currentBlockIndex = 0;
         private bool _currentBlockIsTerminated = false;
 
         public MIRFunctionBuilder(string name, MIRType returntype, MIRType[] parametertypes)
@@ -51,6 +52,7 @@ namespace Mug.Generator.IR.Builder
 
         public void SwitchBlock(MIRBlock block)
         {
+            _currentBlockIndex = block.Index;
             _currentBlock = block.Instructions;
             _currentBlockIsTerminated = false;
         }
@@ -155,7 +157,15 @@ namespace Mug.Generator.IR.Builder
 
         public void EmitJumpCondition(int thenBlockIndex, int otherwiseBlockIndex)
         {
+            AddBlockReferenceToCurrentBlock(thenBlockIndex);
+            AddBlockReferenceToCurrentBlock(otherwiseBlockIndex);
+
             EmitInstruction(MIRInstructionKind.JumpConditional, (thenBlockIndex, otherwiseBlockIndex));
+        }
+
+        private void AddBlockReferenceToCurrentBlock(int blockIndex)
+        {
+            _body[blockIndex].ReferredFrom.Add(_currentBlockIndex);
         }
 
         public int CurrentIndex()
@@ -175,6 +185,8 @@ namespace Mug.Generator.IR.Builder
 
         public void EmitJump(int blockIndex)
         {
+            AddBlockReferenceToCurrentBlock(blockIndex);
+
             EmitInstruction(MIRInstructionKind.Jump, blockIndex);
         }
 
@@ -222,6 +234,17 @@ namespace Mug.Generator.IR.Builder
         public void EmitCastIntToInt(MIRType type)
         {
             EmitInstruction(MIRInstructionKind.CastIntToInt, type);
+        }
+
+        public void SwapTwoPreviousBlocks()
+        {
+            _body.Insert(_body.Count - 2, _body[^1]);
+            _body.RemoveAt(_body.Count - 1);
+
+            var lastBlockIndex = _body[^1].Index;
+
+            _body[^1].Index = _body[^2].Index;
+            _body[^2].Index = lastBlockIndex;
         }
     }
 }
