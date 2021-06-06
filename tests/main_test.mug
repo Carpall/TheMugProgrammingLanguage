@@ -1,9 +1,15 @@
 func fib(n: i32): i32 {
-  if n < 2 { n } else {
-    fib(n - 1) + fib(n - 2)
+  var last = 1
+  var prelast = 0
+  for var i = n, i >= 0, i-- {
+    const tmplast = last
+    last += prelast
+    prelast = tmplast
   }
+
+  last
 }
 
-func main(): i32 {
-  fib(44)
+func main() {
+  exit!(fib(44))
 }

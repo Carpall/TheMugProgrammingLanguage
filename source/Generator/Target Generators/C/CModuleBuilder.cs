@@ -10,6 +10,7 @@ namespace Mug.Generator.TargetGenerators.C
     {
         public string Name { get; }
         public List<CFunctionBuilder> Functions { get; } = new();
+        public List<string> FunctionPrototypes { get; } = new();
         public List<CStructureBuilder> Structures { get; } = new();
         public List<(string Symbol, string Value)> Defines { get; } = new();
         public List<string> Globals { get; } = new();
@@ -38,7 +39,7 @@ namespace Mug.Generator.TargetGenerators.C
             AddDefine("uint32", "unsigned int");
             AddDefine("uint64", "unsigned long long");
 
-            AddDefine("ssa", "const register");
+            AddDefine("SSA", "const register");
         }
 
         private void AddDefine(string symbol, string value)
@@ -57,7 +58,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         public string Build()
         {
-            return $"{BuildDefines()}\n{string.Join("\n;", Structures)};\n\n{string.Join("\n", Globals)}\n\n{string.Join("\n", Functions)}";
+            return $"{BuildDefines()}\n{string.Join("\n;", Structures)};\n\n{string.Join("\n", FunctionPrototypes)}\n\n{string.Join("\n", Globals)}\n\n{string.Join("\n", Functions)}";
         }
     }
 }

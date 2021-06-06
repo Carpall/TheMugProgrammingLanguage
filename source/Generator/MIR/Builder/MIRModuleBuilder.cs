@@ -13,6 +13,7 @@ namespace Mug.Generator.IR.Builder
         private readonly List<MIRGlobal> _globals = new();
         private readonly List<MIRStructure> _structures = new();
         private readonly List<MIRFunction> _functions = new();
+        private readonly List<MIRFunctionPrototype> _functionPrototypes = new();
 
         public void DefineFunction(MIRFunction function)
         {
@@ -21,7 +22,7 @@ namespace Mug.Generator.IR.Builder
 
         public MIR Build()
         {
-            return new(_globals.ToArray(), _functions.ToArray(), _structures.ToArray());
+            return new(_globals.ToArray(), _functions.ToArray(), _functionPrototypes.ToArray(), _structures.ToArray());
         }
 
         public void DefineStruct(MIRStructure structure)
@@ -32,6 +33,16 @@ namespace Mug.Generator.IR.Builder
         public void DefineGlobal(MIRGlobal name)
         {
             _globals.Add(name);
+        }
+
+        public bool FunctionPrototypeIsDeclared(string name)
+        {
+            return _functionPrototypes.FindIndex(functionPrototype => functionPrototype.Name == name) != -1;
+        }
+
+        public void DefineFunctionPrototype(string name, MIRType type, MIRType[] parameterTypes)
+        {
+            _functionPrototypes.Add(new(name, type, parameterTypes));
         }
     }
 }

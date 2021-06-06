@@ -65,6 +65,8 @@ namespace Mug.Generator
             var kind = type.SolvedType.Kind;
             return kind switch
             {
+                TypeKind.Undefined => new(),
+
                 TypeKind.Int8
                 or TypeKind.Int16
                 or TypeKind.Int32
@@ -195,6 +197,8 @@ namespace Mug.Generator
         {
             RecognizeStatement(leftExpression, false);
 
+            FunctionBuilder.EmitJump(conditionBlock.Index);
+
             SwitchBlock(conditionBlock);
             EvaluateConditionInConditionalStatement(conditionExpression, thenBlock, endBlock);
         }
@@ -321,23 +325,6 @@ namespace Mug.Generator
         {
             if (isExpression && !HasElseBody(expression))
                 Tower.Report(expression.Position, "Condition in expression must have a 'else' node");
-        }
-
-        /*private void EvaluateConditionalElseNode(ConditionalStatement expression, MIRBlock elseBlock, MIRBlock endBlock, DataType resultType)
-        {
-            SwitchBlock(elseBlock);
-            var elseResultType = EvaluateConditionalStatement(expression, false, false, elseBlock, endBlock);
-
-            FixAndCheckTypes(resultType, elseResultType, expression.Position);
-        }*/
-
-        private void EvaluateConditionExpression(INode expression)
-        {
-            ContextTypes.Push(DataType.Bool);
-            var condition = EvaluateExpression(expression);
-            ContextTypes.Pop();
-
-            FixAndCheckTypes(DataType.Bool, condition, expression.Position);
         }
 
         private DataType GetHiddenBufferTypeOrVoid()
@@ -847,6 +834,9 @@ namespace Mug.Generator
                     WarnWhenStatement();
                     type = EvaluateCompTimeIntCast(expression, name.Value);
                     break;
+                case "exit":
+                    type = EvaluateCompTimeExit(expression);
+                    break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
                     break;
@@ -861,10 +851,46 @@ namespace Mug.Generator
             }
         }
 
+        private DataType EvaluateCompTimeExit(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0, 1);
+            var value = expression.Parameters.FirstOrDefault() ?? Token.NewInfo(TokenKind.ConstantDigit, "0");
+            var type = EvaluateExpression(value);
+            var result = ContextType;
+
+            FixAuto(result, DataType.Int32);
+
+            var loweredReturnType = LowerDataType(result);
+            var parameterType = new MIRType(MIRTypeKind.Int, 32);
+
+            TryDeclareExternPrototype("exit", loweredReturnType, parameterType);
+
+            if (!type.SolvedType.IsInt())
+                ReportExpectedValueOfTypeInt(value.Position);
+            else if (type.SolvedType.Kind is not TypeKind.Int32)
+                FunctionBuilder.EmitCastIntToInt(parameterType);
+
+            FunctionBuilder.EmitCall("exit", loweredReturnType);
+
+            return result;
+        }
+
+        private void TryDeclareExternPrototype(string name, MIRType type, params MIRType[] parameterTypes)
+        {
+            if (!Module.FunctionPrototypeIsDeclared(name))
+                Module.DefineFunctionPrototype(name, type, parameterTypes);
+        }
+
+        private void ReportExpectedValueOfTypeInt(ModulePosition position)
+        {
+            Tower.Report(position, "Expected a value of type 'int'");
+        }
+
         private DataType EvaluateCompTimeIntCast(CallStatement expression, string name)
         {
-            ExpectGenericsNumber(expression.Generics, 0, expression.Position);
-            ExpectParametersNumber(expression.Parameters, 1, expression.Parameters.Position);
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
             var value = expression.Parameters.FirstOrDefault();
 
             if (value is null)
@@ -874,7 +900,7 @@ namespace Mug.Generator
 
             // or enum in the future
             if (!type.SolvedType.IsInt())
-                Tower.Report(value.Position, "Expected a value of type 'int'");
+                ReportExpectedValueOfTypeInt(value.Position);
 
             type = IntTypeStringToMIRType(name);
             FunctionBuilder.EmitCastIntToInt(LowerDataType(type));
@@ -890,8 +916,8 @@ namespace Mug.Generator
 
         private DataType EvaluateCompTimeSize(CallStatement expression)
         {
-            ExpectGenericsNumber(expression.Generics, 1, expression.Position);
-            ExpectParametersNumber(expression.Parameters, 0, expression.Parameters.Position);
+            ExpectGenericsNumber(expression.Generics, expression.Position, 1);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0);
             var type = expression.Generics.FirstOrDefault();
             var returnType = CoercedOr(DataType.Int32);
 
@@ -901,16 +927,21 @@ namespace Mug.Generator
             return returnType;
         }
 
-        private void ExpectParametersNumber(NodeBuilder parameters, int expectedNumber, ModulePosition position)
+        private void ExpectParametersNumber(NodeBuilder parameters, ModulePosition position, params int[] expectedNumbers)
         {
-            if (parameters.Count != expectedNumber)
-                Tower.Report(position, $"Expected '{expectedNumber}' parameters, but got '{parameters.Count}'");
+            if (!expectedNumbers.Contains(parameters.Count))
+                ReportIncorrectNumberOfElements(parameters.Count, position, expectedNumbers);
         }
 
-        private void ExpectGenericsNumber(List<DataType> generics, int expectedNumber, ModulePosition position)
+        private void ReportIncorrectNumberOfElements(int count, ModulePosition position, int[] expectedNumbers)
         {
-            if (generics.Count != expectedNumber)
-                Tower.Report(position, $"Expected '{expectedNumber}' generic parameters, but got '{generics.Count}'");
+            Tower.Report(position, $"Expected '{string.Join("', '", expectedNumbers)}' parameters, but got '{count}'");
+        }
+
+        private void ExpectGenericsNumber(List<DataType> generics, ModulePosition position, params int[] expectedNumbers)
+        {
+            if (!expectedNumbers.Contains(generics.Count))
+                ReportIncorrectNumberOfElements(generics.Count, position, expectedNumbers);
         }
 
         private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters)
@@ -1787,8 +1818,8 @@ namespace Mug.Generator
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have parameters");
                 if (entryPoint.Generics.Count > 0)
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have generic parameters");
-                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Int32)
-                    Tower.Report(entryPoint.Position, "Entrypoint must return a value of type 'i32'");
+                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Void)
+                    Tower.Report(entryPoint.Position, "Entrypoint cannot return a value");
                 if (entryPoint.Modifier is TokenKind.KeyPub)
                     Tower.Report(entryPoint.Position, "Entrypoint cannot have a public modifier");
             }

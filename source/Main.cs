@@ -29,18 +29,18 @@ using Mug.Generator.IR;
 //       - add optional parameters
 //       - add varargs
 //       - add arrays
-//       - change is into a new node, not boolean
+//       - change is into a new ast node, not boolean
 //       - add a warn for user defined types named like primitives
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
 //       - add compiler symbols and use them to get target int size
-//       - fix 'return /x'
 //       - add function prototypes
-//       - fix folding '2 * 3 * 3'
-//       - fix bool folding
+//       - fix constant int folding '2 * 3 * 3'
+//       - fix constant bool folding '!true'
 //       - add condition folding
 //       - add import global statement
-//       - add a error for functions with more than 10 parameters
 //       - design in compilation flags a way not to update the help message
+//       - foreach
+//       - attributes for function prototypes in mirfunctionprototype 'extern, noreturn'
 
 var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.mug");
 
@@ -49,15 +49,15 @@ var unit = new CompilationUnit("test.mir", null, @"../../../../tests/main_test.m
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-var e = unit.GenerateC(out var ir);
+// var e = unit.GenerateC(out var ir);
 
 // var e = unit.GenerateIR(out var ir);
 
-// var e = unit.GenerateLLVMIR(out var ir);
+var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 
-if (!unit.HasErrors() && ir is not null)
+if (!unit.HasErrors() /*&& ir is not null*/)
     Console.WriteLine(ir.ToString());
 
 #else

@@ -26,7 +26,7 @@ namespace Mug.Generator.TargetGenerators.C
         {
             ResetRegisterCounter();
             CurrentFunction = function;
-            CurrentFunctionBuilder = new(BuildCFunctionPrototype(), function.ParameterTypes.Length);
+            CurrentFunctionBuilder = new(BuildCFunctionPrototype(), function.Prototype.ParameterTypes.Length);
 
             EmitAllocations();
             LowerFunctionBody();
@@ -41,7 +41,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitAllocations()
         {
-            for (int i = CurrentFunction.ParameterTypes.Length; i < CurrentFunction.Allocations.Length; i++)
+            for (int i = CurrentFunction.Prototype.ParameterTypes.Length; i < CurrentFunction.Allocations.Length; i++)
                 CurrentFunctionBuilder.Allocations.Add(CurrentFunction.Allocations[i].Type);
         }
 
@@ -187,12 +187,13 @@ namespace Mug.Generator.TargetGenerators.C
 
         private string BuildCallExpression(string name)
         {
-            return $"{BuildFunctionName(name)}({string.Join(", ", PopFunctionArgs(name))})";
+            var args = PopFunctionArgs(name, out var isExtern);
+            return $"{(isExtern ? name : BuildFunctionName(name))}({string.Join(", ", args)})";
         }
 
-        private string[] PopFunctionArgs(string functionName)
+        private string[] PopFunctionArgs(string functionName, out bool isExtern)
         {
-            var count = Tower.MIRModule.GetFunction(functionName).ParameterTypes.Length;
+            var count = Tower.MIRModule.GetFunction(functionName, out isExtern).ParameterTypes.Length;
             var result = new string[count];
             while (count-- > 0)
                 result[count] = PopValue().Value;
@@ -359,19 +360,19 @@ namespace Mug.Generator.TargetGenerators.C
             return _stackBlocksHistory[blockIndex];
         }
 
-        private void EmitStatement(string statement, string expression = "")
+        private void EmitStatement(string statement, string expression = null)
         {
-            CurrentFunctionBuilder.CurrentBlock.Add($"{statement} {expression};");
+            CurrentFunctionBuilder.CurrentBlock.Add($"{statement}{(expression is not null ? $" {expression}" : "")};");
         }
 
         private void MovInVirtualReg(uint index, string expression, MIRType type)
         {
-            EmitStatement($"ssa {type} R{index} =", expression);
+            EmitStatement($"SSA {type} R{index} =", expression);
         }
 
         private string BuildCFunctionPrototype()
         {
-            return $"{CurrentFunction.ReturnType} {BuildFunctionName(CurrentFunction.Name)}({BuildParametersInCFunctionPrototypes(CurrentFunction.ParameterTypes)})";
+            return $"{CurrentFunction.Prototype.ReturnType} {BuildFunctionName(CurrentFunction.Prototype.Name)}({BuildParametersInCFunctionPrototypes(CurrentFunction.Prototype.ParameterTypes)})";
         }
 
         private static string BuildFunctionName(string name)
@@ -396,11 +397,23 @@ namespace Mug.Generator.TargetGenerators.C
         override public object Lower()
         {
             LowerStructures();
+            LowerFunctionPrototypes();
             LowerGlobals();
             LowerFunctions();
             GenerateMain();
 
             return Module.Build();
+        }
+
+        private void LowerFunctionPrototypes()
+        {
+            foreach (var functionPrototype in Tower.MIRModule.FunctionPrototypes)
+                LowerFunctionPrototype(functionPrototype);
+        }
+
+        private void LowerFunctionPrototype(MIRFunctionPrototype functionPrototype)
+        {
+            Module.FunctionPrototypes.Add($"{functionPrototype.ReturnType} {functionPrototype.Name}({string.Join(", ", functionPrototype.ParameterTypes)});");
         }
 
         private void LowerGlobals()
@@ -417,7 +430,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void GenerateMain()
         {
             var entrypointBuilder = new CFunctionBuilder("int main()", 0);
-            entrypointBuilder.Body.Add(new List<string> { "    return mug__main();" });
+            entrypointBuilder.Body.Add(new List<string> { "mug__main();", "return 0;" });
 
             Module.Functions.Add(entrypointBuilder);
         }

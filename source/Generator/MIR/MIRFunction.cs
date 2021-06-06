@@ -9,9 +9,7 @@ namespace Mug.Generator.IR
 {
     public struct MIRFunction
     {
-        public string Name { get; }
-        public MIRType ReturnType { get; }
-        public MIRType[] ParameterTypes { get; }
+        public MIRFunctionPrototype Prototype { get; }
         public MIRBlock[] Body { get; }
         public MIRAllocation[] Allocations { get; }
 
@@ -22,9 +20,7 @@ namespace Mug.Generator.IR
             MIRBlock[] body,
             MIRAllocation[] allocations)
         {
-            Name = name;
-            ReturnType = returntype;
-            ParameterTypes = parametertypes;
+            Prototype = new(name, returntype, parametertypes);
             Body = body;
             Allocations = allocations;
         }
@@ -34,7 +30,7 @@ namespace Mug.Generator.IR
             var locals = GetAllocationsReppresentation();
             var body = GetBodyReppresentation();
 
-            return $@".fn {Name}({string.Join(", ", ParameterTypes)}) {ReturnType}:
+            return $@"{Prototype}:
   .locals:
     {locals}
 

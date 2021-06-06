@@ -933,7 +933,7 @@ namespace Mug.Parser
             statement = new ReturnStatement()
             {
                 Position = pos,
-                Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression(allowNullExpression: true)
+                Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression()
             };
 
             return true;

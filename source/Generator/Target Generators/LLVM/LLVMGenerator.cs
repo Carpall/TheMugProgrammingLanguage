@@ -38,8 +38,11 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void DeclareFunctionPrototypes()
         {
+            foreach (var functionPrototype in Tower.MIRModule.FunctionPrototypes)
+                DeclareFunctionPrototype(functionPrototype);
+
             foreach (var function in Tower.MIRModule.Functions)
-                DeclareFunctionPrototype(function);
+                DeclareFunctionPrototype(function.Prototype);
         }
 
         private void WalkFunctions()
@@ -48,7 +51,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 LowerFunction(function);
         }
 
-        private void DeclareFunctionPrototype(MIRFunction function)
+        private void DeclareFunctionPrototype(MIRFunctionPrototype function)
         {
             Module.AddFunction(function.Name, CreateLLVMFunctionModel(function));
         }
@@ -112,7 +115,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void LowerFunction(MIRFunction function)
         {
             CurrentFunction = function;
-            CurrentLLVMFunction = GetLLVMFunction(CurrentFunction.Name);
+            CurrentLLVMFunction = GetLLVMFunction(CurrentFunction.Prototype.Name);
             Allocations = new (LLValue, MIRAllocationAttribute)[function.Allocations.Length];
             
             LowerFunctionBody();
@@ -126,7 +129,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void EmitParametersAssign()
         {
-            for (uint i = 0; i < CurrentFunction.ParameterTypes.Length; i++)
+            for (uint i = 0; i < CurrentFunction.Prototype.ParameterTypes.Length; i++)
                 Allocations[i].Value = CurrentLLVMFunction.GetParam(i);
         }
 
@@ -488,7 +491,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
             StackValues.Push(value);
         }
 
-        private LLType CreateLLVMFunctionModel(MIRFunction function)
+        private LLType CreateLLVMFunctionModel(MIRFunctionPrototype function)
         {
             return
                 LLType.CreateFunction(
