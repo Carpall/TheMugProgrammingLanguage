@@ -115,7 +115,7 @@ namespace Mug.Compilation
 
         internal bool IsExpectingEntryPoint()
         {
-            return Flags is not null && Flags.GetFlag<CompilationTarget>("target") is CompilationTarget.EXE;
+            return Flags is not null && Flags.GetFlag<CompilationTarget>(CompilationFlagKind.Target) is CompilationTarget.EXE;
         }
     }
 }

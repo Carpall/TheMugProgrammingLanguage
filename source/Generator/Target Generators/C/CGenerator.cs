@@ -12,51 +12,70 @@ namespace Mug.Generator.TargetGenerators.C
 {
     class CGenerator : TargetGenerator
     {
-/*        private CModuleBuilder Module { get; }
-        private CFunctionBuilder CurrenFunctionBuilder { get; set; }
-        private Stack<string> VirtualStack { get; } = new();
+        private CModuleBuilder Module { get; }
+        private CFunctionBuilder CurrentFunctionBuilder { get; set; }
+        private Stack<CValue> StackValues { get; } = new();
 
         private MIRFunction CurrentFunction { get; set; }
+        private MIRBlock CurrentBlock { get; set; }
 
-        private uint _temporaryElementCounter = 0;
         private uint _registerCounter = 0;
-
-        private const uint VIRTUAL_REGISTERS_MAX_COUNT = 10;
+        private readonly List<CValue> _stackBlocksHistory = new();
 
         private void LowerFunction(MIRFunction function)
         {
+            ResetRegisterCounter();
             CurrentFunction = function;
-            CurrenFunctionBuilder = new(BuildCFunctionPrototype());
+            CurrentFunctionBuilder = new(BuildCFunctionPrototype(), function.ParameterTypes.Length);
 
-            // AllocateVirtualRegisters();
             EmitAllocations();
             LowerFunctionBody();
 
-            Module.Functions.Add(CurrenFunctionBuilder);
+            Module.Functions.Add(CurrentFunctionBuilder);
         }
 
-        *//*private void AllocateVirtualRegisters()
+        private void ResetRegisterCounter()
         {
-            for (int i = 0; i < VIRTUAL_REGISTERS_MAX_COUNT; i++)
-                EmitStatement($"register uint64 R{i}");
-        }*//*
+            _registerCounter = 0;
+        }
 
         private void EmitAllocations()
         {
             for (int i = CurrentFunction.ParameterTypes.Length; i < CurrentFunction.Allocations.Length; i++)
-                EmitStatement($"{CurrentFunction.Allocations[i].Type} _{i}");
+                CurrentFunctionBuilder.Allocations.Add(CurrentFunction.Allocations[i].Type);
         }
 
         private void LowerFunctionBody()
         {
             foreach (var block in CurrentFunction.Body)
+            {
+                CurrentBlock = block;
+
                 EmitBlock(block);
+            }
         }
 
         private void EmitBlock(MIRBlock block)
         {
+            AddBlock();
+
             foreach (var instruction in block.Instructions)
                 EmitLoweredInstruction(instruction);
+
+            SaveLastStackValueIfNeededAndClear();
+        }
+
+        private void AddBlock()
+        {
+            CurrentFunctionBuilder.Body.Add(new());
+        }
+
+        private void SaveLastStackValueIfNeededAndClear()
+        {
+            _stackBlocksHistory.Add(
+                StackValues.Count == 1 ?
+                    PopValue() :
+                    new(new(), null));
         }
 
         private void EmitLoweredInstruction(MIRInstruction instruction)
@@ -79,7 +98,7 @@ namespace Mug.Generator.TargetGenerators.C
                 case MIRInstructionKind.Pop: EmitPop(); break;
                 case MIRInstructionKind.Call: EmitCall(instruction); break;
                 case MIRInstructionKind.Jump: EmitJump(instruction); break;
-                case MIRInstructionKind.JumpFalse: EmitJumpFalse(instruction); break;
+                case MIRInstructionKind.JumpConditional: EmitJumpConditional(instruction); break;
                 case MIRInstructionKind.Dupplicate: EmitDupplicate(); break;
                 case MIRInstructionKind.Greater: EmitGreater(instruction); break;
                 case MIRInstructionKind.Less: EmitLess(instruction); break;
@@ -97,13 +116,13 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitStoreGlobal(MIRInstruction instruction)
         {
-            EmitStatement($"{instruction.GetName()} =", PopValue());
+            EmitStatement($"{instruction.GetName()} =", PopValue().Value);
         }
 
         private void EmitStoreField(MIRInstruction instruction)
         {
-            var expression = PopValue();
-            EmitStatement($"{PopValue()}.{GetLocal(instruction.GetStackIndex())} =", expression);
+            var expression = PopValue().Value;
+            EmitStatement($"{PopValue().Value}.{GetLocal(instruction.GetStackIndex())} =", expression);
         }
 
         private void EmitLoadField(MIRInstruction instruction)
@@ -118,9 +137,8 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadZeroinitialized(MIRInstruction instruction)
         {
-            var temp = GetTempName();
-            EmitStatement($"{instruction.Type} {temp}");
-            PushValue(temp, instruction.Type);
+            var tmp = DeclareAllocation(instruction.Type);
+            PushValue(tmp, instruction.Type);
         }
 
         private void EmitLess(MIRInstruction instruction)
@@ -133,31 +151,23 @@ namespace Mug.Generator.TargetGenerators.C
             EmitOperation(">", instruction.Type);
         }
 
-        private void EmitLabel(MIRInstruction instruction)
-        {
-            EmitStatement($"L{instruction.GetStackIndex()}", ":");
-        }
-
         private void EmitDupplicate()
         {
-            VirtualStack.Push(VirtualStack.Peek());
+            StackValues.Push(StackValues.Peek());
         }
 
         private void EmitJump(MIRInstruction instruction)
         {
-            EmitStatement($"goto", BuildLabel(instruction.GetLabel().BodyIndex));
-            // ResetVirtualStackCounter();
+            EmitStatement($"goto", BuildLabel(instruction.GetInt()));
         }
 
-        private void EmitJumpFalse(MIRInstruction instruction)
+        private void EmitJumpConditional(MIRInstruction instruction)
         {
-            EmitStatement($"if (!({PopValue()})) goto", BuildLabel(instruction.GetLabel().BodyIndex));
-        }
+            var (then, otherwise) = instruction.GetConditionTuple();
 
-        *//*private void ResetVirtualStackCounter()
-        {
-            _registerCounter = 0;
-        }*//*
+            EmitStatement($"if ({PopValue()}) goto", BuildLabel(then));
+            EmitStatement($"else goto", BuildLabel(otherwise));
+        }
 
         private static string BuildLabel(int bodyIndex)
         {
@@ -167,7 +177,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitCall(MIRInstruction instruction)
         {
             var isNotVoid = !instruction.Type.IsVoid();
-            var call = $"{BuildFunctionName(instruction.GetName())}({ string.Join(", ", PopFunctionArgs(instruction.GetName()))})";
+            var call = BuildCallExpression(instruction.GetName());
 
             if (isNotVoid)
                 PushValue(call, instruction.Type);
@@ -175,24 +185,19 @@ namespace Mug.Generator.TargetGenerators.C
                 EmitStatement(call);
         }
 
+        private string BuildCallExpression(string name)
+        {
+            return $"{BuildFunctionName(name)}({string.Join(", ", PopFunctionArgs(name))})";
+        }
+
         private string[] PopFunctionArgs(string functionName)
         {
             var count = Tower.MIRModule.GetFunction(functionName).ParameterTypes.Length;
             var result = new string[count];
             while (count-- > 0)
-                result[count] = PopValue();
+                result[count] = PopValue().Value;
 
             return result;
-        }
-
-        private string GetTempName()
-        {
-            return $"atmp_{GetAndIncTmpCounter()}";
-        }
-
-        private uint GetAndIncTmpCounter()
-        {
-            return _temporaryElementCounter++;
         }
 
         private void EmitPop()
@@ -263,17 +268,17 @@ namespace Mug.Generator.TargetGenerators.C
 
         private static string GetLocal(int stackindex)
         {
-            return $"_{stackindex}";
+            return $"A{stackindex}";
         }
 
         private void EmitStoreLocal(MIRInstruction instruction)
         {
-            EmitStatement($"{GetLocal(instruction.GetStackIndex())} =", PopValue());
+            EmitStatement($"{GetLocal(instruction.GetStackIndex())} =", PopValue().Value);
         }
 
         private void EmitReturn(MIRInstruction instruction)
         {
-            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue() : "");
+            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue().Value : "");
         }
 
         private void EmitLoadConstant(MIRInstruction instruction)
@@ -293,22 +298,75 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var reg = _registerCounter++;
             MovInVirtualReg(reg, expression, type);
-            VirtualStack.Push($"R{reg}");
+            StackValues.Push(new(type, $"R{reg}"));
         }
 
-        private string PopValue()
+        private CValue PopValue()
         {
-            return VirtualStack.Pop();
+            if (!StackValues.TryPop(out var value))
+                value = CollectPhiNodesForCurrentBlock();
+
+            return value;
+        }
+
+        private CValue CollectPhiNodesForCurrentBlock()
+        {
+            var values = CollectPhiNodesRelatedToBlock(CurrentBlock.ReferredFrom, out var type);
+
+            var name = DeclareAllocation(type);
+
+            EmitStoreInEachBlock(name, CurrentBlock.ReferredFrom.ToArray(), values);
+
+            return new(type, name);
+        }
+
+        private string DeclareAllocation(MIRType type)
+        {
+            var result = $"A{CurrentFunctionBuilder.Allocations.Count}";
+            CurrentFunctionBuilder.Allocations.Add(type);
+
+            return result;
+        }
+
+        private void EmitStoreInEachBlock(string tempAllocationName, int[] blockIndexes, string[] values)
+        {
+            for (int i = 0; i < blockIndexes.Length; i++)
+            {
+                var blockPointer = CurrentFunctionBuilder.Body[blockIndexes[i]];
+                blockPointer.Insert(blockPointer.Count - 1, $"{tempAllocationName} = {values[i]};");
+            }
+        }
+
+        private string[] CollectPhiNodesRelatedToBlock(List<int> currentBlockReferences, out MIRType type)
+        {
+            var values = new List<string>();
+            type = new();
+
+            foreach (var blockIndex in currentBlockReferences)
+            {
+                var lastInstructionInBlock = GetLastStackValueOfBlock(blockIndex);
+
+                type = lastInstructionInBlock.Type;
+
+                values.Add(lastInstructionInBlock.Value);
+            }
+
+            return values.ToArray();
+        }
+
+        private CValue GetLastStackValueOfBlock(int blockIndex)
+        {
+            return _stackBlocksHistory[blockIndex];
         }
 
         private void EmitStatement(string statement, string expression = "")
         {
-            CurrenFunctionBuilder.Body.AppendLine($"    {statement} {expression};");
+            CurrentFunctionBuilder.CurrentBlock.Add($"{statement} {expression};");
         }
 
         private void MovInVirtualReg(uint index, string expression, MIRType type)
         {
-            EmitStatement($"const {type} R{index} =", expression);
+            EmitStatement($"ssa {type} R{index} =", expression);
         }
 
         private string BuildCFunctionPrototype()
@@ -329,22 +387,21 @@ namespace Mug.Generator.TargetGenerators.C
                 if (i > 0)
                     result.Append(", ");
 
-                result.Append($"{parameterTypes[i]} _{i}");
+                result.Append($"{parameterTypes[i]} A{i}");
             }
 
             return result.ToString();
         }
 
-        */override public object Lower()
+        override public object Lower()
         {
-            return null;
-            /*LowerStructures();
+            LowerStructures();
             LowerGlobals();
             LowerFunctions();
             GenerateMain();
 
-            return Module.Build();*/
-        }/*
+            return Module.Build();
+        }
 
         private void LowerGlobals()
         {
@@ -359,8 +416,8 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void GenerateMain()
         {
-            var entrypointBuilder = new CFunctionBuilder("int main()");
-            entrypointBuilder.Body.Append("    return mug__main();");
+            var entrypointBuilder = new CFunctionBuilder("int main()", 0);
+            entrypointBuilder.Body.Add(new List<string> { "    return mug__main();" });
 
             Module.Functions.Add(entrypointBuilder);
         }
@@ -384,11 +441,11 @@ namespace Mug.Generator.TargetGenerators.C
                 structureBuilder.Body.Add($"    {structure.Body[i]} _{i};");
 
             Module.Structures.Add(structureBuilder);
-        }*/
+        }
 
         public CGenerator(CompilationTower tower) : base(tower)
         {
-            // Module = new(Tower.OutputFilename);
+            Module = new(Tower.OutputFilename);
         }
     }
 }

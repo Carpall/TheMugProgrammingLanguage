@@ -12,6 +12,19 @@ using System.Runtime.InteropServices;
 
 namespace Mug.Compilation
 {
+    public enum CompilationFlagKind
+    {
+        Output,
+        Target,
+        Strip,
+        Means,
+        Mode,
+        Source,
+        Arguments,
+        Unknown,
+        Empty
+    }
+
     public enum CompilationMode
     {
         Release = 3,
@@ -107,15 +120,15 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private int _argumentSelector = 0;
         private readonly List<string> _preDeclaredSymbols = new();
         private CompilationUnit _unit = null;
-        private readonly Dictionary<string, object> _flags = new()
+        private readonly object[] _flags = new object[]
         {
-            ["output"]      = null, // output filename
-            ["target"]      = null,
-            ["nostrip"]     = null,
-            ["means"]       = null,
-            ["mode"  ]      = null, // debug | release
-            ["src"   ]      = null, // file to compile
-            ["args"  ]      = null, // arguments
+            null, // output
+            null, // target
+            null, // strip
+            null, // means
+            null, // mode
+            null, // src
+            null, // args
         };
 
         private string[] GetAllFilesInFolder(string directory)
@@ -129,9 +142,25 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return folder.ToArray();
         }
 
+        private static CompilationFlagKind StringToFlagKind(string flag)
+        {
+            return flag switch
+            {
+                "output" => CompilationFlagKind.Output,
+                "target" => CompilationFlagKind.Target,
+                "strip" => CompilationFlagKind.Strip,
+                "means" => CompilationFlagKind.Means,
+                "mode" => CompilationFlagKind.Mode,
+                "src" => CompilationFlagKind.Source,
+                "args" => CompilationFlagKind.Arguments,
+                "" => CompilationFlagKind.Empty,
+                _ => CompilationFlagKind.Unknown,
+            };
+        }
+
         private string[] GetFiles()
         {
-            var file = GetFlag<string[]>("src");
+            var file = GetFlag<string[]>(CompilationFlagKind.Source);
 
             if (file is null)
                 CompilationTower.Throw("Undefined src to compile");
@@ -141,26 +170,26 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private string GetOutputPath()
         {
-            return Path.ChangeExtension(GetFlag<string>("output"), GetOutputExtension());
+            return Path.ChangeExtension(GetFlag<string>(CompilationFlagKind.Output), GetOutputExtension());
         }
 
-        private void SetFlag(string flag, object value)
+        private void SetFlag(CompilationFlagKind flag, object value)
         {
-            _flags[flag] = value;
+            _flags[(byte)flag] = value;
         }
 
-        internal T GetFlag<T>(string flag)
+        internal T GetFlag<T>(CompilationFlagKind flag)
         {
-            return (T)_flags[flag];
+            return (T)_flags[(byte)flag];
         }
 
-        private void SetDefault(string flag, object value)
+        private void SetDefault(CompilationFlagKind flag, object value)
         {
             if (IsDefault(flag))
                 SetFlag(flag, value);
         }
 
-        private bool IsDefault(string flag)
+        private bool IsDefault(CompilationFlagKind flag)
         {
             return GetFlag<object>(flag) is null;
         }
@@ -195,18 +224,18 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Build(bool compilationActionIsRun = false)
         {
             if (!compilationActionIsRun)
-                CheckForUnusableFlags("build", "args");
+                CheckForUnusableFlags("build", CompilationFlagKind.Arguments);
 
             ParseArguments();
             DeclareCompilerSymbols();
 
             var path = GetFiles();
-            var output = GetFlag<string>("output");
-            var target = GetFlag<CompilationTarget>("target");
+            var output = GetFlag<string>(CompilationFlagKind.Output);
+            var target = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
 
             _unit = new CompilationUnit(output, this, path);
 
-            DeclareSymbol(GetFlag<CompilationMode>("mode").ToString());
+            DeclareSymbol(GetFlag<CompilationMode>(CompilationFlagKind.Mode).ToString());
             DeclareSymbol(target.ToString());
 
             switch (target)
@@ -260,7 +289,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private CompilationMeans GetMeans()
         {
-            return GetFlag<CompilationMeans>("means");
+            return GetFlag<CompilationMeans>(CompilationFlagKind.Means);
         }
 
         private void DeclareCompilerSymbols()
@@ -270,7 +299,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             SetDefaultIFNeeded();
         }
 
-        private void CheckForUnusableFlags(string compilationAction, params string[] unusables)
+        private void CheckForUnusableFlags(string compilationAction, params CompilationFlagKind[] unusables)
         {
             foreach (var unusable in unusables)
                 if (!IsDefault(unusable))
@@ -291,7 +320,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void CompileLLVM(string flag = "", bool onlyBitcode = false)
         {
             _unit.CompileLLVMIR(
-                (int)GetFlag<CompilationMode>("mode"),
+                (int)GetFlag<CompilationMode>(CompilationFlagKind.Mode),
                 GetOutputPath(),
                 onlyBitcode,
                 flag);
@@ -300,7 +329,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void CompileC(string flag = "")
         {
             _unit.CompileC(
-                (int)GetFlag<CompilationMode>("mode"),
+                (int)GetFlag<CompilationMode>(CompilationFlagKind.Mode),
                 GetOutputPath(),
                 flag);
         }
@@ -310,7 +339,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             Build(true);
             ReportIfCompilationTargetIsNotExe();
 
-            var process = Process.Start(GetFlag<string>("output"), GetFlag<string>("args"));
+            var process = Process.Start(GetFlag<string>(CompilationFlagKind.Output), GetFlag<string>(CompilationFlagKind.Arguments));
 
             process.WaitForExit();
             Environment.ExitCode = process.ExitCode;
@@ -318,7 +347,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void ReportIfCompilationTargetIsNotExe()
         {
-            if (GetFlag<CompilationTarget>("target") is not CompilationTarget.EXE)
+            if (GetFlag<CompilationTarget>(CompilationFlagKind.Target) is not CompilationTarget.EXE)
                 CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
         }
 
@@ -351,7 +380,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return source;
         }
 
-        private void ConfigureFlag(string flag, object value)
+        private void ConfigureFlag(CompilationFlagKind flag, object value)
         {
             if (!IsDefault(flag))
                 CompilationTower.Throw($"Impossible to specify multiple times the flag '{flag}'");
@@ -401,7 +430,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private string GetOutputExtension()
         {
-            var ext = GetFlag<CompilationTarget>("target");
+            var ext = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
             return
                 ext is CompilationTarget.EXE ?
                     GetExecutableExtension() :
@@ -410,21 +439,21 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private void SetDefaultIFNeeded()
         {
-            SetDefault("means", CompilationMeans.LLVM);
-            SetDefault("target", CompilationTarget.EXE);
-            SetDefault("mode", CompilationMode.Debug);
-            SetDefault("nostrip", false);
-            SetDefault("output",
+            SetDefault(CompilationFlagKind.Means, CompilationMeans.LLVM);
+            SetDefault(CompilationFlagKind.Target, CompilationTarget.EXE);
+            SetDefault(CompilationFlagKind.Mode, CompilationMode.Debug);
+            SetDefault(CompilationFlagKind.Strip, false);
+            SetDefault(CompilationFlagKind.Output,
                 Path.ChangeExtension(
-                    IsDefault("output") ?
+                    IsDefault(CompilationFlagKind.Output) ?
                         GetDefaultOutput() :
-                        GetFlag<string>("output"), GetOutputExtension())
+                        GetFlag<string>(CompilationFlagKind.Output), GetOutputExtension())
                 );
         }
 
         private string GetDefaultOutput()
         {
-            var src = GetFlag<string[]>("src");
+            var src = GetFlag<string[]>(CompilationFlagKind.Source);
 
             if (src is null || src.Length > 1)
                 return Path.GetFileName(Environment.CurrentDirectory);
@@ -436,34 +465,31 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             if (argument[0] == '*')
             {
-                var arg = argument[1..];
+                var arg = StringToFlagKind(argument[1..]);
                 switch (arg)
                 {
-                    case "nostrip":
+                    case CompilationFlagKind.Strip:
                         ConfigureFlag(arg, true);
                         break;
-                    case "src":
+                    case CompilationFlagKind.Source:
                         ConfigureFlag(arg, CheckMugFiles(NextArgument().Split(' ')));
                         break;
-                    case "means":
+                    case CompilationFlagKind.Means:
                         ConfigureFlag(arg, ParseCompilationMeans(NextArgument()));
                         break;
-                    case "mode":
+                    case CompilationFlagKind.Mode:
                         ConfigureFlag(arg, GetMode(NextArgument()));
                         break;
-                    case "target":
+                    case CompilationFlagKind.Target:
                         ConfigureFlag(arg, ParseCompilationTarget(NextArgument()));
                         break;
-                    case "output":
+                    case CompilationFlagKind.Output:
                         ConfigureFlag(arg, NextArgument());
                         break;
-                    case "dec":
-                        _preDeclaredSymbols.Add(NextArgument());
+                    case CompilationFlagKind.Arguments:
+                        ConfigureFlag(arg, NextArgument());
                         break;
-                    case "args":
-                        ConfigureFlag("args", NextArgument());
-                        break;
-                    case "":
+                    case CompilationFlagKind.Empty:
                         CompilationTower.Throw("Invalid empty flag");
                         break;
                     default:
@@ -494,7 +520,11 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Check()
         {
             ParseArguments();
-            CheckForUnusableFlags("check", "output", "target", "mode", "args", "nostrip", "means");
+            CheckForUnusableFlags("check",
+                CompilationFlagKind.Output, CompilationFlagKind.Target,
+                CompilationFlagKind.Mode, CompilationFlagKind.Arguments,
+                CompilationFlagKind.Strip, CompilationFlagKind.Means);
+
             DeclareCompilerSymbols();
 
             _unit = new CompilationUnit("", this, GetFiles());
@@ -512,10 +542,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             var sources = source == "." ?
                 GetAllFilesInFolder(Environment.CurrentDirectory) :
-                IsDefault("src") ? new string[] { source } :
-                GetFlag<string[]>("src").Append(source).ToArray();
+                IsDefault(CompilationFlagKind.Source) ? new string[] { source } :
+                GetFlag<string[]>(CompilationFlagKind.Source).Append(source).ToArray();
 
-            SetFlag("src", sources);
+            SetFlag(CompilationFlagKind.Source, sources);
         }
 
         private void ParseArguments()

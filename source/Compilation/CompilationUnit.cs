@@ -82,7 +82,7 @@ namespace Mug.Compilation
             output = Path.GetFullPath(output);
             CallCompilerFromShell($"gcc", $"{cfile} -o {output} {optionalArgs}", optimizazioneLevel);
 
-            if (!Tower.Flags.GetFlag<bool>("nostrip"))
+            if (Tower.Flags.GetFlag<bool>(CompilationFlagKind.Strip))
                 CallCompilerFromShell("strip", output);
         }
 
