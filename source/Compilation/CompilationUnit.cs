@@ -14,14 +14,17 @@ namespace Mug.Compilation
 {
     public class CompilationUnit : CompilerComponent
     {
-        public static readonly string[] AllowedExtensions = new[] { ".mug" };
+        public static readonly string[] AllowedExtensions = new[] { ".mug", ".z" };
 
         public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
+        public string PathsFolderHead { get; }
 
-        public CompilationUnit(string outputFilename, CompilationFlags flags, params string[] paths) : base(new(outputFilename, flags))
+        public CompilationUnit(string outputFilename, string pathsFolderHead, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
         {
+            PathsFolderHead = pathsFolderHead;
             Paths = paths;
+            Tower.Unit = this;
         }
 
         public void CompileLLVMIR(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
@@ -134,7 +137,7 @@ namespace Mug.Compilation
                 if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
-                var subtower = new CompilationTower(path);
+                var subtower = new CompilationTower(path, this);
                 (subtower.Lexer = new(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
 
                 var head = subtower.Parser.Parse();

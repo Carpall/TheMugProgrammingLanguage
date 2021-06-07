@@ -7,7 +7,8 @@ namespace Mug.Symbols
 {
     public class SymbolTable : CompilerComponent
     {
-        private Dictionary<string, ISymbol> _symbols = new();
+        public Dictionary<string, SymbolTable> ImportedModules { get; } = new();
+        private readonly Dictionary<string, ISymbol> _symbols = new();
 
         public SymbolTable(CompilationTower tower) : base(tower)
         {

@@ -2,11 +2,13 @@
 using Mug.Lexer;
 using Mug.Parser;
 using Mug.Parser.AST;
+using Mug.Parser.AST.Directives;
 using Mug.Parser.AST.Statements;
 using Mug.Symbols;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -91,15 +93,84 @@ namespace Mug.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
-            // WarnNameIfIsPrimitiveLike(type.Name, type.Position);
+            WarnNameIfIsPrimitiveLike(type.Name, type.Position);
             CheckType(type.BodyMethods, type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, type);
+        }
+
+        private void WarnNameIfIsPrimitiveLike(string name, ModulePosition position)
+        {
+            if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.DefinedType)
+                Tower.Warn(position, $"Type '{name}' is automaticaly hidden by the builtin type");
         }
 
         private void DeclareFunction(FunctionStatement func)
         {
             CheckFunc(func.ParameterList, func.Generics, func.Pragmas);
             DeclareSymbol(func.Name, func);
+        }
+
+        private void ProcessImport(ImportDirective directive)
+        {
+            var pathName = EvaluateImportDirectiveName(directive.Member);
+            var path = PathFromLocalOrPackages(directive.Mode, pathName);
+
+            if (!File.Exists(path))
+            {
+                Tower.Report(pathName.Position, $"Unable to find module '{pathName.Value}'");
+                return;
+            }
+
+            var moduleName = Path.GetFileNameWithoutExtension(path);
+            var unit = new CompilationUnit(null, Path.GetDirectoryName(path), null, path);
+
+            Tower.Diagnostic.AddRange(unit.GenerateIR(out _).Diagnostic);
+            var addResponse = Tower.Symbols.ImportedModules.TryAdd(moduleName, unit.Tower.Symbols);
+            var detectedCircularImport = CheckForCircolarImport(unit.Tower.Symbols);
+
+            ReportImportErrors(directive, pathName, addResponse, detectedCircularImport);
+        }
+
+        private void ReportImportErrors(ImportDirective directive, Token pathName, bool addResponse, bool detectedCircularImport)
+        {
+            if (!addResponse)
+                Tower.Report(directive.Position, $"Module '{pathName.Value}' imported multiple times");
+            if (detectedCircularImport)
+                Tower.Report(directive.Position, $"Detected circular import: module '{pathName.Value}' imports importer module");
+        }
+
+        private bool CheckForCircolarImport(SymbolTable symbols)
+        {
+            foreach (var moduleImported in symbols.ImportedModules)
+                if (Tower.Unit.Paths.Contains(moduleImported.Key))
+                    return true;
+
+            return false;
+        }
+
+        private string PathFromLocalOrPackages(ImportMode mode, Token pathName)
+        {
+            return
+                mode is ImportMode.FromLocal ?
+                    Path.GetFullPath(pathName.Value, Tower.Unit.PathsFolderHead) :
+                    ImplementProcessImport();
+        }
+
+        private Token EvaluateImportDirectiveName(INode pathName)
+        {
+            if (pathName is not Token name)
+            {
+                CompilationTower.Todo($"implement {pathName} in {nameof(EvaluateImportDirectiveName)}");
+                return default;
+            }
+
+            return name;
+        }
+
+        private string ImplementProcessImport()
+        {
+            CompilationTower.Todo($"implement frompackages in {nameof(ProcessImport)}");
+            return null;
         }
 
         private void RecognizeGlobalStatement(INode global)
@@ -111,6 +182,9 @@ namespace Mug.TypeResolution
                     break;
                 case FunctionStatement statement:
                     DeclareFunction(statement);
+                    break;
+                case ImportDirective directive:
+                    ProcessImport(directive);
                     break;
                 default:
                     CompilationTower.Todo($"implement {global} in recognize global statement");

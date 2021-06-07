@@ -14,7 +14,6 @@ namespace Mug.Parser.AST.Statements
         public string Name { get; set; }
         public List<Token> Generics { get; set; } = new();
         public List<FieldNode> BodyFields { get; set; } = new();
-        public List<VariableStatement> BodyConstants { get; set; } = new();
         public List<FunctionStatement> BodyMethods { get; set; } = new();
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }

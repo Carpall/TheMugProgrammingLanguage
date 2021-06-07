@@ -1330,8 +1330,6 @@ namespace Mug.Parser
 
                 if (FunctionDefinition(out var node))
                     statement.BodyMethods.Add(node as FunctionStatement);
-                else if (VariableDefinition(out node))
-                    statement.BodyConstants.Add(CheckConstInTypeDefinitionAndEatComma(node));
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
             }

@@ -1426,25 +1426,10 @@ namespace Mug.Generator
         private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
         {
             var type = GetType(baseValue, expression.Base.Position);
-            if (type is null || !GetStaticConstantFromType(type, expression.Member.Value, out var staticConstant))
+            if (type is null)
                 return ContextType;
 
-            CompilationTower.Todo($"implement {nameof(EvaluateStaticMemberNode)}");
-            throw new();
-            // return staticConstant.Body;
-        }
-
-        private static bool GetStaticConstantFromType(TypeStatement type, string member, out VariableStatement constant)
-        {
-            for (int i = 0; i < type.BodyConstants.Count; i++)
-            {
-                constant = type.BodyConstants[i];
-                if (constant.Name == member)
-                    return true;
-            }
-
-            constant = null;
-            return false;
+            return null;
         }
 
         private DataType EvaluateInstanceMemberNode(MemberNode expression)

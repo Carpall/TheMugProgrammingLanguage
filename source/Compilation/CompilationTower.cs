@@ -18,6 +18,7 @@ namespace Mug.Compilation
     public class CompilationTower
     {
         public Diagnostic Diagnostic { get; } = new();
+        public CompilationUnit Unit { get; internal set; }
         public string OutputFilename { get; }
         public Lexer.Lexer Lexer { get; set; }
         public Parser.Parser Parser { get; }
@@ -35,8 +36,9 @@ namespace Mug.Compilation
         public LLVMModuleRef LLVMModule { get; internal set; }
         public string CModule { get; internal set; }
 
-        public CompilationTower(string outputFilename, CompilationFlags flags = null)
+        public CompilationTower(string outputFilename, CompilationUnit unit, CompilationFlags flags = null)
         {
+            Unit = unit;
             OutputFilename = outputFilename;
             Parser = new(this);
             Solver = new(this);

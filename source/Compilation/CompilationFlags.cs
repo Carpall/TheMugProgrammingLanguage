@@ -158,14 +158,29 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             };
         }
 
-        private string[] GetFiles()
+        private string[] GetFiles(out string pathHead)
         {
-            var file = GetFlag<string[]>(CompilationFlagKind.Source);
+            var files = GetFlag<string[]>(CompilationFlagKind.Source);
 
-            if (file is null)
+            if (files is null || files.Length == 0)
                 CompilationTower.Throw("Undefined src to compile");
 
-            return file;
+            pathHead = GetPathHead(files);
+            return files;
+        }
+
+        private string GetPathHead(string[] files)
+        {
+            string result = files[0];
+            for (int i = 1; i < files.Length; i++)
+            {
+                var path = Path.GetDirectoryName(files[i]);
+
+                if (path.Length < result.Length)
+                    result = path;
+            }
+
+            return result;
         }
 
         private string GetOutputPath()
@@ -229,11 +244,11 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             ParseArguments();
             DeclareCompilerSymbols();
 
-            var path = GetFiles();
+            var path = GetFiles(out var pathHead);
             var output = GetFlag<string>(CompilationFlagKind.Output);
             var target = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
 
-            _unit = new CompilationUnit(output, this, path);
+            _unit = new CompilationUnit(output, pathHead, this, path);
 
             DeclareSymbol(GetFlag<CompilationMode>(CompilationFlagKind.Mode).ToString());
             DeclareSymbol(target.ToString());
@@ -527,7 +542,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
             DeclareCompilerSymbols();
 
-            _unit = new CompilationUnit("", this, GetFiles());
+            _unit = new CompilationUnit("", "", this, GetFiles(out _));
             var e = _unit.GenerateIR(out _);
             PrintAlertsIfNeeded(e);
         }
