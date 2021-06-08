@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Mug.Generator.TargetGenerators.LLVM;
+using System.Collections.Generic;
+using Mug.Symbols;
 
 namespace Mug.Compilation
 {
@@ -17,16 +19,22 @@ namespace Mug.Compilation
         public static readonly string[] AllowedExtensions = new[] { ".mug", ".z" };
 
         public string[] Paths { get; }
+        public List<(string Path, SymbolTable Symbols)> GlobalImportedModulePaths { get; }
         public string PathsFolderHead { get; }
 
-        public CompilationUnit(string outputFilename, string pathsFolderHead, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
+        public CompilationUnit(string outputFilename, string pathsFolderHead, List<(string, SymbolTable)> globalImportedModulePaths, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
         {
             PathsFolderHead = pathsFolderHead;
             Paths = FixPathSlahes(paths);
             Tower.Unit = this;
+            GlobalImportedModulePaths = globalImportedModulePaths;
         }
 
-        private string[] FixPathSlahes(string[] paths)
+        public CompilationUnit(string outputFilename, string pathsFolderHead, params string[] paths) : this(outputFilename, pathsFolderHead, new(), null, paths)
+        {
+        }
+
+        internal static string[] FixPathSlahes(params string[] paths)
         {
             for (int i = 0; i < paths.Length; i++)
                 paths[i] = paths[i].Replace('/', '\\');

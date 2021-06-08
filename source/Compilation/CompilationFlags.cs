@@ -248,7 +248,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             var output = GetFlag<string>(CompilationFlagKind.Output);
             var target = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
 
-            _unit = new CompilationUnit(output, pathHead, this, path);
+            _unit = new CompilationUnit(output, pathHead, new(), this, path);
 
             DeclareSymbol(GetFlag<CompilationMode>(CompilationFlagKind.Mode).ToString());
             DeclareSymbol(target.ToString());
@@ -542,7 +542,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
             DeclareCompilerSymbols();
 
-            _unit = new CompilationUnit("", "", this, GetFiles(out _));
+            _unit = new CompilationUnit("", "", new(), this, GetFiles(out _));
             var e = _unit.GenerateIR(out _);
             PrintAlertsIfNeeded(e);
         }

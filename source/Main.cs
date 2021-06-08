@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using System.Linq;
 using Mug.Generator.IR;
+using System.Collections.Generic;
 
 #if DEBUG
 
@@ -42,10 +43,9 @@ using Mug.Generator.IR;
 //       - foreach
 //       - attributes for function prototypes in mirfunctionprototype 'extern, noreturn'
 //       - switch statement
-//       - avoid multiple parsing for same import in different modules
 
 var pathHead = Path.GetFullPath(@"../../../../tests");
-var unit = new CompilationUnit("test.mir", pathHead, null, $"{pathHead}/mainTest.mug");
+var unit = new CompilationUnit("test.mir", pathHead, $"{pathHead}/mainTest.mug");
 
 /*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
 

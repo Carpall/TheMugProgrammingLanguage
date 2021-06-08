@@ -116,34 +116,46 @@ namespace Mug.TypeResolution
         private void ProcessImport(ImportDirective directive)
         {
             var pathName = EvaluateImportDirectiveName(directive.Member);
-            var path = PathFromLocalOrPackages(directive.Mode, pathName);
+            var path = CompilationUnit.FixPathSlahes(PathFromLocalOrPackages(directive.Mode, pathName)).First();
 
             if (!File.Exists(path))
-            {
                 ReportUnableToFindModule(pathName);
-                return;
-            }
-
-            if (Tower.Unit.Paths.Contains(path))
-            {
+            else if (Tower.Unit.Paths.Contains(path))
                 ReportAutoImport(directive.Position);
-                return;
-            }
-
-            if (CheckForCircularImport(path))
-            {
+            else if (CheckForCircularImport(path))
                 ReportCircularImport(directive.Position, pathName.Value);
-                return;
-            }
+            else
+                ImportModule(directive, pathName, path);
+        }
 
+        private void ImportModule(ImportDirective directive, Token pathName, string path)
+        {
+            var unit = new CompilationUnit(null, Path.GetDirectoryName(path), Tower.Unit.GlobalImportedModulePaths, null, path);
             var moduleName = Path.GetFileNameWithoutExtension(path);
-            var unit = new CompilationUnit(null, Path.GetDirectoryName(path), null, path);
             unit.Tower.Symbols.References.Add(Tower.Unit.Paths);
 
+            var alreadyImportedInOtherModules = Tower.Unit.GlobalImportedModulePaths.FindIndex(module => module.Path == path);
+            if (alreadyImportedInOtherModules != -1)
+            {
+                addModuleToImportedModules(Tower.Unit.GlobalImportedModulePaths[alreadyImportedInOtherModules].Symbols);
+                return;
+            }
+
             Tower.Diagnostic.AddRange(unit.GenerateIR(out var ir).Diagnostic);
+            Tower.Unit.GlobalImportedModulePaths.Add((path, unit.Tower.Symbols));
             Tower.MergeMIR(ir);
 
-            var addResponse = Tower.Symbols.ImportedModules.TryAdd(moduleName, unit.Tower.Symbols);
+            addModuleToImportedModules(unit.Tower.Symbols);
+
+            void addModuleToImportedModules(SymbolTable symbols)
+            {
+                AddModuleToImportedModules(directive, pathName, symbols, moduleName);
+            }
+        }
+
+        private void AddModuleToImportedModules(ImportDirective directive, Token pathName, SymbolTable symbols, string moduleName)
+        {
+            var addResponse = Tower.Symbols.ImportedModules.TryAdd(moduleName, symbols);
 
             if (!addResponse)
                 Tower.Report(directive.Member.Position, $"Module '{pathName.Value}' imported multiple times");
