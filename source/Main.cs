@@ -54,9 +54,9 @@ if (!unit.HasErrors())
 
 // var e = unit.GenerateC(out var ir);
 
-// var e = unit.GenerateIR(out var ir);
+var e = unit.GenerateIR(out var ir);
 
-var e = unit.GenerateLLVMIR(out var ir);
+// var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Lexer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,6 @@ namespace Mug.Symbols
     {
         public ModulePosition Position { get; }
 
-        // public abstract string Dump(bool dumpmodel);
+        public TokenKind Modifier { get; }
     }
 }

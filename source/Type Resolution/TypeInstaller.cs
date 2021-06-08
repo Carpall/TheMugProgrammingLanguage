@@ -78,6 +78,9 @@ namespace Mug.TypeResolution
             for (var i = 0; i < bodyfunctions.Count; i++)
             {
                 var function = bodyfunctions[i];
+                if (function is null)
+                    return;
+
                 CheckFunc(function.ParameterList, function.Generics, function.Pragmas);
                 CheckSingleDeclaration(bodyfunctions[i].Position, ref declared, i, bodyfunctions[i].Name, "Method");
             }
@@ -117,35 +120,58 @@ namespace Mug.TypeResolution
 
             if (!File.Exists(path))
             {
-                Tower.Report(pathName.Position, $"Unable to find module '{pathName.Value}'");
+                ReportUnableToFindModule(pathName);
+                return;
+            }
+
+            if (Tower.Unit.Paths.Contains(path))
+            {
+                ReportAutoImport(directive.Position);
+                return;
+            }
+
+            if (CheckForCircularImport(path))
+            {
+                ReportCircularImport(directive.Position, pathName.Value);
                 return;
             }
 
             var moduleName = Path.GetFileNameWithoutExtension(path);
             var unit = new CompilationUnit(null, Path.GetDirectoryName(path), null, path);
+            unit.Tower.Symbols.References.Add(Tower.Unit.Paths);
 
-            Tower.Diagnostic.AddRange(unit.GenerateIR(out _).Diagnostic);
+            Tower.Diagnostic.AddRange(unit.GenerateIR(out var ir).Diagnostic);
+            Tower.MergeMIR(ir);
+
             var addResponse = Tower.Symbols.ImportedModules.TryAdd(moduleName, unit.Tower.Symbols);
-            var detectedCircularImport = CheckForCircolarImport(unit.Tower.Symbols);
 
-            ReportImportErrors(directive, pathName, addResponse, detectedCircularImport);
-        }
-
-        private void ReportImportErrors(ImportDirective directive, Token pathName, bool addResponse, bool detectedCircularImport)
-        {
             if (!addResponse)
-                Tower.Report(directive.Position, $"Module '{pathName.Value}' imported multiple times");
-            if (detectedCircularImport)
-                Tower.Report(directive.Position, $"Detected circular import: module '{pathName.Value}' imports importer module");
+                Tower.Report(directive.Member.Position, $"Module '{pathName.Value}' imported multiple times");
         }
 
-        private bool CheckForCircolarImport(SymbolTable symbols)
+        private bool CheckForCircularImport(string path)
         {
-            foreach (var moduleImported in symbols.ImportedModules)
-                if (Tower.Unit.Paths.Contains(moduleImported.Key))
+            foreach (var reference in Tower.Symbols.References)
+                if (reference.Contains(path))
                     return true;
 
             return false;
+        }
+
+        private void ReportCircularImport(ModulePosition position, string pathName)
+        {
+            Tower.Report(position, $"Detected circular import: module '{pathName}' imports importer module");
+        }
+
+        private void ReportAutoImport(ModulePosition position)
+        {
+            Tower.Report(position, $"Module cannot import itself");
+        }
+
+        private void ReportUnableToFindModule(Token pathName)
+        {
+            Tower.Report(pathName.Position, $"Unable to find module '{pathName.Value}'");
+            return;
         }
 
         private string PathFromLocalOrPackages(ImportMode mode, Token pathName)

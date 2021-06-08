@@ -802,15 +802,20 @@ namespace Mug.Generator
                 return EvaluateNodeCallBuiltIn(expression, isStatement);
 
             var parameters = expression.Parameters;
-            var func = EvaluateFunctionName(expression.Name, ref parameters);
+            var func = EvaluateFunctionName(expression.Name, ref parameters, out var typePrefix);
             expression.Parameters = parameters;
 
             if (func is null)
                 return ContextType;
 
-            EvaluateCallParameters(expression, func);
+            EvaluateCallParameters(expression, func, ProcessPrefix(typePrefix));
 
             return func.ReturnType;
+        }
+
+        private static string ProcessPrefix(string typePrefix)
+        {
+            return typePrefix + (typePrefix is null ? "" : ".");
         }
 
         private DataType EvaluateNodeCallBuiltIn(CallStatement expression, bool isStatement)
@@ -944,12 +949,13 @@ namespace Mug.Generator
                 ReportIncorrectNumberOfElements(generics.Count, position, expectedNumbers);
         }
 
-        private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters)
+        private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters, out string typePrefix)
         {
+            typePrefix = null;
             var funcSymbol = functionName switch
             {
                 Token name => CheckAndSearchForFunctionOrStaticMethod(name),
-                MemberNode name => EvaluateBaseFunctionName(name, ref parameters),
+                MemberNode name => EvaluateBaseFunctionName(name, ref parameters, out typePrefix),
                 _ => FunctionBaseNameToImplement(functionName),
             };
 
@@ -962,16 +968,17 @@ namespace Mug.Generator
             throw new();
         }
 
-        private FunctionStatement EvaluateBaseFunctionName(MemberNode name, ref NodeBuilder parameters)
+        private FunctionStatement EvaluateBaseFunctionName(MemberNode name, ref NodeBuilder parameters, out string typePrefix)
         {
             return
                 name.Base is Token baseToken ?
-                    EvaluateTokenBaseFunctionName(name, parameters, baseToken) :
-                    EvaluateExpressionBaseFunctionName(name, parameters);
+                    EvaluateTokenBaseFunctionName(name, parameters, baseToken, out typePrefix) :
+                    EvaluateExpressionBaseFunctionName(name, parameters, out typePrefix);
         }
 
-        private FunctionStatement EvaluateExpressionBaseFunctionName(MemberNode name, NodeBuilder parameters)
+        private FunctionStatement EvaluateExpressionBaseFunctionName(MemberNode name, NodeBuilder parameters, out string typePrefix)
         {
+            typePrefix = null;
             parameters.Prepend(name.Base);
 
             var type = GetExpressionType(name.Base);
@@ -979,7 +986,10 @@ namespace Mug.Generator
             if (!type.SolvedType.IsStruct())
                 return ReportPrimitiveCannotHaveMethods(name.Base.Position);
 
-            return SearchForMethod(name.Member.Value, type.SolvedType.GetStruct(), name.Member.Position);
+            var structModel = type.SolvedType.GetStruct();
+
+            typePrefix = structModel.Name;
+            return SearchForMethod(name.Member.Value, structModel, name.Member.Position);
         }
 
         private DataType GetExpressionType(INode expression)
@@ -994,12 +1004,13 @@ namespace Mug.Generator
             return type;
         }
 
-        private FunctionStatement EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken)
+        private FunctionStatement EvaluateTokenBaseFunctionName(MemberNode name, NodeBuilder parameters, Token baseToken, out string typeName)
         {
+            typeName = null;
+
             if (baseToken.Kind is not TokenKind.Identifier)
                 return ReportPrimitiveCannotHaveMethods(baseToken.Position);
 
-            string typeName;
             if (GetLocalVariable(baseToken.Value, out var allocation))
             {
                 if (!allocation.Type.SolvedType.IsStruct())
@@ -1011,9 +1022,9 @@ namespace Mug.Generator
             else
                 typeName = baseToken.Value;
 
-            var type = GetType(typeName, baseToken.Position);
+            var function = SearchForMethod(name.Member.Value, GetType(typeName, baseToken.Position), name.Member.Position);
 
-            return type is null ? null : SearchForMethod(name.Member.Value, type, name.Member.Position);
+            return function;
         }
 
         private TypeStatement GetType(string typeName, ModulePosition position)
@@ -1036,24 +1047,24 @@ namespace Mug.Generator
                     return method;
                 }
 
-            Tower.Report(type.Position, $"No method '{value}' declared in type '{type.Name}'");
+            Tower.Report(position, $"No method '{value}' declared in type '{type.Name}'");
             return null;
         }
 
         private void ExpectPublicMethodOrInternal(FunctionStatement method, TypeStatement type, ModulePosition position)
         {
-            if (method.Modifier != TokenKind.KeyPub && !ProcessingMethodOf(type))
+            if (method.Modifier is not TokenKind.KeyPub && !ProcessingMethodOf(type))
                 Tower.Report(position, $"Method '{method.Name}' is a private member of type '{type.Name}'");
         }
 
-        private void EvaluateCallParameters(CallStatement expression, FunctionStatement func)
+        private void EvaluateCallParameters(CallStatement expression, FunctionStatement func, string typePrefix)
         {
             ReportFewParameters(expression, func);
 
             for (var i = 0; i < expression.Parameters.Count; i++)
                 CheckAndEvaluateParameter(func, i, expression.Parameters[i]);
 
-            FunctionBuilder.EmitCall(func.Name, LowerDataType(func.ReturnType));
+            FunctionBuilder.EmitCall(typePrefix + func.Name, LowerDataType(func.ReturnType));
         }
 
         private void CheckAndEvaluateParameter(FunctionStatement func, int i, INode parameter)
@@ -1425,11 +1436,21 @@ namespace Mug.Generator
 
         private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
         {
-            var type = GetType(baseValue, expression.Base.Position);
-            if (type is null)
+            var symbols = GetImportedModule(baseValue, expression.Base.Position);
+            if (symbols is null)
                 return ContextType;
 
-            return null;
+            CompilationTower.Todo($"implement {nameof(EvaluateStaticMemberNode)}");
+            return default;
+        }
+
+        private SymbolTable GetImportedModule(string moduleName, ModulePosition position)
+        {
+            var response = Tower.Symbols.ImportedModules.TryGetValue(moduleName, out var symbols);
+            if (!response)
+                Tower.Report(position, $"No module '{moduleName}' was imported");
+
+            return symbols;
         }
 
         private DataType EvaluateInstanceMemberNode(MemberNode expression)

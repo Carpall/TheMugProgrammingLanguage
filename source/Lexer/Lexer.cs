@@ -106,7 +106,7 @@ namespace Mug.Lexer
                 "if" => TokenKind.KeyIf,
                 "elif" => TokenKind.KeyElif,
                 "else" => TokenKind.KeyElse,
-                "fun" => TokenKind.KeyFunc,
+                "fn" => TokenKind.KeyFunc,
                 "var" => TokenKind.KeyVar,
                 "const" => TokenKind.KeyConst,
                 "catch" => TokenKind.KeyCatch,

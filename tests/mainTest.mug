@@ -1,5 +1,5 @@
 import "basicModule.mug"
 
-fun main() {
-  basicModule.add()
+fn main() {
+  add(1, 2)
 }

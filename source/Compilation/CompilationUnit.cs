@@ -16,15 +16,22 @@ namespace Mug.Compilation
     {
         public static readonly string[] AllowedExtensions = new[] { ".mug", ".z" };
 
-        public bool FailedOpeningPath { get; } = false;
         public string[] Paths { get; }
         public string PathsFolderHead { get; }
 
         public CompilationUnit(string outputFilename, string pathsFolderHead, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
         {
             PathsFolderHead = pathsFolderHead;
-            Paths = paths;
+            Paths = FixPathSlahes(paths);
             Tower.Unit = this;
+        }
+
+        private string[] FixPathSlahes(string[] paths)
+        {
+            for (int i = 0; i < paths.Length; i++)
+                paths[i] = paths[i].Replace('/', '\\');
+
+            return paths;
         }
 
         public void CompileLLVMIR(int optimizazioneLevel, string output, bool onlyBitcode, string optionalFlag)
@@ -157,7 +164,7 @@ namespace Mug.Compilation
         private void InternalGenerateMIR()
         {
             InternalGenerateTAST();
-            Tower.MIRModule = Tower.Generator.Generate();
+            Tower.MergeMIR(Tower.Generator.Generate());
         }
 
         private void InternalGenerateLLVMIR()

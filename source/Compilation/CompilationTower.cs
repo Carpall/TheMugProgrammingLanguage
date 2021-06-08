@@ -110,14 +110,39 @@ namespace Mug.Compilation
                 CheckDiagnostic();
         }
 
-        internal static void Todo(string todo)
+        public static void Todo(string todo)
         {
             Throw($"TODO: {todo}");
         }
 
-        internal bool IsExpectingEntryPoint()
+        public bool IsExpectingEntryPoint()
         {
             return Flags is not null && Flags.GetFlag<CompilationTarget>(CompilationFlagKind.Target) is CompilationTarget.EXE;
+        }
+
+        public void MergeMIR(MIR ir)
+        {
+            MIRModule = new(
+                MergeArrays(MIRModule.Globals, ir.Globals),
+                MergeArrays(MIRModule.Functions, ir.Functions),
+                MergeArrays(MIRModule.FunctionPrototypes, ir.FunctionPrototypes),
+                MergeArrays(MIRModule.Structures, ir.Structures));
+        }
+
+        private static T[] MergeArrays<T>(T[] source1, T[] source2)
+        {
+            if (source1 is null || source2 is null)
+                return source1 ?? source2;
+
+            var result = new T[source1.Length + source2.Length];
+
+            for (int i = 0; i < source1.Length; i++)
+                result[i] = source1[i];
+
+            for (int i = 0; i < source2.Length; i++)
+                result[i + source1.Length] = source2[i];
+
+            return result;
         }
     }
 }
