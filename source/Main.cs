@@ -31,7 +31,6 @@ using System.Collections.Generic;
 //       - add varargs
 //       - add arrays
 //       - change is into a new ast node, not boolean
-//       - add a warn for user defined types named like primitives
 //       - reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
 //       - add compiler symbols and use them to get target int size
 //       - add function prototypes
@@ -43,6 +42,7 @@ using System.Collections.Generic;
 //       - foreach
 //       - attributes for function prototypes in mirfunctionprototype 'extern, noreturn'
 //       - switch statement
+//       - add strip option also for llvm means
 
 var pathHead = Path.GetFullPath(@"../../../../tests");
 var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest.mug");
@@ -54,9 +54,9 @@ if (!unit.HasErrors())
 
 // var e = unit.GenerateC(out var ir);
 
-var e = unit.GenerateIR(out var ir);
+// var e = unit.GenerateIR(out var ir);
 
-// var e = unit.GenerateLLVMIR(out var ir);
+var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

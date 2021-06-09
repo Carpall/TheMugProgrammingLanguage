@@ -208,16 +208,45 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.Less:                 EmitLess(instruction);                break;
                 case MIRInstructionKind.Jump:                 EmitJump(instruction);                break;
                 case MIRInstructionKind.JumpConditional:      EmitJumpFalse(instruction);           break;
-                /*case MIRInstructionKind.LoadField:
-                    break;
-                case MIRInstructionKind.StoreField:
-                    break;*/
+                case MIRInstructionKind.LoadField:            EmitLoadField(instruction);           break;
+                case MIRInstructionKind.StoreField:           EmitStoreField(instruction);          break;
+                case MIRInstructionKind.StoreGlobal:          EmitStoreGlobal(instruction);         break;
+                case MIRInstructionKind.CastIntToInt:         EmitCastIntToInt(instruction);        break;
                 default:
                     ToImplement<object>(instruction.Kind.ToString(), nameof(EmitLoweredInstruction));
                     break;
             }
         }
-        
+
+        private void EmitCastIntToInt(MIRInstruction instruction)
+        {
+            var type = LowerDataType(instruction.Type);
+            StackValuesPush(CurrentFunctionBuilder.BuildIntCast(StackValuesPop(), type));
+        }
+
+        private void EmitStoreGlobal(MIRInstruction instruction)
+        {
+            var global = Module.GetNamedGlobal(instruction.GetName());
+            var value = StackValuesPop();
+            CurrentFunctionBuilder.BuildStore(value, global);
+        }
+
+        private void EmitStoreField(MIRInstruction instruction)
+        {
+            var instance = StackValuesPop();
+            var value = StackValuesPop();
+            var index = (uint)instruction.GetInt();
+            CurrentFunctionBuilder.BuildInsertValue(value, instance, index);
+        }
+
+        private void EmitLoadField(MIRInstruction instruction)
+        {
+            var instance = StackValuesPop();
+            var index = (uint)instruction.GetInt();
+            var field = CurrentFunctionBuilder.BuildExtractValue(instance, index);
+            StackValuesPush(field);
+        }
+
         private void EmitJumpFalse(MIRInstruction instruction)
         {
             var (then, otherwise) = instruction.GetConditionTuple();
@@ -367,7 +396,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
         private void EmitLoadZeroinitialized(MIRInstruction instruction)
         {
             var lltype = LowerDataType(instruction.Type);
-            StackValuesPush(CurrentFunctionBuilder.BuildAlloca(lltype));
+            StackValuesPush(CurrentFunctionBuilder.BuildLoad(CurrentFunctionBuilder.BuildAlloca(lltype)));
         }
 
         private void EmitDupplicate()

@@ -1575,7 +1575,6 @@ namespace Mug.Generator
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(LowerDataType(type));
             EvaluateTypeInitialization(expression, structure, assignedFields);
-            // FunctionBuilder.EmitLoadValueFromPointer();
 
             return DataType.Solved(SolvedType.Struct(structure));
         }

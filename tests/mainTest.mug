@@ -1,7 +1,9 @@
-import "basicModule.mug"
-
-fn add(a: i32, b: i32)
+type A {
+  pub a: u8
+}
 
 fn main() {
-  // add(1, 2)
+  var a = 0
+  var y = new A { a: u8!(a) }
+  var x = y.a
 }

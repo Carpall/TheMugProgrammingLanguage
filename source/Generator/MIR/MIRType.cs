@@ -12,7 +12,8 @@ namespace Mug.Generator.IR
         Void,
         UInt,
         Int,
-        Struct
+        Struct,
+        Pointer
     }
 
     public struct MIRType
@@ -53,10 +54,12 @@ namespace Mug.Generator.IR
 
         public override string ToString()
         {
-            if (Kind is MIRTypeKind.Struct)
-                return $"struct {GetStruct().Name}";
-
-            return $"{Kind.ToString().ToLower()}{BaseType ?? ""}";
+            return Kind switch
+            {
+                MIRTypeKind.Struct => $"struct {GetStruct().Name}",
+                MIRTypeKind.Pointer => $"{BaseType}*",
+                _ => $"{Kind.ToString().ToLower()}{BaseType ?? ""}"
+            };
         }
     }
 }

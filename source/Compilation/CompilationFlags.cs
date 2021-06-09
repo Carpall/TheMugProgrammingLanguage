@@ -34,10 +34,11 @@ namespace Mug.Compilation
     public enum CompilationTarget
     {
         EXE,
-        Library, // not available yet
+        DLL, // not available yet
         BC,
+        O,
         C,
-        ASM,
+        S,
         AST,
         LL,
         TAST,
@@ -53,7 +54,7 @@ namespace Mug.Compilation
 
     public class CompilationFlags
     {
-        private static readonly string[] _targets = { "exe", "lib", "bc", "c", "asm", "ast", "ll", "tast", "mir", "mir-json" };
+        private static readonly string[] _targets = { "exe", "dll", "bc", "obj", "c", "asm", "ast", "ll", "tast", "mir", "mir-json" };
 
         private const string USAGE = "\nUSAGE: mug <action> <file> <options>\n";
         private static readonly string HELP = @$"
@@ -91,8 +92,9 @@ USAGE: mug build <file> <options> *target ( {string.Join(" | ", _targets)} )
 
 HELP: uses the next argument as compilation target:
   - exe: executable with platform specific extension
-  - lib: dynamic link library
+  - dll: dynamic link library
   - bc: llvm bitcode
+  - obj: object file
   - asm: clang assembly
   - ast: abstract syntax tree
   - tast: ast with types resolved
@@ -169,7 +171,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             return files;
         }
 
-        private string GetPathHead(string[] files)
+        private static string GetPathHead(string[] files)
         {
             string result = files[0];
             for (int i = 1; i < files.Length; i++)
@@ -258,6 +260,12 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case CompilationTarget.BC:
                     CompileLLVM(onlyBitcode: true);
                     break;
+                case CompilationTarget.O:
+                    if (GetMeans() is CompilationMeans.C)
+                        CompileC("-c");
+                    else
+                        CompileLLVM("-c");
+                    break;
                 case CompilationTarget.LL:
                     PrintAlertsIfNeeded(_unit.GenerateLLVMIR(out var llvmmodule));
                     DumpBytecode(llvmmodule);
@@ -270,7 +278,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     PrintAlertsIfNeeded(_unit.GenerateAST(out head));
                     DumpAbstractSyntaxTree(head);
                     break;
-                case CompilationTarget.ASM:
+                case CompilationTarget.S:
                     if (GetMeans() is CompilationMeans.C)
                         CompileC("-S");
                     else
@@ -445,11 +453,16 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
         private string GetOutputExtension()
         {
-            var ext = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
+            var target = GetFlag<CompilationTarget>(CompilationFlagKind.Target);
             return
-                ext is CompilationTarget.EXE ?
+                target is CompilationTarget.EXE ?
                     GetExecutableExtension() :
-                    $".{_targets[(int)ext]}";
+                    $".{FixOutputExtension(target)}";
+        }
+
+        private static string FixOutputExtension(CompilationTarget target)
+        {
+            return target.ToString().ToLower();
         }
 
         private void SetDefaultIFNeeded()
@@ -516,7 +529,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 AddSourceFilename(CheckMugFile(argument));
         }
 
-        private CompilationMeans ParseCompilationMeans(string value)
+        private static CompilationMeans ParseCompilationMeans(string value)
         {
             return value switch
             {
@@ -608,7 +621,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Help()
         {
             if (_arguments.Length > 1)
-                CompilationTower.Throw("Too many arguments for the 'help' compilation action");
+                CompilationTower.Throw("Compilation action 'help' expects 1 argument");
             else if (_arguments.Length == 1)
                 PrintHelpFor(_arguments[_argumentSelector]);
             else
