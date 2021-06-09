@@ -32,6 +32,7 @@ namespace Mug.TypeSystem
         internal static DataType String => Primitive(TypeKind.String);
         internal static DataType Char => Primitive(TypeKind.Char);
         internal static DataType Float32 => Primitive(TypeKind.Float32);
+        internal static DataType Undefined => Primitive(TypeKind.Undefined);
 
         internal static DataType Primitive(TypeKind typekind)
         {

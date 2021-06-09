@@ -1,9 +1,6 @@
-type A {
-  pub a: u8
-}
+
+fn add(a, b: i32): i32 { a + b }
 
 fn main() {
-  var a = 0
-  var y = new A { a: u8!(a) }
-  var x = y.a
+  add(1, 2)
 }

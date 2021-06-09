@@ -26,7 +26,7 @@ namespace Mug.TypeResolution
             Tower.Symbols.SetSymbol(name, symbol);
         }
 
-        private void CheckFunc(ParameterListNode parameters, List<Token> generics, Pragmas pragmas)
+        private void CheckFunc(ParameterNode[] parameters, List<Token> generics, Pragmas pragmas)
         {
             var declared = new string[parameters.Length];
             CheckFunctionParameters(parameters, ref declared);
@@ -37,10 +37,10 @@ namespace Mug.TypeResolution
             // todo: check pragmas
         }
 
-        private void CheckFunctionParameters(ParameterListNode parameters, ref string[] declared)
+        private void CheckFunctionParameters(ParameterNode[] parameters, ref string[] declared)
         {
             for (var i = 0; i < parameters.Length; i++)
-                CheckSingleDeclaration(parameters.Parameters[i].Position, ref declared, i, parameters.Parameters[i].Name, "Parameter");
+                CheckSingleDeclaration(parameters[i].Position, ref declared, i, parameters[i].Name, "Parameter");
         }
 
         private void CheckGenericParameters(List<Token> generics, ref string[] declared)

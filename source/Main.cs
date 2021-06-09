@@ -26,7 +26,6 @@ using System.Collections.Generic;
 //       - fix '//' at the start of the line is not recognized as comment by the lexer
 //       - consider changing generic parameters from '<>' to '[]'
 //       - add check for uninitialized memory
-//       - add implicit type for parameters 'function(a, b: i32)'
 //       - add optional parameters
 //       - add varargs
 //       - add arrays
@@ -43,6 +42,7 @@ using System.Collections.Generic;
 //       - attributes for function prototypes in mirfunctionprototype 'extern, noreturn'
 //       - switch statement
 //       - add strip option also for llvm means
+//       - adding enum member with type infer '.member'
 
 var pathHead = Path.GetFullPath(@"../../../../tests");
 var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest.mug");

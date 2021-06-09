@@ -242,7 +242,8 @@ namespace Mug.Parser
             var isPassedAsReference = MatchAdvance(TokenKind.BooleanAND);
             var name = Expect("Expected parameter's name", TokenKind.Identifier);
 
-            Expect("Expected parameter's type", TokenKind.Colon);
+            if (!MatchAdvance(TokenKind.Colon))
+                return new(null, name.Value, default, isPassedAsReference, name.Position);
 
             var type = ExpectType();
             var defaultvalue = new Token();
@@ -253,7 +254,7 @@ namespace Mug.Parser
             ExpectMultiple("", TokenKind.Comma, TokenKind.ClosePar);
             CurrentIndex--;
 
-            return new ParameterNode(type, name.Value, defaultvalue, isPassedAsReference, name.Position);
+            return new(type, name.Value, defaultvalue, isPassedAsReference, name.Position);
         }
 
         private DataType ExpectBaseType()
@@ -1089,20 +1090,64 @@ namespace Mug.Parser
             return block;
         }
 
-        private ParameterListNode ExpectParameterListDeclaration()
+        private ParameterNode[] ExpectParameterListDeclaration()
         {
             Expect("", TokenKind.OpenPar);
 
-            var parameters = new ParameterListNode();
+            var parameters = new List<ParameterNode>();
             var count = 0;
 
             while (!MatchAdvance(TokenKind.ClosePar))
             {
-                parameters.Parameters.Add(ExpectParameter(count == 0));
+                parameters.Add(ExpectParameter(count == 0));
                 count++;
             }
 
-            return parameters;
+            var result = parameters.ToArray();
+            FixImplicitlyTypedParameters(ref result);
+
+            return result;
+        }
+
+        private void FixImplicitlyTypedParameters(ref ParameterNode[] parameters)
+        {
+            for (int i = 0; i < parameters.Length; i++)
+                FixParameterTypeWhetherImplicit(parameters, parameters[i], ref i);
+        }
+
+        private void FixParameterTypeWhetherImplicit(ParameterNode[] parameters, ParameterNode parameter, ref int i)
+        {
+            if (parameter.Type is not null)
+                return;
+
+            if (!CouldFindNextExplicitType(parameters, i, out var index))
+            {
+                Report(parameter.Position, $"Unable to infer type");
+                parameters[i].Type = DataType.Undefined;
+            }
+            else
+                InferTypeInImplicitlyTypedParameters(parameters, index, ref i);
+        }
+
+        private static bool CouldFindNextExplicitType(ParameterNode[] parameters, int i, out int index)
+        {
+            for (index = i; index < parameters.Length; index++)
+                if (parameters[index].Type is not null)
+                    return true;
+
+            return false;
+        }
+
+        private static void InferTypeInImplicitlyTypedParameters(ParameterNode[] parameters, int index, ref int i)
+        {
+            var type = parameters[index].Type;
+            var parametersCount = index - i;
+
+            while (parametersCount-- >= 0)
+            {
+                parameters[i].Type = type;
+                i++;
+            }
         }
 
         private TokenKind GetModifier()

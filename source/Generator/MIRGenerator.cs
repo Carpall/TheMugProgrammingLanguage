@@ -106,12 +106,12 @@ namespace Mug.Generator
         {
         }
 
-        private MIRType[] GetParameterTypes(ParameterListNode parameters)
+        private MIRType[] GetParameterTypes(ParameterNode[] parameters)
         {
             var result = new MIRType[parameters.Length];
 
             for (var i = 0; i < parameters.Length; i++)
-                result[i] = LowerDataType(parameters.Parameters[i].Type);
+                result[i] = LowerDataType(parameters[i].Type);
 
             return result;
         }
@@ -544,6 +544,10 @@ namespace Mug.Generator
 
         private void FixAndCheckTypes(DataType expected, DataType gottype, ModulePosition position)
         {
+            if (expected.SolvedType.Kind is TypeKind.Undefined
+                || gottype.SolvedType.Kind is TypeKind.Undefined)
+                return;
+
             FixAuto(expected, gottype);
             if (AreNotCompatible(expected, gottype))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
@@ -1133,7 +1137,7 @@ namespace Mug.Generator
 
         private void EvaluateExpressionParameter(FunctionStatement func, int i, INode parameter)
         {
-            var prototypeParameterType = func.ParameterList.Parameters[i].Type;
+            var prototypeParameterType = func.ParameterList[i].Type;
             var expressionType = EvaluateParameter(prototypeParameterType, parameter);
             FixAndCheckTypes(prototypeParameterType, expressionType, parameter.Position);
         }
@@ -1812,9 +1816,9 @@ namespace Mug.Generator
             FunctionBuilder.SwitchBlock(CreateBlock("entry"));
         }
 
-        private void AllocateParameters(ParameterListNode parameters)
+        private void AllocateParameters(ParameterNode[] parameters)
         {
-            foreach (var parameter in parameters.Parameters)
+            foreach (var parameter in parameters)
                 DeclareVirtualMemorySymbol(parameter.Name, parameter.Type, parameter.Position, true);
         }
 

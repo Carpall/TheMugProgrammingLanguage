@@ -2,6 +2,7 @@
 using Mug.Lexer;
 using Mug.Symbols;
 using Mug.TypeSystem;
+using System;
 using System.Collections.Generic;
 
 namespace Mug.Parser.AST.Statements
@@ -12,7 +13,7 @@ namespace Mug.Parser.AST.Statements
         public Pragmas Pragmas { get; set; }
         public string Name { get; set; }
         public DataType ReturnType { get; set; }
-        public ParameterListNode ParameterList { get; set; } = new();
+        public ParameterNode[] ParameterList { get; set; } = Array.Empty<ParameterNode>();
         public List<Token> Generics { get; set; } = new();
         public TokenKind Modifier { get; set; }
         public BlockNode Body { get; set; }

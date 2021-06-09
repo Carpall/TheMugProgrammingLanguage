@@ -8,7 +8,7 @@ namespace Mug.Parser.AST
     public struct ParameterNode : INode
     {
         public string NodeName => "Parameter";
-        public DataType Type { get; }
+        public DataType Type { get; set; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
         public bool IsPassedAsReference { get; }
@@ -27,20 +27,5 @@ namespace Mug.Parser.AST
         {
             return Type.ToString();
         }
-    }
-
-    public class ParameterListNode : INode
-    {
-        public string NodeName => "ParameterList";
-        public ModulePosition Position { get; set; }
-        public int Length
-        {
-            get
-            {
-                return Parameters.Count;
-            }
-        }
-
-        public readonly List<ParameterNode> Parameters = new();
     }
 }
