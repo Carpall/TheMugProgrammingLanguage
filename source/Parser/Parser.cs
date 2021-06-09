@@ -1141,37 +1141,26 @@ namespace Mug.Parser
 
             var parameters = ExpectParameterListDeclaration(); // func name<(..)>
 
-            DataType type;
+            DataType type =
+                MatchAdvance(TokenKind.Colon) ?
+                    ExpectType(true) :
+                    UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
 
-            if (MatchAdvance(TokenKind.Colon))
-                type = ExpectType(true);
-            else
-                type = UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
+            var prototype = new FunctionStatement
+            {
+                Modifier = modifier,
+                Pragmas = pragmas,
+                Name = name.Value.ToString(),
+                ParameterList = parameters,
+                ReturnType = type,
+                Position = name.Position,
+                Generics = generics,
+            };
 
             if (Match(TokenKind.OpenBrace)) // function definition
-                node = new FunctionStatement
-                {
-                    Modifier = modifier,
-                    Pragmas = pragmas,
-                    Body = ExpectBlock(),
-                    Name = name.Value.ToString(),
-                    ParameterList = parameters,
-                    ReturnType = type,
-                    Position = name.Position,
-                    Generics = generics
-                };
-            else // prototype
-                node = new FunctionPrototypeNode
-                {
-                    Modifier = modifier,
-                    Pragmas = pragmas,
-                    Name = name.Value.ToString(),
-                    ParameterList = parameters,
-                    Type = type,
-                    Position = name.Position,
-                    Generics = generics
-                };
+                prototype.Body = ExpectBlock();
 
+            node = prototype;
             return true;
         }
 

@@ -130,19 +130,19 @@ namespace Mug.TypeResolution
 
         private void ImportModule(ImportDirective directive, Token pathName, string path)
         {
-            var unit = new CompilationUnit(null, Path.GetDirectoryName(path), Tower.Unit.GlobalImportedModulePaths, null, path);
+            var unit = new CompilationUnit(false, null, Path.GetDirectoryName(path), Tower.Unit.GlobalResources, null, path);
             var moduleName = Path.GetFileNameWithoutExtension(path);
             unit.Tower.Symbols.References.Add(Tower.Unit.Paths);
 
-            var alreadyImportedInOtherModules = Tower.Unit.GlobalImportedModulePaths.FindIndex(module => module.Path == path);
+            var alreadyImportedInOtherModules = Tower.Unit.GlobalResources.FindIndex(module => module.Path == path);
             if (alreadyImportedInOtherModules != -1)
             {
-                addModuleToImportedModules(Tower.Unit.GlobalImportedModulePaths[alreadyImportedInOtherModules].Symbols);
+                addModuleToImportedModules(Tower.Unit.GlobalResources[alreadyImportedInOtherModules].Symbols);
                 return;
             }
 
             Tower.Diagnostic.AddRange(unit.GenerateIR(out var ir).Diagnostic);
-            Tower.Unit.GlobalImportedModulePaths.Add((path, unit.Tower.Symbols));
+            Tower.Unit.GlobalResources.Add((path, unit.Tower.Symbols));
             Tower.MergeMIR(ir);
 
             addModuleToImportedModules(unit.Tower.Symbols);
@@ -225,7 +225,7 @@ namespace Mug.TypeResolution
                     ProcessImport(directive);
                     break;
                 default:
-                    CompilationTower.Todo($"implement {global} in recognize global statement");
+                    CompilationTower.Todo($"implement {global} in {nameof(RecognizeGlobalStatement)}");
                     break;
             }
         }

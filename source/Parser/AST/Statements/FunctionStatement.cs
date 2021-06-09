@@ -10,13 +10,15 @@ namespace Mug.Parser.AST.Statements
     {
         public string NodeName => "Function";
         public Pragmas Pragmas { get; set; }
-        public TokenKind Modifier { get; set; }
         public string Name { get; set; }
         public DataType ReturnType { get; set; }
         public ParameterListNode ParameterList { get; set; } = new();
         public List<Token> Generics { get; set; } = new();
-        public BlockNode Body { get; set; } = new();
+        public TokenKind Modifier { get; set; }
+        public BlockNode Body { get; set; }
         public ModulePosition Position { get; set; }
+
+        public bool IsPrototype => Body is null;
 
         public override string ToString()
         {

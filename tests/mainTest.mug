@@ -1,6 +1,7 @@
 import "basicModule.mug"
-import "otherModule.mug"
+
+fn add(a: i32, b: i32)
 
 fn main() {
-  add(1, 2)
+  // add(1, 2)
 }

@@ -19,18 +19,20 @@ namespace Mug.Compilation
         public static readonly string[] AllowedExtensions = new[] { ".mug", ".z" };
 
         public string[] Paths { get; }
-        public List<(string Path, SymbolTable Symbols)> GlobalImportedModulePaths { get; }
+        public List<(string Path, SymbolTable Symbols)> GlobalResources { get; }
         public string PathsFolderHead { get; }
+        public bool IsMainUnit { get; }
 
-        public CompilationUnit(string outputFilename, string pathsFolderHead, List<(string, SymbolTable)> globalImportedModulePaths, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
+        public CompilationUnit(bool isMainUnit, string outputFilename, string pathsFolderHead, List<(string, SymbolTable)> globalImportedModulePaths, CompilationFlags flags, params string[] paths) : base(new(outputFilename, null, flags))
         {
+            IsMainUnit = isMainUnit;
             PathsFolderHead = pathsFolderHead;
             Paths = FixPathSlahes(paths);
             Tower.Unit = this;
-            GlobalImportedModulePaths = globalImportedModulePaths;
+            GlobalResources = globalImportedModulePaths;
         }
 
-        public CompilationUnit(string outputFilename, string pathsFolderHead, params string[] paths) : this(outputFilename, pathsFolderHead, new(), null, paths)
+        public CompilationUnit(bool isMainUnit, string outputFilename, string pathsFolderHead, params string[] paths) : this(isMainUnit, outputFilename, pathsFolderHead, new(), null, paths)
         {
         }
 

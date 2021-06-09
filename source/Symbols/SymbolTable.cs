@@ -53,6 +53,11 @@ namespace Mug.Symbols
                 ReportRedeclaration($"'{name}' is already declared", symbol.Position, previouslyDeclared.Position);
         }
 
+        public bool SymbolIsDeclared(string symbol)
+        {
+            return _symbols.ContainsKey(symbol);
+        }
+
         internal void ReportRedeclaration(
             string message,
             ModulePosition position,

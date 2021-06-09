@@ -11,6 +11,7 @@ using Mug.TypeResolution;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace Mug.Generator
@@ -26,7 +27,7 @@ namespace Mug.Generator
         private FunctionStatement CurrentFunction { get; set; }
         private TypeStatement CurrentType { get; set; }
         private Stack<DataType> ContextTypes { get; set; } = new();
-        
+
         private DataType ContextType => ContextTypes.Peek();
 
         private Scope CurrentScope = default;
@@ -43,7 +44,62 @@ namespace Mug.Generator
             WalkDeclarations();
             Tower.CheckDiagnostic();
 
+            if (IsMainUnit())
+            {
+                AddToGlobalResources();
+                CheckForConflicts();
+            }
+
             return Module.Build();
+        }
+
+        private void AddToGlobalResources()
+        {
+            Tower.Unit.GlobalResources.Add((Tower.Unit.Paths.First(), Tower.Symbols));
+        }
+
+        private void CheckForConflicts()
+        {
+            for (int i = 0; i < Tower.Unit.GlobalResources.Count; i++)
+                CycleDoublyGlobalResources(i, Tower.Unit.GlobalResources[i]);
+        }
+
+        private void CycleDoublyGlobalResources(int i, (string Path, SymbolTable Symbols) resourceI)
+        {
+            for (int j = 0; j < Tower.Unit.GlobalResources.Count; j++)
+            {
+                var resourceJ = Tower.Unit.GlobalResources[j];
+
+                if (i == j)
+                    continue;
+
+                if (CheckForConflictsBetweenSymbolTables(resourceI, resourceJ, out var position, out var symbol, out var moduleI, out var moduleJ))
+                    Tower.Report(position, $"Detected conflict with symbol '{symbol}' between modules '{moduleI}' and '{moduleJ}'");
+            }
+        }
+
+        private static bool CheckForConflictsBetweenSymbolTables(
+            (string Path, SymbolTable Symbols) resourceI,
+            (string Path, SymbolTable Symbols) resourceJ,
+            out ModulePosition position,
+            out string symbol,
+            out string moduleI,
+            out string moduleJ)
+        {
+            moduleI = Path.GetFileNameWithoutExtension(resourceI.Path);
+            moduleJ = Path.GetFileNameWithoutExtension(resourceJ.Path);
+
+            foreach (var symbolI in resourceI.Symbols.GetCache())
+                if (resourceJ.Symbols.SymbolIsDeclared(symbolI.Key))
+                {
+                    symbol = symbolI.Key;
+                    position = symbolI.Value.Position;
+                    return true;
+                }
+
+            position = default;
+            symbol = null;
+            return false;
         }
 
         private void SetUpGlobals()
@@ -473,7 +529,7 @@ namespace Mug.Generator
         private void CheckVariable(VariableStatement statement)
         {
             if (statement.IsAssigned) return;
-            
+
             if (statement.IsConst)
                 Tower.Report(statement.Position, "A constant declaration requires a body");
             if (statement.Type.SolvedType.Kind is TypeKind.Auto)
@@ -822,7 +878,7 @@ namespace Mug.Generator
         {
             if (expression.Name is not Token name)
             {
-                Tower.Report(expression.Position, "Unsupported composed name");
+                Tower.Report(expression.Position, "Unable to call builtin function");
                 return ContextType;
             }
 
@@ -1118,13 +1174,18 @@ namespace Mug.Generator
             if (name.Kind is not TokenKind.Identifier)
             {
                 Tower.Report(name.Position, $"Function cannot named with non-identifier tokens");
-                return new() { Name = name.Value, ReturnType = DataType.Int32 };
+                return DefaultFunctionStatement(name);
             }
 
             if (ProcessingMethod() && IsInternalMethod(name.Value, out var method))
                 return method;
 
             return Tower.Symbols.GetSymbol<FunctionStatement>(name.Value, name.Position, "function");
+        }
+
+        private static FunctionStatement DefaultFunctionStatement(Token name)
+        {
+            return new() { Name = name.Value, ReturnType = DataType.Int32 };
         }
 
         private bool IsInternalMethod(string value, out FunctionStatement method)
@@ -1421,7 +1482,7 @@ namespace Mug.Generator
         private static bool IsConstantInt(INode node)
         {
             return
-                (node is BadNode or Token {Kind: TokenKind.ConstantDigit})
+                (node is BadNode or Token { Kind: TokenKind.ConstantDigit })
                 || (node is BinaryExpressionNode binary && IsConstantBinary(binary.Left, binary.Right));
         }
 
@@ -1742,6 +1803,11 @@ namespace Mug.Generator
             Module.DefineFunction(FunctionBuilder.Build());
         }
 
+        private void GenerateFunctionPrototype(FunctionStatement func)
+        {
+            Module.DefineFunctionPrototype(func.Name, LowerDataType(func.ReturnType), GetParameterTypes(func.ParameterList));
+        }
+
         private void SetEntryBlock()
         {
             FunctionBuilder.SwitchBlock(CreateBlock("entry"));
@@ -1777,7 +1843,7 @@ namespace Mug.Generator
                 var fieldType = field.Type.SolvedType;
                 if (!fieldType.IsStruct() &&
                     (!fieldType.IsPointer() || !fieldType.GetBaseElementType().SolvedType.IsStruct())) continue;
-                
+
                 var fieldStructType =
                 (
                     fieldType.Kind is TypeKind.Pointer ?
@@ -1811,23 +1877,37 @@ namespace Mug.Generator
             foreach (var symbol in Tower.Symbols.GetCache())
                 RecognizeSymbol(symbol.Value, ref entrypoint);
 
-            CheckEntryPoint(entrypoint);
+            if (IsMainUnit())
+                CheckEntryPoint(entrypoint);
+        }
+
+        private bool IsMainUnit()
+        {
+            return Tower.Unit.IsMainUnit;
         }
 
         private void CheckEntryPoint(FunctionStatement entryPoint)
         {
             if (entryPoint is null)
-                ReportMissingEntryPoint();
-            else
             {
-                if (entryPoint.ParameterList.Length > 0)
-                    Tower.Report(entryPoint.Position, "Entrypoint cannot have parameters");
-                if (entryPoint.Generics.Count > 0)
-                    Tower.Report(entryPoint.Position, "Entrypoint cannot have generic parameters");
-                if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Void)
-                    Tower.Report(entryPoint.Position, "Entrypoint cannot return a value");
-                if (entryPoint.Modifier is TokenKind.KeyPub)
-                    Tower.Report(entryPoint.Position, "Entrypoint cannot have a public modifier");
+                ReportMissingEntryPoint();
+                return;
+            }
+
+            if (entryPoint.ParameterList.Length > 0)
+                error("Entrypoint cannot have parameters");
+            if (entryPoint.Generics.Count > 0)
+                error("Entrypoint cannot have generic parameters");
+            if (entryPoint.ReturnType.UnsolvedType.Kind is not TypeKind.Void)
+                error("Entrypoint cannot return a value");
+            if (entryPoint.Modifier is TokenKind.KeyPub)
+                error("Entrypoint cannot have a public modifier");
+            if (entryPoint.IsPrototype)
+                error("Entrypoint cannot be declared as prototype");
+
+            void error(string error)
+            {
+                Tower.Report(entryPoint.Position, error);
             }
         }
 
@@ -1846,15 +1926,24 @@ namespace Mug.Generator
                     GenerateStruct(structSymbol);
                     break;
                 case FunctionStatement funcSymbol:
-                    if (funcSymbol.Name is EntryPointName)
-                        entrypoint = funcSymbol;
-
-                    GenerateFunction(funcSymbol, funcSymbol.Name);
+                    if (funcSymbol.IsPrototype)
+                        GenerateFunctionPrototype(funcSymbol);
+                    else
+                        SetEntryPointAndGenerateFunction(funcSymbol, ref entrypoint);
                     break;
                 default:
                     ToImplement<object>(value.ToString(), nameof(RecognizeSymbol));
                     break;
             }
+        }
+
+        private FunctionStatement SetEntryPointAndGenerateFunction(FunctionStatement funcSymbol, ref FunctionStatement entrypoint)
+        {
+            if (funcSymbol.Name is EntryPointName)
+                entrypoint = funcSymbol;
+
+            GenerateFunction(funcSymbol, funcSymbol.Name);
+            return entrypoint;
         }
     }
 }

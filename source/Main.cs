@@ -45,7 +45,7 @@ using System.Collections.Generic;
 //       - switch statement
 
 var pathHead = Path.GetFullPath(@"../../../../tests");
-var unit = new CompilationUnit("test.mir", pathHead, $"{pathHead}/mainTest.mug");
+var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest.mug");
 
 /*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
 
