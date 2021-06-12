@@ -1,4 +1,4 @@
-﻿using Mug.Lexer;
+﻿using Mug.Tokenizer;
 using System;
 using System.Collections.Generic;
 
@@ -12,7 +12,7 @@ namespace Mug.Compilation
         public int Count => _diagnostic.Count - _otherAlertsCount;
 
 
-        public void Report(Lexer.Lexer lexer, int pos, string error)
+        public void Report(Tokenizer.Lexer lexer, int pos, string error)
         {
             Report(new(CompilationAlertKind.Error, new(lexer, pos..(pos + 1)), error));
         }

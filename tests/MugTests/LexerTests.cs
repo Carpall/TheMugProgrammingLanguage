@@ -1,5 +1,5 @@
 using Mug.Compilation;
-using Mug.Models.Lexer;
+using Mug.Tokenizer;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -19,7 +19,7 @@ namespace Mug.Tests
 
         private const string SINGLE_TOKENS = "( ) [ ] { } < > = ! & | + - * / ,   : .  ";
         private const string DOUBLE_TOKENS = "== != ++ += -- -= *= /= <= >= ..";
-        private const string FULL_TOKENS = "return continue break while pub use import new for type as in to if elif else func var const str chr       i32 i64 u8 u32 u64 unknown when declare void bool";
+        private const string FULL_TOKENS = "return continue break while pub use import new for type as in to if elif else fn   var const str chr       i32 i64 u8 u32 u64 unknown when declare void bool";
         private const string RANDOM_TOKENS = "return == ( ) += continue pub ! *= ..";
 
 
@@ -52,15 +52,15 @@ namespace Mug.Tests
         private const string COMMENTS04 = "/* This is a nested */ multi-line comment */";
         private const string COMMENTS05 = "/* This is a /* nested */ multi-line comment */";
 
-        private Lexer newLexer(string test)
+        private Lexer NewLexer(string test)
         {
-            return new("test", test, new(null));
+            return new("test", test, new(null, null));
         }
 
         [Test]
         public void GetLength_EmptyCollection_ReturnZero()
         {
-            var lexer = newLexer(OPERATION01);
+            var lexer = NewLexer(OPERATION01);
 
             Assert.AreEqual(lexer.Length, 0);
         }
@@ -68,7 +68,7 @@ namespace Mug.Tests
         [Test]
         public void GetLength_NonEmptyCollection_ReturnLength()
         {
-            var lexer = newLexer(VARIABLE01);
+            var lexer = NewLexer(VARIABLE01);
             lexer.Tokenize();
 
             Assert.AreEqual(lexer.Length, 5);
@@ -103,7 +103,7 @@ namespace Mug.Tests
         [Test]
         public void Test01_CorrectTokenization()
         {
-            var lexer = newLexer(VARIABLE01);
+            var lexer = NewLexer(VARIABLE01);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -123,7 +123,7 @@ namespace Mug.Tests
         [Test]
         public void Test02_CorrectTokenization()
         {
-            var lexer = newLexer(VARIABLE02);
+            var lexer = NewLexer(VARIABLE02);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -145,7 +145,7 @@ namespace Mug.Tests
         [Test]
         public void Test03_CorrectTokenization()
         {
-            var lexer = newLexer(VARIABLE03);
+            var lexer = NewLexer(VARIABLE03);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -167,7 +167,7 @@ namespace Mug.Tests
         [Test]
         public void Test04_CorrectTokenization()
         {
-            var lexer = newLexer(VARIABLE04);
+            var lexer = NewLexer(VARIABLE04);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -184,7 +184,7 @@ namespace Mug.Tests
         [Test]
         public void Test05_CorrectTokenization()
         {
-            var lexer = newLexer(VARIABLE05);
+            var lexer = NewLexer(VARIABLE05);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -202,7 +202,7 @@ namespace Mug.Tests
         public void TestComments01_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            var lexer = newLexer(COMMENTS01);
+            var lexer = NewLexer(COMMENTS01);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -219,7 +219,7 @@ namespace Mug.Tests
         public void TestComments02_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            var lexer = newLexer(COMMENTS02);
+            var lexer = NewLexer(COMMENTS02);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -236,7 +236,7 @@ namespace Mug.Tests
         public void TestComments03_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            var lexer = newLexer(COMMENTS03);
+            var lexer = NewLexer(COMMENTS03);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -253,7 +253,7 @@ namespace Mug.Tests
         public void TestComments04_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            var lexer = newLexer(COMMENTS04);
+            var lexer = NewLexer(COMMENTS04);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -276,7 +276,7 @@ namespace Mug.Tests
         public void TestComments05_CorrectTokenization()
         {
             // A comments gets consumed, turning it into an empty string
-            var lexer = newLexer(COMMENTS05);
+            var lexer = NewLexer(COMMENTS05);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -299,7 +299,7 @@ namespace Mug.Tests
         public void EmptyString_CorrectTokenization()
         {
             // An empty string gets converted into an <EOF>
-            var lexer = newLexer(EMPTYSTRING);
+            var lexer = NewLexer(EMPTYSTRING);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -315,7 +315,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings01_CorrectTokenization()
         {
-            var lexer = newLexer(STRINGS01);
+            var lexer = NewLexer(STRINGS01);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -332,7 +332,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings02_ExceptionCaught()
         {
-            var lexer = newLexer(STRINGS02);
+            var lexer = NewLexer(STRINGS02);
             lexer.Tokenize();
 
             Assert.AreEqual("Constant string has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -341,7 +341,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings03_CorrectTokenization()
         {
-            var lexer = newLexer(STRINGS03);
+            var lexer = NewLexer(STRINGS03);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -360,7 +360,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings04_EscapedChars()
         {
-            var lexer = newLexer(STRINGS04);
+            var lexer = NewLexer(STRINGS04);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -377,7 +377,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings05_AdvancedEscapedChars()
         {
-            var lexer = newLexer(STRINGS05);
+            var lexer = NewLexer(STRINGS05);
             lexer.Tokenize();
             var tokens = lexer.TokenCollection;
 
@@ -396,7 +396,7 @@ namespace Mug.Tests
         [Test]
         public void TestStrings06_ExceptionCaught()
         {
-            var lexer = newLexer(STRINGS06);
+            var lexer = NewLexer(STRINGS06);
             lexer.Tokenize();
 
             Assert.AreEqual("String has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -405,7 +405,7 @@ namespace Mug.Tests
         [Test]
         public void TestSingleTokens_CorrectTokenization()
         {
-            var lexer = newLexer(SINGLE_TOKENS);
+            var lexer = NewLexer(SINGLE_TOKENS);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -422,8 +422,8 @@ namespace Mug.Tests
                 new(TokenKind.BooleanGreater, ">", new(lexer, 14..15), false),
                 new(TokenKind.Equal, "=", new(lexer, 16..17), false),
                 new(TokenKind.Negation, "!", new(lexer, 18..19), false),
-                new(TokenKind.BooleanAND, "&", new(lexer, 20..21), false),
-                new(TokenKind.BooleanOR, "|", new(lexer, 22..23), false),
+                new(TokenKind.Apersand, "&", new(lexer, 20..21), false),
+                new(TokenKind.Pipe, "|", new(lexer, 22..23), false),
                 new(TokenKind.Plus, "+", new(lexer, 24..25), false),
                 new(TokenKind.Minus, "-", new(lexer, 26..27), false),
                 new(TokenKind.Star, "*", new(lexer, 28..29), false),
@@ -440,7 +440,7 @@ namespace Mug.Tests
         [Test]
         public void TestDoubleTokens_CorrectTokenization()
         {
-            var lexer = newLexer(DOUBLE_TOKENS);
+            var lexer = NewLexer(DOUBLE_TOKENS);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -467,7 +467,7 @@ namespace Mug.Tests
         [Test]
         public void TestFullTokens_CorrectTokenization()
         {
-            var lexer = newLexer(FULL_TOKENS);
+            var lexer = NewLexer(FULL_TOKENS);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -486,11 +486,11 @@ namespace Mug.Tests
                 new(TokenKind.KeyType, "type", new(lexer, 51..55), false),
                 new(TokenKind.KeyAs, "as", new(lexer, 56..58), false),
                 new(TokenKind.KeyIn, "in", new(lexer, 59..61), false),
-                new(TokenKind.KeyTo, "to", new(lexer, 62..64), false),
+                new(TokenKind.Identifier, "to", new(lexer, 62..64), false),
                 new(TokenKind.KeyIf, "if", new(lexer, 65..67), false),
                 new(TokenKind.KeyElif, "elif", new(lexer, 68..72), false),
                 new(TokenKind.KeyElse, "else", new(lexer, 73..77), false),
-                new(TokenKind.KeyFunc, "func", new(lexer, 78..82), false),
+                new(TokenKind.KeyFunc, "fn", new(lexer, 78..80), false),
                 new(TokenKind.KeyVar, "var", new(lexer, 83..86), false),
                 new(TokenKind.KeyConst, "const", new(lexer, 87..92), false),
                 new(TokenKind.Identifier, "str", new(lexer, 93..96), false),
@@ -514,7 +514,7 @@ namespace Mug.Tests
         [Test]
         public void TestRandomTokens_CorrectTokenization()
         {
-            var lexer = newLexer(RANDOM_TOKENS);
+            var lexer = NewLexer(RANDOM_TOKENS);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -540,7 +540,7 @@ namespace Mug.Tests
         [Test]
         public void TestChars01_OneChar()
         {
-            var lexer = newLexer(CHARS01);
+            var lexer = NewLexer(CHARS01);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -557,7 +557,7 @@ namespace Mug.Tests
         [Test]
         public void TestChars02_OneChar()
         {
-            var lexer = newLexer(CHARS02);
+            var lexer = NewLexer(CHARS02);
             lexer.Tokenize();
 
             Assert.AreEqual("Constant char has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -566,7 +566,7 @@ namespace Mug.Tests
         [Test]
         public void TestChars03_TooManyChars()
         {
-            var lexer = newLexer(CHARS03);
+            var lexer = NewLexer(CHARS03);
             lexer.Tokenize();
 
             Assert.AreEqual("Too many characters in const char", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -575,7 +575,7 @@ namespace Mug.Tests
         [Test]
         public void TestChars04_OneEscapedChar()
         {
-            var lexer = newLexer(CHARS04);
+            var lexer = NewLexer(CHARS04);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -592,7 +592,7 @@ namespace Mug.Tests
         [Test]
         public void TestChars05_TooManyEscapedChars()
         {
-            var lexer = newLexer(CHARS05);
+            var lexer = NewLexer(CHARS05);
             lexer.Tokenize();
 
             Assert.AreEqual("Too many characters in const char", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -601,7 +601,7 @@ namespace Mug.Tests
         [Test]
         public void TestBackticks01_OneSymbol()
         {
-            var lexer = newLexer(BACKTICKS01);
+            var lexer = NewLexer(BACKTICKS01);
             lexer.Tokenize();
 
             var tokens = lexer.TokenCollection;
@@ -618,7 +618,7 @@ namespace Mug.Tests
         [Test]
         public void TestBackticks02_OneChar()
         {
-            var lexer = newLexer(BACKTICKS02);
+            var lexer = NewLexer(BACKTICKS02);
             lexer.Tokenize();
 
             Assert.AreEqual("Backtick sequence has not been correctly enclosed", lexer.Tower.Diagnostic.GetAlerts().First().Message);
@@ -627,7 +627,7 @@ namespace Mug.Tests
         [Test]
         public void TestBackticks03_Empty()
         {
-            var lexer = newLexer(BACKTICKS03);
+            var lexer = NewLexer(BACKTICKS03);
             lexer.Tokenize();
 
             Assert.AreEqual("Not enough characters in backtick sequence", lexer.Tower.Diagnostic.GetAlerts().First().Message);

@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Generator.IR;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.Symbols;
 using System;
 using System.Collections.Generic;

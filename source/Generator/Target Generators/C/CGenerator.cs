@@ -19,6 +19,8 @@ namespace Mug.Generator.TargetGenerators.C
         private MIRFunction CurrentFunction { get; set; }
         private MIRBlock CurrentBlock { get; set; }
 
+        private int ParametersCount => CurrentFunction.Prototype.ParameterTypes.Length;
+
         private uint _registerCounter = 0;
         private readonly List<CValue> _stackBlocksHistory = new();
 
@@ -148,10 +150,23 @@ namespace Mug.Generator.TargetGenerators.C
             EmitUnaryOperation("*", instruction.Type);
         }
 
+        private string CreateTempStackAllocation(MIRType type, out string reg)
+        {
+            reg = $"R{GetRegCountAndInc()}";
+            return $"{type} {reg}";
+        }
+
+        private uint GetRegCountAndInc()
+        {
+            return _registerCounter++;
+        }
+
         private void EmitLoadZeroinitialized(MIRInstruction instruction)
         {
-            var tmp = DeclareAllocation(instruction.Type);
-            LoadValue(tmp, instruction.Type);
+            var allocation = CreateTempStackAllocation(instruction.Type, out var reg);
+            EmitStatement(allocation);
+
+            LoadValue(reg, instruction.Type);
         }
 
         private void EmitLess(MIRInstruction instruction)
@@ -246,7 +261,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitUnaryOperation(string op, MIRType type)
         {
-            PushValue($"{op} {PopValue()}", type);
+            LoadValue($"({op} {PopValue()})", type);
         }
 
         private void EmitDiv(MIRInstruction instruction)
@@ -272,7 +287,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitOperation(string op, MIRType type)
         {
             var right = PopValue();
-            PushValue($"{PopValue()} {op} {right}", type);
+            LoadValue($"({PopValue()} {op} {right})", type);
         }
 
         private void EmitLoadLocal(MIRInstruction instruction)
@@ -280,9 +295,9 @@ namespace Mug.Generator.TargetGenerators.C
             var local = GetLocal(instruction.GetStackIndex());
 
             if (instruction.Type.IsStruct())
-                LoadValue(local, instruction.Type);
-            else
                 PushValue(local, instruction.Type);
+            else
+                LoadValue(local, instruction.Type);
         }
 
         private static string AddrOf(string expression)
@@ -312,7 +327,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadConstant(MIRInstruction instruction)
         {
-            PushValue(MIRConstantToCConstant(instruction), instruction.Type);
+            LoadValue(MIRConstantToCConstant(instruction), instruction.Type);
         }
 
         private static string MIRConstantToCConstant(MIRInstruction instruction)
@@ -325,9 +340,8 @@ namespace Mug.Generator.TargetGenerators.C
         
         private void PushValue(string expression, MIRType type)
         {
-            var reg = _registerCounter++;
-            MovInVirtualReg(reg, expression, type);
-            LoadValue($"R{reg}", type);
+            var reg = MovInVirtualReg(expression, type);
+            LoadValue(reg, type);
         }
 
         private CValue PopValue()
@@ -351,7 +365,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private string DeclareAllocation(MIRType type)
         {
-            var result = $"A{CurrentFunctionBuilder.Allocations.Count}";
+            var result = GetLocal(CurrentFunctionBuilder.Allocations.Count);
             CurrentFunctionBuilder.Allocations.Add(type);
 
             return result;
@@ -393,9 +407,12 @@ namespace Mug.Generator.TargetGenerators.C
             CurrentFunctionBuilder.CurrentBlock.Add($"{statement}{(expression is not null ? $" {expression}" : "")};");
         }
 
-        private void MovInVirtualReg(uint index, string expression, MIRType type)
+        private string MovInVirtualReg(string expression, MIRType type)
         {
-            EmitStatement($"SSA {type} R{index} =", expression);
+            var allocation = CreateTempStackAllocation(type, out var reg);
+            EmitStatement($"{allocation} =", expression);
+
+            return reg;
         }
 
         private string BuildCFunctionPrototype()
@@ -405,7 +422,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private static string BuildFunctionName(string name)
         {
-            return $"mug__{name}";
+            return $"mug__{name.Replace('.', '_')}";
         }
 
         private static string BuildParametersInCFunctionPrototypes(MIRType[] parameterTypes)

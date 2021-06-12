@@ -1,5 +1,5 @@
 ﻿using Mug.Compilation;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.Parser;
 using Mug.Symbols;
 using Newtonsoft.Json;

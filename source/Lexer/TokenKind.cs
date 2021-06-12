@@ -2,7 +2,7 @@
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 
-namespace Mug.Lexer
+namespace Mug.Tokenizer
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TokenKind
@@ -19,7 +19,7 @@ namespace Mug.Lexer
         EOF = -4,
         [Description("literal char")]
         ConstantChar = -5,
-        [Description("func")]
+        [Description("fn")]
         KeyFunc = -6,
         [Description("var")]
         KeyVar = -7,
@@ -79,6 +79,8 @@ namespace Mug.Lexer
         BooleanGreater = '>',
         [Description("|")]
         Pipe = '|',
+        [Description("&")]
+        Apersand = '&',
         [Description("<=")]
         BooleanLEQ = -19,
         [Description(">=")]

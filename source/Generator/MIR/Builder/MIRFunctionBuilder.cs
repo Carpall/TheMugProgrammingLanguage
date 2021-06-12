@@ -1,5 +1,5 @@
 ﻿using Mug.Generator.IR;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;

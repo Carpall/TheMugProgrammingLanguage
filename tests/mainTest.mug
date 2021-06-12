@@ -3,7 +3,6 @@ type A {
 }
 
 fn main() {
-  var x = new A { a: 1 }
+  var x = new A { }
   x.a = 1
-  exit!(x.a)
 }

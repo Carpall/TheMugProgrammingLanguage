@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Mug.Lexer
+namespace Mug.Tokenizer
 {
     public class Lexer : CompilerComponent
     {

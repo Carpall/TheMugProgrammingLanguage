@@ -4,7 +4,7 @@ using Mug.Parser.AST;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Lexer
+namespace Mug.Tokenizer
 {
     public struct Token : INode
     {

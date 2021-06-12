@@ -1,5 +1,5 @@
 ﻿using Mug.Compilation;
-using Mug.Lexer;
+using Mug.Tokenizer;
 
 namespace Mug.Parser.AST
 {

@@ -1,7 +1,7 @@
 ﻿using LLVMSharp.Interop;
 using Mug.Generator.TargetGenerators.C;
 using Mug.Generator.IR;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.Parser;
 using Mug.Parser.AST;
 using System;

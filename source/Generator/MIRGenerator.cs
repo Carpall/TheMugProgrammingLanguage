@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using Mug.Generator.IR;
 using Mug.Generator.IR.Builder;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.Parser;
 using Mug.Parser.AST;
 using Mug.Parser.AST.Statements;

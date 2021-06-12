@@ -3,7 +3,7 @@ using Mug.Generator.TargetGenerators;
 using Mug.Generator.TargetGenerators.LLVM;
 using Mug.Generator;
 using Mug.Generator.IR;
-using Mug.Lexer;
+using Mug.Tokenizer;
 using Mug.Parser;
 using Mug.Parser.AST;
 using Mug.Symbols;
@@ -20,7 +20,7 @@ namespace Mug.Compilation
         public Diagnostic Diagnostic { get; } = new();
         public CompilationUnit Unit { get; internal set; }
         public string OutputFilename { get; }
-        public Lexer.Lexer Lexer { get; set; }
+        public Tokenizer.Lexer Lexer { get; set; }
         public Parser.Parser Parser { get; }
         public ASTSolver Solver { get; }
         public TypeInstaller TypeInstaller { get; }
@@ -66,7 +66,7 @@ namespace Mug.Compilation
         }
 
         [DoesNotReturn()]
-        public void Throw(Lexer.Lexer lexer, int pos, string error)
+        public void Throw(Tokenizer.Lexer lexer, int pos, string error)
         {
             Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
         }
@@ -94,7 +94,7 @@ namespace Mug.Compilation
             Diagnostic.Report(position, error);
         }
 
-        public void Report(Lexer.Lexer lexer, int position, string error)
+        public void Report(Tokenizer.Lexer lexer, int position, string error)
         {
             Report(new(lexer, position..(position + 1)), error);
         }

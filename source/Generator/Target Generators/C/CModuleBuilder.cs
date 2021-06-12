@@ -38,8 +38,6 @@ namespace Mug.Generator.TargetGenerators.C
             AddDefine("uint16", "unsigned short");
             AddDefine("uint32", "unsigned int");
             AddDefine("uint64", "unsigned long long");
-
-            AddDefine("SSA", "const register");
         }
 
         private void AddDefine(string symbol, string value)
