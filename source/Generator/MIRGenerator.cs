@@ -453,12 +453,13 @@ namespace Mug.Generator
             ContextTypesPushUndefined();
             SetLeftValueChecker(statement.Position);
 
+            var firstInstructionIndex = FunctionBuilder.CurrentIndex();
             var variable = EvaluateExpression(statement.Name);
 
             if (variable.SolvedType.IsUndefined())
                 return;
 
-            var instruction = EvaluateLeftSideOfAssignment(statement, variable);
+            var (firstInstruction, lastInstruction) = EvaluateLeftSideOfAssignment(statement, variable, firstInstructionIndex);
 
             var expressiontype = EvaluateExpression(statement.Body);
 
@@ -466,22 +467,30 @@ namespace Mug.Generator
 
             ContextTypes.Pop();
 
-            instruction.Kind = GetLeftExpressionInstruction(instruction.Kind);
-            FunctionBuilder.EmitInstruction(instruction);
+            FunctionBuilder.EmitInstruction(firstInstruction);
+
+            if (!firstInstruction.Equals(lastInstruction))
+                FunctionBuilder.EmitInstruction(lastInstruction);
         }
 
-        private MIRInstruction EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable)
+        private (MIRInstruction, MIRInstruction) EvaluateLeftSideOfAssignment(AssignmentStatement statement, DataType variable, int firstInstructionIndex)
         {
-            CleanLeftValueChecker();
+            ClearLeftValueChecker();
+
             ContextTypes.Pop();
 
-            var instruction = FunctionBuilder.PopLastInstruction();
+            var lastInstruction = FunctionBuilder.GetInstructionAt(firstInstructionIndex);
+            var firstInstruction = FunctionBuilder.PopLastInstruction();
 
-            if (!IsConvertibleToLeftExpressionInstruction(instruction.Kind))
+            if (!IsConvertibleToLeftExpressionInstruction(firstInstruction.Kind))
                 Tower.Report(statement.Name.Position, $"Expression in left side of assignment");
 
             ContextTypes.Push(variable);
-            return instruction;
+
+            firstInstruction.Kind = GetLeftExpressionInstruction(firstInstruction.Kind);
+            lastInstruction.Kind = GetLeftExpressionInstruction(lastInstruction.Kind);
+
+            return (firstInstruction, lastInstruction);
         }
 
         private static bool IsConvertibleToLeftExpressionInstruction(MIRInstructionKind kind)
@@ -489,7 +498,7 @@ namespace Mug.Generator
             return kind is MIRInstructionKind.LoadLocal or MIRInstructionKind.LoadField;
         }
 
-        private void CleanLeftValueChecker()
+        private void ClearLeftValueChecker()
         {
             LeftValueChecker.IsLeftValue = false;
         }
@@ -1542,9 +1551,10 @@ namespace Mug.Generator
                 Tower.Report(
                     expression.Member.Position,
                     $"Type '{structure.Name}' does not contain a definition for '{expression.Member.Value}'");
+                return;
             }
-            else
-                FunctionBuilder.EmitLoadField(index, LowerDataType(type));
+            
+            FunctionBuilder.EmitLoadField(index, LowerDataType(type));
         }
 
         private void ExpectPublicFieldOrInternal(FieldNode field, TypeStatement type, ModulePosition position)
@@ -1579,6 +1589,7 @@ namespace Mug.Generator
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(LowerDataType(type));
             EvaluateTypeInitialization(expression, structure, assignedFields);
+            // FunctionBuilder.EmitLoadValueFromPointer();
 
             return DataType.Solved(SolvedType.Struct(structure));
         }
@@ -1673,7 +1684,6 @@ namespace Mug.Generator
         {
             ContextTypes.Push(fieldType);
 
-            FunctionBuilder.EmitDupplicate();
             FixAndCheckTypes(fieldType, EvaluateExpression(field.Body), field.Position);
             FunctionBuilder.EmitStoreField(fieldIndex, LowerDataType(fieldType));
 

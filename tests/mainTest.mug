@@ -1,6 +1,9 @@
-
-fn add(a, b: i32): i32 { a + b }
+type A {
+  pub a: i32
+}
 
 fn main() {
-  add(1, 2)
+  var x = new A { a: 1 }
+  x.a = 1
+  exit!(x.a)
 }

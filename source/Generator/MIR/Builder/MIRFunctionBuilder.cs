@@ -218,7 +218,7 @@ namespace Mug.Generator.IR.Builder
 
         public void EmitLoadValueFromPointer()
         {
-            EmitInstruction(MIRInstructionKind.LoadValueFromPointer);
+            EmitInstruction(MIRInstructionKind.LoadValueFromPointer, LastInstruction().Type.GetPointerBaseType());
         }
 
         public void EmitNeg(MIRType type)
@@ -245,6 +245,11 @@ namespace Mug.Generator.IR.Builder
 
             _body[^1].Index = _body[^2].Index;
             _body[^2].Index = lastBlockIndex;
+        }
+
+        public MIRInstruction GetInstructionAt(int bodyIndex)
+        {
+            return _currentBlock[bodyIndex];
         }
     }
 }

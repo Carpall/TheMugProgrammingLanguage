@@ -122,12 +122,25 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitStoreField(MIRInstruction instruction)
         {
             var expression = PopValue().Value;
-            EmitStatement($"{PopValue().Value}.{GetLocal(instruction.GetStackIndex())} =", expression);
+            var instance = PopValue();
+            EmitStatement($"{instance.Value}.{GetField(instruction.GetStackIndex())} =", expression);
+
+            LoadValue(instance.Value, instance.Type);
+        }
+
+        private void LoadValue(string value, MIRType type)
+        {
+            StackValues.Push(new(type, value));
         }
 
         private void EmitLoadField(MIRInstruction instruction)
         {
-            PushValue($"{PopValue()}.{GetLocal(instruction.GetStackIndex())}", instruction.Type);
+            PushValue($"{PopValue()}.{GetField(instruction.GetStackIndex())}", instruction.Type);
+        }
+
+        private static string GetField(int bodyIndex)
+        {
+            return $"F{bodyIndex}";
         }
 
         private void EmitLoadFromPointer(MIRInstruction instruction)
@@ -138,7 +151,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitLoadZeroinitialized(MIRInstruction instruction)
         {
             var tmp = DeclareAllocation(instruction.Type);
-            PushValue(tmp, instruction.Type);
+            LoadValue(tmp, instruction.Type);
         }
 
         private void EmitLess(MIRInstruction instruction)
@@ -264,7 +277,22 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadLocal(MIRInstruction instruction)
         {
-            PushValue(GetLocal(instruction.GetStackIndex()), instruction.Type);
+            var local = GetLocal(instruction.GetStackIndex());
+
+            if (instruction.Type.IsStruct())
+                LoadValue(local, instruction.Type);
+            else
+                PushValue(local, instruction.Type);
+        }
+
+        private static string AddrOf(string expression)
+        {
+            return $"&{expression}";
+        }
+
+        private static MIRType Pointer(MIRType type)
+        {
+            return new(MIRTypeKind.Pointer, type);
         }
 
         private static string GetLocal(int stackindex)
@@ -279,7 +307,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitReturn(MIRInstruction instruction)
         {
-            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue().Value : "");
+            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue().Value : null);
         }
 
         private void EmitLoadConstant(MIRInstruction instruction)
@@ -299,7 +327,7 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var reg = _registerCounter++;
             MovInVirtualReg(reg, expression, type);
-            StackValues.Push(new(type, $"R{reg}"));
+            LoadValue($"R{reg}", type);
         }
 
         private CValue PopValue()
@@ -451,7 +479,7 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var structureBuilder = new CStructureBuilder($"struct {structure.Name} {(structure.IsPacked ? "__attribute__((__packed__))" : "")}");
             for (int i = 0; i < structure.Body.Length; i++)
-                structureBuilder.Body.Add($"    {structure.Body[i]} _{i};");
+                structureBuilder.Body.Add($"    {structure.Body[i]} F{i};");
 
             Module.Structures.Add(structureBuilder);
         }

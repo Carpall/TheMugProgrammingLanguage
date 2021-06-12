@@ -233,18 +233,19 @@ namespace Mug.Generator.TargetGenerators.LLVM
 
         private void EmitStoreField(MIRInstruction instruction)
         {
-            var instance = StackValuesPop();
             var value = StackValuesPop();
+            var instance = StackValuesPop();
             var index = (uint)instruction.GetInt();
-            CurrentFunctionBuilder.BuildInsertValue(value, instance, index);
+            var changedStruct = CurrentFunctionBuilder.BuildInsertValue(instance, value, index);
+
+            StackValuesPush(changedStruct);
         }
 
         private void EmitLoadField(MIRInstruction instruction)
         {
             var instance = StackValuesPop();
             var index = (uint)instruction.GetInt();
-            var field = CurrentFunctionBuilder.BuildExtractValue(instance, index);
-            StackValuesPush(field);
+            StackValuesPush(CurrentFunctionBuilder.BuildExtractValue(instance, index));
         }
 
         private void EmitJumpFalse(MIRInstruction instruction)

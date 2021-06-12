@@ -1,1 +1,2 @@
-import "otherModule.mug"
+fn main() {
+}

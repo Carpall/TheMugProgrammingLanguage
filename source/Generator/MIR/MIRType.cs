@@ -61,5 +61,15 @@ namespace Mug.Generator.IR
                 _ => $"{Kind.ToString().ToLower()}{BaseType ?? ""}"
             };
         }
+
+        public MIRType GetPointerBaseType()
+        {
+            return (MIRType)BaseType;
+        }
+
+        public bool IsStruct()
+        {
+            return Kind is MIRTypeKind.Struct;
+        }
     }
 }
