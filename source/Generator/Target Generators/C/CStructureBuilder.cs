@@ -18,7 +18,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         public override string ToString()
         {
-            return $"{Prototype} {{\n{string.Join("\n    ", Body)}\n}}";
+            return $"{Prototype} {{\n{string.Join("\n", Body)}\n}}";
         }
     }
 }

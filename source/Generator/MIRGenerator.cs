@@ -121,7 +121,8 @@ namespace Mug.Generator
             var kind = type.SolvedType.Kind;
             return kind switch
             {
-                TypeKind.Undefined => new(),
+                TypeKind.Auto
+                or TypeKind.Undefined => new(),
 
                 TypeKind.Int8
                 or TypeKind.Int16
@@ -523,7 +524,8 @@ namespace Mug.Generator
         {
             CheckVariable(statement);
 
-            ContextTypes.Push(statement.Type);
+            var contextType = GetFirstIfNotAutoOrSecond(statement.Type, DataType.Undefined);
+            ContextTypes.Push(contextType);
 
             var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type) : statement.Body);
 
@@ -533,6 +535,11 @@ namespace Mug.Generator
             FunctionBuilder.EmitStoreLocal(allocation.StackIndex, LowerDataType(allocation.Type));
 
             ContextTypes.Pop();
+        }
+
+        private static DataType GetFirstIfNotAutoOrSecond(DataType first, DataType second)
+        {
+            return !first.SolvedType.IsAuto() ? first : second;
         }
 
         private void CheckVariable(VariableStatement statement)
@@ -553,11 +560,12 @@ namespace Mug.Generator
 
         private void FixAndCheckTypes(DataType expected, DataType gottype, ModulePosition position)
         {
+            FixAuto(expected, gottype);
+
             if (expected.SolvedType.Kind is TypeKind.Undefined
                 || gottype.SolvedType.Kind is TypeKind.Undefined)
                 return;
 
-            FixAuto(expected, gottype);
             if (AreNotCompatible(expected, gottype))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
         }
@@ -575,7 +583,7 @@ namespace Mug.Generator
 
         private static void FixAuto(DataType type, DataType expressiontype)
         {
-            if (type.SolvedType.Kind == TypeKind.Auto)
+            if (type.SolvedType.Kind is TypeKind.Auto)
                 type.Solve(expressiontype.SolvedType);
         }
 

@@ -44,7 +44,19 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitAllocations()
         {
             for (int i = CurrentFunction.Prototype.ParameterTypes.Length; i < CurrentFunction.Allocations.Length; i++)
-                CurrentFunctionBuilder.Allocations.Add(CurrentFunction.Allocations[i].Type);
+            {
+                var allocation = CurrentFunction.Allocations[i];
+                CurrentFunctionBuilder.Allocations.Add((allocation.Type, GetCAllocationAttributes(allocation.Attributes)));
+            }
+        }
+
+        private static string GetCAllocationAttributes(MIRAllocationAttribute attributes)
+        {
+            return attributes switch
+            {
+                MIRAllocationAttribute.Unmutable => "register",
+                _ => null
+            };
         }
 
         private void LowerFunctionBody()
@@ -125,9 +137,11 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var expression = PopValue().Value;
             var instance = PopValue();
-            EmitStatement($"{instance.Value}.{GetField(instruction.GetStackIndex())} =", expression);
+            var reg = MovInVirtualReg(instance.Value, instance.Type);
 
-            LoadValue(instance.Value, instance.Type);
+            EmitStatement($"{reg}.{GetField(instruction.GetStackIndex())} =", expression);
+
+            LoadValue(reg, instance.Type);
         }
 
         private void LoadValue(string value, MIRType type)
@@ -137,7 +151,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitLoadField(MIRInstruction instruction)
         {
-            PushValue($"{PopValue()}.{GetField(instruction.GetStackIndex())}", instruction.Type);
+            LoadValue($"{PopValue()}.{GetField(instruction.GetStackIndex())}", instruction.Type);
         }
 
         private static string GetField(int bodyIndex)
@@ -208,7 +222,7 @@ namespace Mug.Generator.TargetGenerators.C
             var call = BuildCallExpression(instruction.GetName());
 
             if (isNotVoid)
-                PushValue(call, instruction.Type);
+                LoadValue(call, instruction.Type);
             else
                 EmitStatement(call);
         }
@@ -293,21 +307,7 @@ namespace Mug.Generator.TargetGenerators.C
         private void EmitLoadLocal(MIRInstruction instruction)
         {
             var local = GetLocal(instruction.GetStackIndex());
-
-            if (instruction.Type.IsStruct())
-                PushValue(local, instruction.Type);
-            else
-                LoadValue(local, instruction.Type);
-        }
-
-        private static string AddrOf(string expression)
-        {
-            return $"&{expression}";
-        }
-
-        private static MIRType Pointer(MIRType type)
-        {
-            return new(MIRTypeKind.Pointer, type);
+            LoadValue(local, instruction.Type);
         }
 
         private static string GetLocal(int stackindex)
@@ -337,12 +337,6 @@ namespace Mug.Generator.TargetGenerators.C
                 MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString()
             };
         }
-        
-        private void PushValue(string expression, MIRType type)
-        {
-            var reg = MovInVirtualReg(expression, type);
-            LoadValue(reg, type);
-        }
 
         private CValue PopValue()
         {
@@ -363,10 +357,10 @@ namespace Mug.Generator.TargetGenerators.C
             return new(type, name);
         }
 
-        private string DeclareAllocation(MIRType type)
+        private string DeclareAllocation(MIRType type, string attributes = null)
         {
             var result = GetLocal(CurrentFunctionBuilder.Allocations.Count);
-            CurrentFunctionBuilder.Allocations.Add(type);
+            CurrentFunctionBuilder.Allocations.Add((type, attributes));
 
             return result;
         }

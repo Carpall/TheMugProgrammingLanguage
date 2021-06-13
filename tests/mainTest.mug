@@ -1,8 +1,2 @@
-type A {
-  pub a: i32
-}
-
 fn main() {
-  var x = new A { }
-  x.a = 1
 }

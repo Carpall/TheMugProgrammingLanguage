@@ -10,7 +10,7 @@ namespace Mug.Generator.TargetGenerators.C
         public int ParametersCount { get; }
         public string Prototype { get; }
         public List<List<string>> Body { get; } = new();
-        public List<MIRType> Allocations { get; } = new();
+        public List<(MIRType Type, string Attributes)> Allocations { get; } = new();
         public List<string> CurrentBlock => Body[^1];
 
         public CFunctionBuilder(string prototype, int parametersCount)
@@ -24,7 +24,10 @@ namespace Mug.Generator.TargetGenerators.C
             var result = new StringBuilder();
 
             for (int i = 0; i < Allocations.Count; i++)
-                result.AppendLine($"  {Allocations[i]} A{i + ParametersCount};");
+            {
+                var allocation = Allocations[i];
+                result.AppendLine($"  {allocation.Attributes} {allocation.Type} A{i + ParametersCount};");
+            }
 
             for (int i = 0; i < Body.Count; i++)
             {

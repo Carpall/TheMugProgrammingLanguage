@@ -13,7 +13,6 @@ namespace Mug.Generator.IR
     {
         Mutable,
         Unmutable,
-        HiddenBuffer,
     }
 
     public struct MIRAllocation

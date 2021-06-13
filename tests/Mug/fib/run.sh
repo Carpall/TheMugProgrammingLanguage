@@ -1,0 +1,12 @@
+echo "fibgcc:"
+time ./fibgcc.exe
+echo "fibclang:"
+time ./fibclang.exe
+echo "fibmugc:"
+time ./fibmugc.exe
+echo "fibmugllvm:"
+time ./fibmugllvm.exe
+echo "fibnim:"
+time ./fibnim.exe
+echo "fibzig:"
+time ./fibzig.exe
