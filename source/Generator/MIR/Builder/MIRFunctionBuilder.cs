@@ -150,11 +150,6 @@ namespace Mug.Generator.IR.Builder
             return value;
         }
 
-        public void EmitAutoReturn()
-        {
-            EmitReturn(_returnType);
-        }
-
         public void EmitJumpCondition(int thenBlockIndex, int otherwiseBlockIndex)
         {
             AddBlockReferenceToCurrentBlock(thenBlockIndex);
@@ -200,13 +195,7 @@ namespace Mug.Generator.IR.Builder
             EmitInstruction(MIRInstructionKind.Return, type);
         }
 
-        public void EmitOptionalReturnVoid()
-        {
-            if (_returnType.IsVoid() && !EmittedExplicitReturn())
-                EmitReturn(new(MIRTypeKind.Void));
-        }
-
-        private bool EmittedExplicitReturn()
+        public bool EmittedExplicitReturn()
         {
             return _currentBlock.Count > 0 && _currentBlock[^1].Kind is MIRInstructionKind.Return;
         }
@@ -250,6 +239,13 @@ namespace Mug.Generator.IR.Builder
         public MIRInstruction GetInstructionAt(int bodyIndex)
         {
             return _currentBlock[bodyIndex];
+        }
+
+        public void EmitLoadConstantString(string value)
+        {
+            EmitLoadConstantValue(value, MIRType.CString);
+            EmitLoadConstantValue((long)value.Length, new(MIRTypeKind.UInt, 64));
+            EmitCall("$create_str", MIRType.String);
         }
     }
 }

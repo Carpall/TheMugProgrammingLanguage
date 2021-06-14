@@ -59,7 +59,7 @@ namespace Mug.Generator.IR
 
         public override string ToString()
         {
-            return $"{Kind} {Type} ({Value ?? "_"})";
+            return $"{Kind} {Type} {(Value is not null ? $"({Value})" : null)}";
         }
 
         public bool IsIntConstant()

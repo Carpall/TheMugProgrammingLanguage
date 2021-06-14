@@ -43,6 +43,7 @@ using System.Collections.Generic;
 //       - switch statement
 //       - add strip option also for llvm means
 //       - adding enum member with type infer '.member'
+//       - move _currentCycle etc... to CurrentScope
 
 var pathHead = Path.GetFullPath(@"../../../../tests");
 var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest.mug");
@@ -52,11 +53,11 @@ var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-var e = unit.GenerateC(out var ir);
+// var e = unit.GenerateC(out var ir);
 
 // var e = unit.GenerateIR(out var ir);
 
-// var e = unit.GenerateLLVMIR(out var ir);
+var e = unit.GenerateLLVMIR(out var ir);
 
 PrettyPrinter.PrintAlerts(e);
 

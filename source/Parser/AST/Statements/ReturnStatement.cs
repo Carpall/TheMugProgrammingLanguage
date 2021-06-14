@@ -9,7 +9,7 @@ namespace Mug.Parser.AST.Statements
         public ModulePosition Position { get; set; }
         public bool IsVoid()
         {
-            return Body is null;
+            return Body is BadNode;
         }
     }
 }

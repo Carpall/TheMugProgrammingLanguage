@@ -21,6 +21,14 @@ namespace Mug.Generator.IR
         public MIRTypeKind Kind { get; }
         public object BaseType { get; }
 
+        public static MIRType String => new(MIRTypeKind.Struct, new MIRStructure(true, "str", new[]
+        {
+            new MIRType(MIRTypeKind.UInt, 64),
+            CString
+        }));
+
+        public static MIRType CString => new(MIRTypeKind.Pointer, new MIRType(MIRTypeKind.UInt, 8));
+
         public MIRType(MIRTypeKind kind, object basetype = null)
         {
             Kind = kind;

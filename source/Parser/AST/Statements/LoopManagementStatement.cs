@@ -6,7 +6,7 @@ namespace Mug.Parser.AST.Statements
     public class LoopManagementStatement : INode
     {
         public string NodeName => "LoopManagement";
-        public Token Management { get; set; }
+        public TokenKind Kind { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

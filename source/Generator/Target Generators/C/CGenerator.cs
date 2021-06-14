@@ -334,7 +334,8 @@ namespace Mug.Generator.TargetGenerators.C
         {
             return instruction.Type.Kind switch
             {
-                MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString()
+                MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString(),
+                MIRTypeKind.Pointer => $"\"{instruction.Value}\""
             };
         }
 

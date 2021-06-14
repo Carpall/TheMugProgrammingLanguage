@@ -40,7 +40,7 @@ namespace Mug.Generator.IR
             if (Body.Length == 0)
                 body.Append(".empty");
 
-            body.Append(string.Join("\n  ", Body));
+            body.Append(string.Join("\n    ", Body));
 
             return body.ToString();
         }

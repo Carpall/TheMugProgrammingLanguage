@@ -1050,7 +1050,7 @@ namespace Mug.Parser
                 !MatchAdvance(TokenKind.KeyBreak))
                 return false;
 
-            statement = new LoopManagementStatement() { Management = Back, Position = Back.Position };
+            statement = new LoopManagementStatement() { Kind = Back.Kind, Position = Back.Position };
 
             return true;
         }

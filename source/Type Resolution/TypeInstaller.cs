@@ -96,15 +96,15 @@ namespace Mug.TypeResolution
 
         private void DeclareType(TypeStatement type)
         {
-            WarnNameIfIsPrimitiveLike(type.Name, type.Position);
+            ReportNameIfIsPrimitiveLike(type.Name, type.Position);
             CheckType(type.BodyMethods, type.BodyFields, type.Generics, type.Pragmas);
             DeclareSymbol(type.Name, type);
         }
 
-        private void WarnNameIfIsPrimitiveLike(string name, ModulePosition position)
+        private void ReportNameIfIsPrimitiveLike(string name, ModulePosition position)
         {
             if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.DefinedType)
-                Tower.Warn(position, $"Type '{name}' is automaticaly hidden by the builtin type");
+                Tower.Report(position, $"Type '{name}' is automaticaly hidden by the builtin type");
         }
 
         private void DeclareFunction(FunctionStatement func)

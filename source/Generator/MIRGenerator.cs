@@ -32,6 +32,8 @@ namespace Mug.Generator
 
         private Scope CurrentScope = default;
         private (bool IsLeftValue, ModulePosition Position) LeftValueChecker;
+        public int _currentCycleConditionBlockIndex = -1;
+        private int _currentScopeEndBlockIndex = -1;
 
         public MIRGenerator(CompilationTower tower) : base(tower)
         {
@@ -41,16 +43,18 @@ namespace Mug.Generator
         public MIR Generate()
         {
             SetUpGlobals();
+            DeclareBuiltinStructs();
             WalkDeclarations();
             Tower.CheckDiagnostic();
 
-            if (IsMainUnit())
-            {
-                AddToGlobalResources();
-                CheckForConflicts();
-            }
+            CheckForConflicts();
 
             return Module.Build();
+        }
+
+        private void DeclareBuiltinStructs()
+        {
+            Module.DefineStruct(MIRType.String.GetStruct());
         }
 
         private void AddToGlobalResources()
@@ -60,6 +64,11 @@ namespace Mug.Generator
 
         private void CheckForConflicts()
         {
+            if (!IsMainUnit())
+                return;
+
+            AddToGlobalResources();
+
             for (int i = 0; i < Tower.Unit.GlobalResources.Count; i++)
                 CycleDoublyGlobalResources(i, Tower.Unit.GlobalResources[i]);
         }
@@ -142,6 +151,12 @@ namespace Mug.Generator
                     MIRTypeKind.Struct,
                     LowerStruct(type.SolvedType.GetStruct())),
 
+                TypeKind.Pointer => new(
+                    MIRTypeKind.Pointer,
+                    LowerDataType(type.SolvedType.GetBaseElementType())),
+
+                TypeKind.String => MIRType.String,
+
                 _ => ToImplement<MIRType>(kind.ToString(), nameof(LowerDataType))
             };
         }
@@ -202,6 +217,9 @@ namespace Mug.Generator
                 case ForLoopStatement statement:
                     GenerateForLoopStatement(statement);
                     break;
+                case LoopManagementStatement statement:
+                    GenerateLoopManagementStatement(statement);
+                    break;
                 case PostfixOperator statement:
                     GeneratePostfixOperator(statement);
                     break;
@@ -210,6 +228,14 @@ namespace Mug.Generator
                     EvaluateExpressionAsStatement(opaque);
                     break;
             }
+        }
+
+        private void GenerateLoopManagementStatement(LoopManagementStatement statement)
+        {
+            if (_currentCycleConditionBlockIndex == -1)
+                Tower.Report(statement.Position, $"'{statement.Kind}' statement cannot be used outside cycles");
+            else
+                FunctionBuilder.EmitJump(statement.Kind is TokenKind.KeyContinue ? _currentCycleConditionBlockIndex : _currentScopeEndBlockIndex);
         }
 
         private void GeneratePostfixOperator(PostfixOperator statement)
@@ -235,6 +261,7 @@ namespace Mug.Generator
             var conditionBlock = CreateBlock("cond");
             var thenBlock = CreateBlock("body");
             var endBlock = CreateBlock("end");
+            var oldScopeProperties = GetScopePropertiesAndSetNew(conditionBlock.Index, endBlock.Index);
 
             EvaluateForLoopConditionAndGetConditionBlock(statement.LeftExpression, statement.ConditionExpression, conditionBlock, thenBlock, endBlock);
 
@@ -247,6 +274,7 @@ namespace Mug.Generator
             FunctionBuilder.EmitJump(conditionBlock.Index);
 
             SwitchBlock(endBlock);
+            RestoreOldScopeProperties(oldScopeProperties);
         }
 
         private void EvaluateForLoopConditionAndGetConditionBlock(
@@ -292,6 +320,7 @@ namespace Mug.Generator
             var conditionBlock = CreateBlock("cond");
             var then = CreateBlock("body");
             var endBlock = CreateBlock("end");
+            var oldScopeProperties = GetScopePropertiesAndSetNew(conditionBlock.Index, endBlock.Index);
 
             FunctionBuilder.EmitJump(conditionBlock.Index);
 
@@ -306,6 +335,20 @@ namespace Mug.Generator
             FunctionBuilder.EmitJump(conditionBlock.Index);
 
             SwitchBlock(endBlock);
+            RestoreOldScopeProperties(oldScopeProperties);
+        }
+
+        private void RestoreOldScopeProperties((int, int) oldScopeProperties)
+        {
+            (_currentCycleConditionBlockIndex, _currentScopeEndBlockIndex) = oldScopeProperties;
+        }
+
+        private (int, int) GetScopePropertiesAndSetNew(int cycleConditionBlockIndex, int scopeEndBlockIndex)
+        {
+            var old = GetScopeProperties();
+            (_currentCycleConditionBlockIndex, _currentScopeEndBlockIndex) = (cycleConditionBlockIndex, scopeEndBlockIndex);
+
+            return old;
         }
 
         private void GenerateIFStatement(ConditionalStatement statement, bool isLastOfBlock)
@@ -351,6 +394,11 @@ namespace Mug.Generator
                 ContextTypes.Pop();
 
             return type;
+        }
+
+        private (int, int) GetScopeProperties()
+        {
+            return (_currentCycleConditionBlockIndex, _currentScopeEndBlockIndex);
         }
 
         private DataType EvaluateElseNode(ConditionalStatement elseNode, MIRBlock endBlock)
@@ -527,7 +575,7 @@ namespace Mug.Generator
             var contextType = GetFirstIfNotAutoOrSecond(statement.Type, DataType.Undefined);
             ContextTypes.Push(contextType);
 
-            var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type) : statement.Body);
+            var expressiontype = EvaluateExpression(!statement.IsAssigned ? GetDefaultValueOf(statement.Type, statement.Position) : statement.Body);
 
             FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
             var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, statement.IsConst);
@@ -552,10 +600,66 @@ namespace Mug.Generator
                 Tower.Report(statement.Position, "Type notation needed");
         }
 
-        private static INode GetDefaultValueOf(DataType type)
+        private INode GetDefaultValueOf(DataType type, ModulePosition position)
         {
-            CompilationTower.Todo($"implement {nameof(GetDefaultValueOf)}");
-            return new BadNode();
+            switch (type.SolvedType.Kind)
+            {
+                case TypeKind.Undefined
+                or TypeKind.Auto
+                or TypeKind.Void:
+                    return new BadNode(position);
+
+                case TypeKind.Pointer or TypeKind.Unknown:
+                    return error("Uninitialized pointer");
+
+                case TypeKind.Int8:
+                case TypeKind.Int16:
+                case TypeKind.Int32:
+                case TypeKind.Int64:
+                case TypeKind.UInt8:
+                case TypeKind.UInt16:
+                case TypeKind.UInt32:
+                case TypeKind.UInt64:
+                    return token(TokenKind.ConstantDigit, "0");
+
+                case TypeKind.Float32:
+                case TypeKind.Float64:
+                case TypeKind.Float128:
+                    return token(TokenKind.ConstantFloatDigit, "0");
+
+                case TypeKind.Char:
+                    return token(TokenKind.ConstantChar, "\0");
+
+                case TypeKind.Bool:
+                    return token(TokenKind.ConstantBoolean, "false");
+
+                case TypeKind.DefinedType:
+                    return GetDefaultValueOfStruct(type.SolvedType.GetStruct(), position);
+
+                default:
+                    ToImplement<object>("", nameof(GetDefaultValueOf));
+                    return null;
+            }
+
+            INode error(string message)
+            {
+                Tower.Report(position, message);
+                return new BadNode(position);
+            }
+
+            Token token(TokenKind kind, string value)
+            {
+                return new Token(kind, value, position, false);
+            }
+        }
+
+        private static INode GetDefaultValueOfStruct(TypeStatement type, ModulePosition position)
+        {
+            return new TypeAllocationNode
+            {
+                Name = DataType.Solved(SolvedType.Struct(type)),
+                Position = position
+            };
         }
 
         private void FixAndCheckTypes(DataType expected, DataType gottype, ModulePosition position)
@@ -919,6 +1023,10 @@ namespace Mug.Generator
                 case "exit":
                     type = EvaluateCompTimeExit(expression);
                     break;
+                case "name":
+                    WarnWhenStatement();
+                    type = EvaluateCompTimeName(expression);
+                    break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
                     break;
@@ -967,6 +1075,35 @@ namespace Mug.Generator
         private void ReportExpectedValueOfTypeInt(ModulePosition position)
         {
             Tower.Report(position, "Expected a value of type 'int'");
+        }
+
+        private DataType EvaluateCompTimeName(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
+            var value = expression.Parameters.FirstOrDefault();
+
+            if (value is null)
+                return ContextType;
+
+            if (value is not Token referenceName)
+            {
+                Tower.Report(value is not null ? value.Position : expression.Name.Position, "Expected a member's name");
+                return ContextType;
+            }
+
+            var item =
+                Tower.Symbols.GetSymbol<ISymbol>(referenceName.Value, value.Position, "function neither a type") ??
+                new FunctionStatement();
+            
+            EmitLoadConstantString(item.ToString());
+            return DataType.String;
+        }
+
+        private void EmitLoadConstantString(string value)
+        {
+            TryDeclareExternPrototype("$create_str", MIRType.String, MIRType.CString, new MIRType(MIRTypeKind.UInt, 64));
+            FunctionBuilder.EmitLoadConstantString(value);
         }
 
         private DataType EvaluateCompTimeIntCast(CallStatement expression, string name)
@@ -1753,23 +1890,30 @@ namespace Mug.Generator
             return CurrentScope.VirtualMemory.TryGetValue(value, out allocation);
         }
 
-        private DataType EvaluateConstant(Token expression)
+        private DataType EvaluateConstant(Token constant)
         {
             DataType result;
             object value;
 
-            switch (expression.Kind)
+            switch (constant.Kind)
             {
                 case TokenKind.ConstantDigit:
                     result = CoercedOr(DataType.Int32);
-                    value = long.Parse(expression.Value);
+                    value = long.Parse(constant.Value);
                     break;
                 case TokenKind.ConstantBoolean:
                     result = DataType.Bool;
-                    value = bool.Parse(expression.Value);
+                    value = bool.Parse(constant.Value);
                     break;
+                case TokenKind.ConstantChar:
+                    result = DataType.Char;
+                    value = (long)constant.Value.First();
+                    break;
+                case TokenKind.ConstantString:
+                    EmitLoadConstantString(constant.Value);
+                    return DataType.String;
                 default:
-                    ToImplement<object>(expression.Kind.ToString(), nameof(EvaluateConstant));
+                    ToImplement<object>(constant.Kind.ToString(), nameof(EvaluateConstant));
                     result = null;
                     value = null;
                     break;
@@ -1818,10 +1962,21 @@ namespace Mug.Generator
             ContextTypes.Push(func.ReturnType);
             AllocateParameters(func.ParameterList);
             GenerateBlock(func.Body);
-            FunctionBuilder.EmitOptionalReturnVoid();
+            EmitOptionalReturn();
             ContextTypes.Pop();
 
             Module.DefineFunction(FunctionBuilder.Build());
+        }
+
+        public void EmitOptionalReturn()
+        {
+            if (FunctionBuilder.EmittedExplicitReturn())
+                return;
+
+            if (!CurrentFunction.ReturnType.SolvedType.IsVoid())
+                EvaluateExpression(GetDefaultValueOf(CurrentFunction.ReturnType, CurrentFunction.Position));
+
+            FunctionBuilder.EmitReturn(LowerDataType(CurrentFunction.ReturnType));
         }
 
         private void GenerateFunctionPrototype(FunctionStatement func)

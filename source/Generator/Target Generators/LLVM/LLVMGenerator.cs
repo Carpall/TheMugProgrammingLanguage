@@ -63,6 +63,7 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 MIRTypeKind.Int or MIRTypeKind.UInt => LLType.CreateInt((uint)type.GetIntBitSize()),
                 MIRTypeKind.Void => LLType.Void,
                 MIRTypeKind.Struct => LowerStruct(type.GetStruct()),
+                MIRTypeKind.Pointer => LLType.CreatePointer(LowerDataType(type.GetPointerBaseType()), 0),
                 _ => ToImplement<LLType>(type.Kind.ToString(), nameof(LowerDataType))
             };
         }
@@ -440,8 +441,14 @@ namespace Mug.Generator.TargetGenerators.LLVM
             {
                 MIRTypeKind.Int
                 or MIRTypeKind.UInt => CreateLLConstInt(lltype, instruction.ConstantIntValue),
+                MIRTypeKind.Pointer => CreateLLConstCString(instruction.GetName()),
                 _ => ToImplement<LLValue>(instruction.Type.Kind.ToString(), nameof(EmitLoadConstant))
             });
+        }
+
+        private LLValue CreateLLConstCString(string value)
+        {
+            return CurrentFunctionBuilder.BuildGlobalStringPtr(value);
         }
 
         private static LLValue CreateLLConstInt(LLType intType, long value)
