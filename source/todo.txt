@@ -1,9 +1,43 @@
-todo: -
-done: +
+NEW TODOS
+
+- remove default values in for loop and other
+- add support for user defined operators (only for non-int based values)
+- add path checker
+- add pragmas' chekers
+- add defer statement
+- add doc comments for pub members
+- fix bugs with eof
+- add tuple types and 'new (,,)' for initialize them
+- fix tests
+- write tests for other compiler components
+- fix crash when error's position is on different lines
+- add implicit new operator with type inference 'new { }' and '[]', with context type
+- fix '//' at the start of the line is not recognized as comment by the lexer
+- consider changing generic parameters from '<>' to '[]'
+- add check for uninitialized memory
+- add optional parameters
+- add varargs
+- add arrays
+- change is into a new ast node, not boolean
+- reimplement generics in function calls in the parser, temporary disabled due to other ideas about their syntax design
+- add compiler symbols and use them to get target int size
+- add function prototypes
+- fix constant int folding '2 * 3 * 3'
+- fix constant bool folding '!true'
+- add condition folding
+- add import global statement
+- design in compilation flags a way not to update the help message
+- foreach
+- attributes for function prototypes in mirfunctionprototype 'extern, noreturn'
+- switch statement
+- add strip option also for llvm means
+- adding enum member with type infer '.member'
+- move _currentCycle etc... to CurrentScope
+
+OLD TODOS
 
 CHECK TODOS
 
-+ match
 - 'func some() !sometype', this will mean that the function must be catched also if there is no real error to catch -> 'some() catch { return }'
 - calls that return an enum error can be also not catched if in return expression, where the return's scope owner is a function that returns the same enum error
 - reference printing (ex. the function where there is the error)
@@ -12,7 +46,6 @@ CHECK TODOS
 - enum can be negatives
 - fix lexer tests
 - add support for multiline errors
-+ add constant bitness coercion in function's calls
 - make built in functions under 'funcname<>!()' pattern
 - remove the 'isbuiltinfunction' in 'callfunction' and add a pragma 'builtin' only for macros
 - write a path checker to make sure all paths of a scope returns a value, also with hidden subscope buffers
@@ -22,12 +55,10 @@ CHECK TODOS
 - implement 'dyn' type
 - add a raw pointer 'i32*', manged pointer '*i32'
 - to fix references (at the moment they works as left values in assignment but not in expression because there's not coercion system, it is disabled since the coercion bugs calls)
-+ reuse the pragmas when new system table is finished
 - add i16
 - add unsigned integers
 - fix import
 - add operator implementation for unary
-+ fix as operator
 - add tuples
 - fix modifier with generic items
 - remove 'declare' directive
@@ -40,8 +71,6 @@ CHECK TODOS
 - add variants -> 'type Var = (A | B | C)'
 - add an ambiguity finder in 'callfunction' in local generator -> 'functionsmatched = new list()' instead of 'return function' -> 'func..ed.add(function)', 'if func..ed.count > 1 report()'
 - add function pointer
-+ globalize paths merging ast
-+ check characters in source when reading from a file created by micro
 - add 'in function ..' in errors
 - alloc arrays on the stack instead of the heap
 - fix <null>/10
