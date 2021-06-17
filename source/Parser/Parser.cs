@@ -239,7 +239,7 @@ namespace Mug.Parser
             if (!isFirst)
                 Expect("", TokenKind.Comma);
 
-            var isPassedAsReference = MatchAdvance(TokenKind.BooleanAND);
+            var isPassedAsReference = MatchAdvance(TokenKind.Apersand);
             var name = Expect("Expected parameter's name", TokenKind.Identifier);
 
             if (!MatchAdvance(TokenKind.Colon))
@@ -534,7 +534,7 @@ namespace Mug.Parser
                 MatchAdvance(TokenKind.Minus, out prefix)             ||
                 MatchAdvance(TokenKind.Plus, out prefix)              ||
                 MatchAdvance(TokenKind.Negation, out prefix)          ||
-                MatchAdvance(TokenKind.BooleanAND, out prefix)        ||
+                MatchAdvance(TokenKind.Apersand, out prefix)        ||
                 MatchAdvance(TokenKind.Star, out prefix)              ||
                 MatchAdvance(TokenKind.OperatorIncrement, out prefix) ||
                 MatchAdvance(TokenKind.OperatorDecrement, out prefix);

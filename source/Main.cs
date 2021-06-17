@@ -18,16 +18,25 @@ var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-// var e = unit.GenerateC(out var ir);
+string ir;
+CompilationException e;
 
-var e = unit.GenerateIR(out var ir);
+Console.Write("(C | IR | LLVMIR): ");
+var r = Console.ReadKey().KeyChar;
+Console.WriteLine();
 
-// var e = unit.GenerateLLVMIR(out var ir);
+switch (r)
+{
+    case 'c': e = unit.GenerateC(out ir); break;
+    default:
+    case 'i': e = unit.GenerateIR(out var mir); ir = mir.ToString(); break;
+    case 'l': e = unit.GenerateLLVMIR(out var llvmir); ir = llvmir.ToString(); break;
+}
 
 PrettyPrinter.PrintAlerts(e);
 
-if (!unit.HasErrors() /*&& ir is not null*/)
-    Console.WriteLine(ir.ToString());
+if (!unit.HasErrors())
+    Console.WriteLine(ir);
 
 #else
 

@@ -211,6 +211,24 @@ namespace Mug.TypeResolution
             return null;
         }
 
+        private void DeclareEnum(EnumStatement statement)
+        {
+            ReportNameIfIsPrimitiveLike(statement.Name, statement.Position);
+            CheckEnum(statement.BaseType, statement.Pragmas, statement.Position);
+            DeclareSymbol(statement.Name, statement);
+        }
+
+        private void CheckEnum(DataType baseType, Pragmas pragmas, ModulePosition position)
+        {
+            if (!IsValidEnumBaseType(baseType.SolvedType.Kind))
+                Tower.Report(position, $"'{baseType}' is not a valid enum's base type");
+        }
+
+        private static bool IsValidEnumBaseType(TypeKind kind)
+        {
+            return kind >= 0 && kind <= TypeKind.Err;
+        }
+
         private void RecognizeGlobalStatement(INode global)
         {
             switch (global)
@@ -220,6 +238,9 @@ namespace Mug.TypeResolution
                     break;
                 case FunctionStatement statement:
                     DeclareFunction(statement);
+                    break;
+                case EnumStatement statement:
+                    DeclareEnum(statement);
                     break;
                 case ImportDirective directive:
                     ProcessImport(directive);

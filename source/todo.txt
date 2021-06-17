@@ -1,5 +1,6 @@
 NEW TODOS
 
+- fix '*x = 1'
 - remove default values in for loop and other
 - add support for user defined operators (only for non-int based values)
 - add path checker
@@ -35,8 +36,6 @@ NEW TODOS
 - move _currentCycle etc... to CurrentScope
 
 OLD TODOS
-
-CHECK TODOS
 
 - 'func some() !sometype', this will mean that the function must be catched also if there is no real error to catch -> 'some() catch { return }'
 - calls that return an enum error can be also not catched if in return expression, where the return's scope owner is a function that returns the same enum error

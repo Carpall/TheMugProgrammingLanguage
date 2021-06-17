@@ -55,7 +55,12 @@ namespace Mug.TypeSystem
 
         public bool IsArray()
         {
-            return Kind == TypeKind.Array;
+            return Kind is TypeKind.Array;
+        }
+
+        public bool IsStringOrArray()
+        {
+            return IsArray() || IsString();
         }
 
         public (DataType ErrorType, DataType SuccessType) GetEnumError()
@@ -88,7 +93,8 @@ namespace Mug.TypeSystem
         {
             return
                 Kind is TypeKind.GenericDefinedType
-                or TypeKind.DefinedType;
+                or TypeKind.DefinedType
+                or TypeKind.Array;
         }
 
         public bool IsPointer()
@@ -135,6 +141,11 @@ namespace Mug.TypeSystem
                 or TypeKind.UInt16
                 or TypeKind.UInt32
                 or TypeKind.UInt64;
+        }
+
+        public bool IsString()
+        {
+            return Kind is TypeKind.String;
         }
     }
 }

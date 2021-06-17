@@ -1,11 +1,12 @@
 ﻿using Mug.Compilation;
+using Mug.Symbols;
 using Mug.Tokenizer;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 
 namespace Mug.Parser.AST.Statements
 {
-    public class EnumStatement : INode
+    public class EnumStatement : INode, ISymbol
     {
         public string NodeName => "Enum";
         public Pragmas Pragmas { get; set; }

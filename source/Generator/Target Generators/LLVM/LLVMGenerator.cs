@@ -213,10 +213,36 @@ namespace Mug.Generator.TargetGenerators.LLVM
                 case MIRInstructionKind.StoreField:           EmitStoreField(instruction);          break;
                 case MIRInstructionKind.StoreGlobal:          EmitStoreGlobal(instruction);         break;
                 case MIRInstructionKind.CastIntToInt:         EmitCastIntToInt(instruction);        break;
+                case MIRInstructionKind.LoadLocalAddress:     EmitLoadLocalAddress(instruction);    break;
+                case MIRInstructionKind.LoadFieldAddress:     EmitLoadFieldAddress(instruction);    break;
+                case MIRInstructionKind.CastPointerToPointer: EmitCastPointerToPointer(instruction); break;
+                case MIRInstructionKind.StorePointer:         EmitStorePointer(); break;
                 default:
                     ToImplement<object>(instruction.Kind.ToString(), nameof(EmitLoweredInstruction));
                     break;
             }
+        }
+
+        private void EmitStorePointer()
+        {
+            var value = StackValuesPop();
+            var instance = StackValuesPop();
+            CurrentFunctionBuilder.BuildStore(value, instance);
+        }
+
+        private void EmitCastPointerToPointer(MIRInstruction instruction)
+        {
+            StackValuesPush(CurrentFunctionBuilder.BuildBitCast(StackValuesPop(), LowerDataType(instruction.Type)));
+        }
+
+        private void EmitLoadFieldAddress(MIRInstruction instruction)
+        {
+            StackValuesPush(CurrentFunctionBuilder.BuildStructGEP(StackValuesPop(), (uint)instruction.GetInt()));
+        }
+
+        private void EmitLoadLocalAddress(MIRInstruction instruction)
+        {
+            StackValuesPush(Allocations[instruction.GetInt()].Value);
         }
 
         private void EmitCastIntToInt(MIRInstruction instruction)

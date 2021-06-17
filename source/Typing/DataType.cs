@@ -33,6 +33,13 @@ namespace Mug.TypeSystem
         internal static DataType Char => Primitive(TypeKind.Char);
         internal static DataType Float32 => Primitive(TypeKind.Float32);
         internal static DataType Undefined => Primitive(TypeKind.Undefined);
+        internal static DataType UInt64 => Primitive(TypeKind.UInt64);
+        internal static DataType UInt8 => Primitive(TypeKind.UInt8);
+
+        internal static DataType Pointer(DataType type)
+        {
+            return Solved(TypeSystem.SolvedType.WithBase(TypeKind.Pointer, type));
+        }
 
         internal static DataType Primitive(TypeKind typekind)
         {
@@ -58,6 +65,11 @@ namespace Mug.TypeSystem
         public override string ToString()
         {
             return IsSolved ? SolvedType.ToString() : UnsolvedType.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is DataType type && SolvedType.Equals(type.SolvedType);
         }
     }
 }

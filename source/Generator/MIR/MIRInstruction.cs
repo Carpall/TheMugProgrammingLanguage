@@ -20,6 +20,8 @@ namespace Mug.Generator.IR
         StoreLocal,
         LoadField,
         StoreField,
+        LoadValueFromPointer,
+        StorePointer,
         Div = '/',
         Add = '+',
         Sub = '-',
@@ -34,10 +36,12 @@ namespace Mug.Generator.IR
         Geq = -20,
         Greater = '>',
         Less = '<',
-        LoadValueFromPointer = 63,
         Neg = 64,
         StoreGlobal = 66,
         CastIntToInt = 67,
+        LoadLocalAddress,
+        LoadFieldAddress = LoadLocalAddress + 2,
+        CastPointerToPointer
     }
 
     public struct MIRInstruction

@@ -6,9 +6,6 @@ namespace Mug.TypeSystem
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TypeKind
     {
-        Undefined,
-        Auto,
-        Pointer,
         String,
         Int8 = 4,
         Int16 = 8,
@@ -23,13 +20,15 @@ namespace Mug.TypeSystem
         Float128,
         Char,
         Bool,
+        Err,
+        Undefined,
+        Auto,
+        Pointer,
         Array,
         DefinedType,
         GenericDefinedType,
         Void,
-        Unknown,
         EnumError,
-        Err,
         Option,
         Tuple
     }

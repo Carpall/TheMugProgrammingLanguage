@@ -68,7 +68,6 @@ namespace Mug.TypeSystem
                 "u32" => TypeKind.UInt32,
                 "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
-                "unk" => TypeKind.Unknown,
                 _ => isInEnum && token.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
             };
         }
@@ -136,7 +135,6 @@ namespace Mug.TypeSystem
                 TypeKind.UInt16 => "u16",
                 TypeKind.UInt32 => "u32",
                 TypeKind.UInt64 => "u64",
-                TypeKind.Unknown => "unk",
                 TypeKind.Pointer => $"*{basetype}",
                 TypeKind.String => "str",
                 TypeKind.Void => "void",

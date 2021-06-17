@@ -1,0 +1,36 @@
+type TokenPosition {
+  source: *str,
+  start: usize,
+  end: usize
+
+  pub fn from(source: *str, start, end: usize): TokenPosition {
+    new { source: source, start: start, end: end }
+  }
+
+  pub fn source(self: TokenPosition): str { *self.source }
+  pub fn start(self: TokenPosition): usize { self.start }
+  pub fn end(self: TokenPosition): usize { self.end }
+}
+
+enum TokenKind {
+  eof,
+  bad
+}
+
+type Token {
+  kind: TokenKind,
+  value: str,
+  pos: TokenPosition
+
+  pub fn bad(value: chr, pos: TokenPosition) {
+    from(.bad, str!(value), pos)
+  }
+
+  pub fn from(kind: TokenKind, value: str, pos: TokenPosition): Token {
+    new { kind: kind, value: value, pos: pos }
+  }
+
+  pub fn kind(self: Token): TokenKind { self.kind }
+  pub fn value(self: Token): str { self.value }
+  pub fn pos(self: Token): TokenPosition { self.pos }
+}

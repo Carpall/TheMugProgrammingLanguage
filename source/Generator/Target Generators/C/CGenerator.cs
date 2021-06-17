@@ -121,11 +121,42 @@ namespace Mug.Generator.TargetGenerators.C
                 case MIRInstructionKind.LoadField: EmitLoadField(instruction); break;
                 case MIRInstructionKind.StoreField: EmitStoreField(instruction); break;
                 case MIRInstructionKind.StoreGlobal: EmitStoreGlobal(instruction); break;
-                case MIRInstructionKind.CastIntToInt: break;
+                case MIRInstructionKind.CastIntToInt: EmitCast(instruction); break;
+                case MIRInstructionKind.LoadLocalAddress: EmitLoadLocalAddress(instruction); break;
+                case MIRInstructionKind.LoadFieldAddress: EmitLoadFieldAddress(instruction); break;
+                case MIRInstructionKind.CastPointerToPointer: EmitCast(instruction); break;
+                case MIRInstructionKind.StorePointer: EmitStorePointer(); break;
                 default:
                     CompilationTower.Todo($"implement {instruction.Kind} in {nameof(EmitLoweredInstruction)}");
                     break;
             }
+        }
+
+        private void EmitStorePointer()
+        {
+            var value = PopValue().Value;
+            var pointer = PopValue().Value;
+            EmitStatement($"*{pointer} =", value);
+        }
+
+        private void EmitCast(MIRInstruction instruction)
+        {
+            LoadValue($"({instruction.Type}){PopValue()}", instruction.Type);
+        }
+
+        private void EmitLoadFieldAddress(MIRInstruction instruction)
+        {
+            EmitLoadField(instruction);
+        }
+
+        private void EmitLoadLocalAddress(MIRInstruction instruction)
+        {
+            LoadValue(GEP(GetLocal(instruction.GetStackIndex())), instruction.Type);
+        }
+
+        private static string GEP(string expression)
+        {
+            return $"&{expression}";
         }
 
         private void EmitStoreGlobal(MIRInstruction instruction)
@@ -222,9 +253,14 @@ namespace Mug.Generator.TargetGenerators.C
             var call = BuildCallExpression(instruction.GetName());
 
             if (isNotVoid)
-                LoadValue(call, instruction.Type);
+                LoadInVirtualReg(call, instruction.Type);
             else
                 EmitStatement(call);
+        }
+
+        private void LoadInVirtualReg(string expression, MIRType type)
+        {
+            LoadValue(MovInVirtualReg(expression, type), type);
         }
 
         private string BuildCallExpression(string name)

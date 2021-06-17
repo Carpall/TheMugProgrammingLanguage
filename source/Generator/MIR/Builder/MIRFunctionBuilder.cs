@@ -247,5 +247,26 @@ namespace Mug.Generator.IR.Builder
             EmitLoadConstantValue((long)value.Length, new(MIRTypeKind.UInt, 64));
             EmitCall("$create_str", MIRType.String);
         }
+
+        public MIRInstruction[] PopUntil(int first, int last)
+        {
+            var len = last - first;
+            var result = new MIRInstruction[len];
+
+            while (len-- >0)
+                result[len] = PopLastInstruction();
+                    
+            return result;
+        }
+
+        public void EmitCastPointerToPointer(MIRType type)
+        {
+            EmitInstruction(MIRInstructionKind.CastPointerToPointer, type);
+        }
+
+        public void EmitStorePointer()
+        {
+            EmitInstruction(MIRInstructionKind.StorePointer);
+        }
     }
 }
