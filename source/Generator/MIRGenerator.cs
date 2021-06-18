@@ -56,6 +56,7 @@ namespace Mug.Generator
         private void DeclareBuiltinStructs()
         {
             Module.DefineStruct(MIRType.String.GetStruct());
+            Module.DefineStruct(MIRType.Option.GetStruct());
         }
 
         private void AddToGlobalResources()
@@ -157,6 +158,8 @@ namespace Mug.Generator
                     LowerDataType(type.SolvedType.GetBaseElementType())),
 
                 TypeKind.String => MIRType.String,
+
+                TypeKind.Option => MIRType.Option,
 
                 _ => ToImplement<MIRType>(kind.ToString(), nameof(LowerDataType))
             };
@@ -519,7 +522,7 @@ namespace Mug.Generator
 
             FunctionBuilder.EmitInstruction(firstInstruction);
 
-            if (!firstInstruction.Equals(lastInstruction))
+            if (!firstInstruction.Equals(lastInstruction) && firstInstruction.Kind is not MIRInstructionKind.StorePointer)
                 FunctionBuilder.EmitInstruction(lastInstruction);
         }
 
@@ -1095,6 +1098,14 @@ namespace Mug.Generator
                 case "drop":
                     type = EvaluateBuiltInDrop(expression);
                     break;
+                case "unbox":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInUnbox(expression);
+                    break;
+                case "box":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInBox(expression);
+                    break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
                     break;
@@ -1107,6 +1118,82 @@ namespace Mug.Generator
                 if (isStatement)
                     Tower.Warn(expression.Position, "Useless call to builtin function here");
             }
+        }
+
+        private DataType EvaluateBuiltInUnbox(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
+            var value = expression.Parameters.FirstOrDefault();
+            if (value is null)
+                return ContextType;
+
+            var valuetype = EvaluateExpression(value);
+            if (valuetype.SolvedType.Kind is not TypeKind.Option)
+            {
+                Tower.Report(value.Position, $"Expected option");
+                return ContextType;
+            }
+            var boxtype = valuetype.SolvedType.GetBaseElementType();
+            var loweredBoxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(boxtype));
+
+            FunctionBuilder.EmitLoadField(1, MIRType.VoidPointer);
+            FunctionBuilder.EmitCastPointerToPointer(loweredBoxtype);
+            FunctionBuilder.EmitLoadValueFromPointer();
+
+            return boxtype;
+        }
+
+        private DataType EvaluateBuiltInBox(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
+            var value = expression.Parameters.FirstOrDefault();
+            var generic = expression.Generics.FirstOrDefault();
+            if (value is null)
+                return ContextType;
+
+            FunctionBuilder.EmitLoadZeroinitializedStruct(MIRType.Option);
+
+            ContextTypes.Push(generic ?? DataType.Undefined);
+            var valuetype = EvaluateNodeCallBuiltIn(LowerBoxToMallocCall(value), false).SolvedType.GetBaseElementType();
+            ContextTypes.Pop();
+
+            var genericType = generic ?? valuetype;
+            var tagtype = new MIRType(MIRTypeKind.UInt, 1);
+
+            FixAndCheckTypes(genericType, valuetype, value.Position);
+            EmitBox(valuetype, tagtype);
+
+            return DataType.Option(valuetype);
+        }
+
+        private void EmitBox(DataType valuetype, MIRType tagtype)
+        {
+            PointerCastIFNeeded(valuetype);
+            FunctionBuilder.EmitStoreField(1, MIRType.VoidPointer);
+            FunctionBuilder.EmitLoadConstantValue(0ul, tagtype);
+            FunctionBuilder.EmitStoreField(0, tagtype);
+        }
+
+        private void PointerCastIFNeeded(DataType valuetype)
+        {
+            if (valuetype.SolvedType.Kind is not TypeKind.UInt8)
+                FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
+        }
+
+        private static CallStatement LowerBoxToMallocCall(INode value)
+        {
+            var call = new CallStatement
+            {
+                IsBuiltIn = true,
+                Name = new Token(TokenKind.Identifier, "alloc", value.Position, false),
+                Position = value.Position
+            };
+
+            call.Parameters.Add(value);
+
+            return call;
         }
 
         private DataType EvaluateBuiltInDrop(CallStatement expression)
@@ -1180,8 +1267,7 @@ namespace Mug.Generator
             FunctionBuilder.EmitCall("malloc", loweredReturnType);
             FunctionBuilder.MoveLastInstructionTo(first++);
 
-            PointerCastIFNeeded(loweredResult, loweredReturnType);
-            FunctionBuilder.MoveLastInstructionTo(first++);
+            PointerCastIFNeeded(loweredResult, loweredReturnType, ref first);
             FunctionBuilder.EmitDupplicate();
             FunctionBuilder.MoveLastInstructionTo(first);
 
@@ -1196,10 +1282,13 @@ namespace Mug.Generator
             return expressionType;
         }
 
-        private void PointerCastIFNeeded(MIRType loweredResult, MIRType loweredReturnType)
+        private void PointerCastIFNeeded(MIRType loweredResult, MIRType loweredReturnType, ref int first)
         {
             if (!loweredResult.Equals(loweredReturnType))
+            {
                 FunctionBuilder.EmitCastPointerToPointer(loweredResult);
+                FunctionBuilder.MoveLastInstructionTo(first++);
+            }
         }
 
         private void TryDeclareExternMalloc(out MIRType loweredReturnType, out MIRType loweredParameterType)
@@ -1818,14 +1907,14 @@ namespace Mug.Generator
 
         private DataType EvaluateMemberNode(MemberNode expression)
         {
-            return
-                expression.Base is Token { Kind: TokenKind.Identifier } expressionBase
-                && !GetLocalVariable(expressionBase.Value, out _) ?
-                    EvaluateStaticMemberNode(expressionBase.Value, expression) :
-                    EvaluateInstanceMemberNode(expression);
+            if (expression.Base is Token { Kind: TokenKind.Identifier } expressionBase
+                && !GetLocalVariable(expressionBase.Value, out _))
+                Tower.Report(expressionBase.Position, $"Undeclared local variable '{expressionBase.Value}'");
+
+            return EvaluateInstanceMemberNode(expression);
         }
 
-        private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
+        /*private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
         {
             var symbols = GetImportedModule(baseValue, expression.Base.Position);
             if (symbols is null)
@@ -1833,8 +1922,8 @@ namespace Mug.Generator
 
             CompilationTower.Todo($"implement {nameof(EvaluateStaticMemberNode)}");
             return default;
-        }
-
+        }*/
+/*
         private SymbolTable GetImportedModule(string moduleName, ModulePosition position)
         {
             var response = Tower.Symbols.ImportedModules.TryGetValue(moduleName, out var symbols);
@@ -1842,7 +1931,7 @@ namespace Mug.Generator
                 Tower.Report(position, $"No module '{moduleName}' was imported");
 
             return symbols;
-        }
+        }*/
 
         private DataType EvaluateInstanceMemberNode(MemberNode expression)
         {
@@ -1863,9 +1952,32 @@ namespace Mug.Generator
         {
             if (baseType.SolvedType.IsStringOrArray())
                 return EvaluateArrayDotAccessOperator(expression.Member, baseType);
+            if (baseType.SolvedType.IsPointer())
+                return EvaluatePointerDotAccessOperator(baseType, expression);
 
-            Tower.Report(expression.Base.Position, $"Type '{baseType}' is not accessible via operator '.'");
+            return NotAccessibleViaDotOperator(baseType, expression.Base.Position);
+        }
+
+        private DataType NotAccessibleViaDotOperator(DataType type, ModulePosition position)
+        {
+            Tower.Report(position, $"Type '{type}' is not accessible via operator '.'");
             return ContextType;
+        }
+
+        private DataType EvaluatePointerDotAccessOperator(DataType baseType, MemberNode expression)
+        {
+            FunctionBuilder.EmitLoadValueFromPointer();
+
+            var pointerBaseType = baseType.SolvedType.GetBaseElementType();
+
+            if (!pointerBaseType.SolvedType.IsStruct())
+                return NotAccessibleViaDotOperator(pointerBaseType, expression.Base.Position);
+
+            var structure = pointerBaseType.SolvedType.GetStruct();
+            var fieldType = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
+            FunctionBuilder.EmitLoadField(index, LowerDataType(fieldType));
+
+            return fieldType;
         }
 
         private DataType EvaluateArrayDotAccessOperator(Token member, DataType type)
@@ -2254,10 +2366,7 @@ namespace Mug.Generator
             TypeStatement fieldStructType)
         {
             if (illegalTypes.Contains(fieldType.ToString()))
-            {
-                Tower.Report(type.Position, "Recursive type");
-                Tower.Report(field.Type.Position, $"Use '?{fieldType}' instead");
-            }
+                Tower.Throw(field.Type.Position, $"Recursive type, use '?{fieldType}' instead");
             else
                 CheckRecursiveType(fieldStructType, illegalTypes);
         }

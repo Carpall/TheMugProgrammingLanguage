@@ -36,6 +36,11 @@ namespace Mug.TypeSystem
         internal static DataType UInt64 => Primitive(TypeKind.UInt64);
         internal static DataType UInt8 => Primitive(TypeKind.UInt8);
 
+        internal static DataType Option(DataType type)
+        {
+            return Solved(TypeSystem.SolvedType.WithBase(TypeKind.Option, type));
+        }
+
         internal static DataType Pointer(DataType type)
         {
             return Solved(TypeSystem.SolvedType.WithBase(TypeKind.Pointer, type));

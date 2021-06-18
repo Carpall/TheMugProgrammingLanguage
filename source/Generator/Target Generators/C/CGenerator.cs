@@ -136,12 +136,12 @@ namespace Mug.Generator.TargetGenerators.C
         {
             var value = PopValue().Value;
             var pointer = PopValue().Value;
-            EmitStatement($"*{pointer} =", value);
+            EmitStatement($"*({pointer}) =", value);
         }
 
         private void EmitCast(MIRInstruction instruction)
         {
-            LoadValue($"({instruction.Type}){PopValue()}", instruction.Type);
+            LoadValue($"({instruction.Type})({PopValue()})", instruction.Type);
         }
 
         private void EmitLoadFieldAddress(MIRInstruction instruction)
@@ -156,7 +156,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private static string GEP(string expression)
         {
-            return $"&{expression}";
+            return $"&({expression})";
         }
 
         private void EmitStoreGlobal(MIRInstruction instruction)
@@ -525,7 +525,8 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void LowerStructure(MIRStructure structure)
         {
-            var structureBuilder = new CStructureBuilder($"struct {structure.Name} {(structure.IsPacked ? "__attribute__((__packed__))" : "")}");
+            // {(structure.IsPacked ? "__attribute__((__packed__))" : "")}
+            var structureBuilder = new CStructureBuilder($"struct {structure.Name}");
             for (int i = 0; i < structure.Body.Length; i++)
                 structureBuilder.Body.Add($"    {structure.Body[i]} F{i};");
 

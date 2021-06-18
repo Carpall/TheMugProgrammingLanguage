@@ -33,6 +33,9 @@ namespace Mug.Generator.IR.Builder
             _parameterTypes = functionBuilder._parameterTypes;
             _body = new(functionBuilder._body);
             _allocations = new(functionBuilder._allocations);
+            _currentBlock = functionBuilder._currentBlock;
+            _currentBlockIndex = functionBuilder._currentBlockIndex;
+            _currentBlockIsTerminated = functionBuilder._currentBlockIsTerminated;
         }
 
         public MIRFunction Build()

@@ -1,6 +1,5 @@
 NEW TODOS
 
-- fix '*x = 1'
 - remove default values in for loop and other
 - add support for user defined operators (only for non-int based values)
 - add path checker
@@ -34,6 +33,7 @@ NEW TODOS
 - add strip option also for llvm means
 - adding enum member with type infer '.member'
 - move _currentCycle etc... to CurrentScope
+- fix '(*x).x = 1'
 
 OLD TODOS
 

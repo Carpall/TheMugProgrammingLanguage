@@ -1,4 +1,5 @@
 ﻿using Mug.Parser.AST.Statements;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +22,21 @@ namespace Mug.Generator.IR
         public MIRTypeKind Kind { get; }
         public object BaseType { get; }
 
-        public static MIRType String => new(MIRTypeKind.Struct, new MIRStructure(true, "str", new[]
+        internal static MIRType String => new(MIRTypeKind.Struct, new MIRStructure(true, "str", new[]
         {
             new MIRType(MIRTypeKind.UInt, 64),
             CString
         }));
 
-        public static MIRType CString => new(MIRTypeKind.Pointer, new MIRType(MIRTypeKind.UInt, 8));
+        internal static MIRType CString => VoidPointer;
+
+        internal static MIRType Option => new(MIRTypeKind.Struct, new MIRStructure(true, $"$opt", new[]
+        {
+            new MIRType(MIRTypeKind.UInt, 1),
+            VoidPointer
+        }));
+
+        internal static MIRType VoidPointer => new(MIRTypeKind.Pointer, new MIRType(MIRTypeKind.UInt, 8));
 
         public MIRType(MIRTypeKind kind, object basetype = null)
         {
