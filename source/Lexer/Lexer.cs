@@ -481,6 +481,11 @@ namespace Mug.Tokenizer
             CurrentIndex--;
         }
 
+        private static bool IsNone(string value)
+        {
+            return value == "none";
+        }
+
         private void CollectHomogeneousWord()
         {
             do

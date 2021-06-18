@@ -467,9 +467,17 @@ namespace Mug.Generator.TargetGenerators.LLVM
             {
                 MIRTypeKind.Int
                 or MIRTypeKind.UInt => CreateLLConstInt(lltype, instruction.ConstantIntValue),
-                MIRTypeKind.Pointer => CreateLLConstCString(instruction.GetName()),
+                MIRTypeKind.Pointer => MIRConstantPointerToLLVMConst(instruction),
                 _ => ToImplement<LLValue>(instruction.Type.Kind.ToString(), nameof(EmitLoadConstant))
             });
+        }
+
+        private LLValue MIRConstantPointerToLLVMConst(MIRInstruction instruction)
+        {
+            return
+                instruction.Value is 0L ?
+                    LLValue.CreateConstNull(LowerDataType(instruction.Type)) :
+                    CreateLLConstCString(instruction.GetName());
         }
 
         private LLValue CreateLLConstCString(string value)

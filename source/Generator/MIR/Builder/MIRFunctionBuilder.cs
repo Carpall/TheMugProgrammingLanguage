@@ -271,5 +271,10 @@ namespace Mug.Generator.IR.Builder
         {
             EmitInstruction(MIRInstructionKind.StorePointer);
         }
+
+        public void EmitLoadNull()
+        {
+            EmitLoadConstantValue(0L, MIRType.VoidPointer);
+        }
     }
 }

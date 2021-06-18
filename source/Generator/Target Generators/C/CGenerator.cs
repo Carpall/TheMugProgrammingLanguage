@@ -371,8 +371,16 @@ namespace Mug.Generator.TargetGenerators.C
             return instruction.Type.Kind switch
             {
                 MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString(),
-                MIRTypeKind.Pointer => $"\"{instruction.Value}\""
+                MIRTypeKind.Pointer => MIRPointerConstantToCConstant(instruction)
             };
+        }
+
+        private static string MIRPointerConstantToCConstant(MIRInstruction instruction)
+        {
+            return
+                instruction.Value is 0L ?
+                    "0" :
+                    $"\"{instruction.Value}\"";
         }
 
         private CValue PopValue()

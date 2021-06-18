@@ -2,8 +2,7 @@ type A {
   pub a: ?A
 }
 
-fn a(a: *A) {
-  const x = box|i32|!(1)/*.a*/
+fn a() {
 }
 
 fn main() {

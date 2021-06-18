@@ -643,6 +643,9 @@ namespace Mug.Generator
                 case TypeKind.DefinedType:
                     return GetDefaultValueOfStruct(type.SolvedType.GetStruct(), position);
 
+                case TypeKind.Option:
+                    return GetDefaultOfOption(ContextType, position);
+
                 default:
                     ToImplement<object>(type.SolvedType.Kind.ToString(), nameof(GetDefaultValueOf));
                     return null;
@@ -658,6 +661,20 @@ namespace Mug.Generator
             {
                 return new Token(kind, value, position, false);
             }
+        }
+
+        private static INode GetDefaultOfOption(DataType type, ModulePosition position)
+        {
+            var call = new CallStatement
+            {
+                IsBuiltIn = true,
+                Name = new Token(TokenKind.Identifier, "none", position, false),
+                Position = position
+            };
+
+            call.Generics.Add(type);
+
+            return call;
         }
 
         private static INode GetDefaultValueOfStruct(TypeStatement type, ModulePosition position)
@@ -1106,6 +1123,10 @@ namespace Mug.Generator
                     WarnWhenStatement();
                     type = EvaluateBuiltInBox(expression);
                     break;
+                case "none":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInNone(expression);
+                    break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
                     break;
@@ -1118,6 +1139,27 @@ namespace Mug.Generator
                 if (isStatement)
                     Tower.Warn(expression.Position, "Useless call to builtin function here");
             }
+        }
+
+        private DataType EvaluateBuiltInNone(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0);
+            var type = expression.Generics.FirstOrDefault();
+
+            if (type is null && ContextType.SolvedType.Kind is not TypeKind.Option)
+            {
+                Tower.Report(expression.Name.Position, $"Type notation needed");
+                return ContextType;
+            }
+
+            type ??= ContextType.SolvedType.GetBaseElementType();
+
+            FunctionBuilder.EmitLoadZeroinitializedStruct(MIRType.Option);
+            FunctionBuilder.EmitLoadNull();
+            EmitBox(0);
+
+            return DataType.Option(type);
         }
 
         private DataType EvaluateBuiltInUnbox(CallStatement expression)
@@ -1160,25 +1202,27 @@ namespace Mug.Generator
             ContextTypes.Pop();
 
             var genericType = generic ?? valuetype;
-            var tagtype = new MIRType(MIRTypeKind.UInt, 1);
 
             FixAndCheckTypes(genericType, valuetype, value.Position);
-            EmitBox(valuetype, tagtype);
+            EmitBox(1);
 
             return DataType.Option(valuetype);
         }
 
-        private void EmitBox(DataType valuetype, MIRType tagtype)
+        private void EmitBox(long tag)
         {
-            PointerCastIFNeeded(valuetype);
+            var tagtype = new MIRType(MIRTypeKind.UInt, 1);
+
+            PointerCastIFNeeded();
             FunctionBuilder.EmitStoreField(1, MIRType.VoidPointer);
-            FunctionBuilder.EmitLoadConstantValue(0ul, tagtype);
+            FunctionBuilder.EmitLoadConstantValue(tag, tagtype);
             FunctionBuilder.EmitStoreField(0, tagtype);
         }
 
-        private void PointerCastIFNeeded(DataType valuetype)
+        private void PointerCastIFNeeded()
         {
-            if (valuetype.SolvedType.Kind is not TypeKind.UInt8)
+            var type = FunctionBuilder.LastInstruction().Type;
+            if (type.IsInt() && type.GetIntBitSize() == MIRType.VoidPointer.GetIntBitSize())
                 FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
         }
 
@@ -1415,15 +1459,15 @@ namespace Mug.Generator
                 ReportIncorrectNumberOfElements(parameters.Count, position, expectedNumbers);
         }
 
-        private void ReportIncorrectNumberOfElements(int count, ModulePosition position, int[] expectedNumbers)
+        private void ReportIncorrectNumberOfElements(int count, ModulePosition position, int[] expectedNumbers, string kind = null)
         {
-            Tower.Report(position, $"Expected '{string.Join("', '", expectedNumbers)}' parameters, but got '{count}'");
+            Tower.Report(position, $"Expected '{string.Join("', '", expectedNumbers)}' {kind}parameters, but got '{count}'");
         }
 
         private void ExpectGenericsNumber(List<DataType> generics, ModulePosition position, params int[] expectedNumbers)
         {
             if (!expectedNumbers.Contains(generics.Count))
-                ReportIncorrectNumberOfElements(generics.Count, position, expectedNumbers);
+                ReportIncorrectNumberOfElements(generics.Count, position, expectedNumbers, "generic ");
         }
 
         private FunctionStatement EvaluateFunctionName(INode functionName, ref NodeBuilder parameters, out string typePrefix)
@@ -2046,7 +2090,12 @@ namespace Mug.Generator
 
             if (!type.IsNewOperatorAllocable())
             {
-                Tower.Report(expression.Position, $"Unable to allocate type '{type}' via operator 'new'");
+                var message =
+                    expression.IsAuto ?
+                        "Type notation needed" :
+                        $"Unable to allocate type '{type}' via operator 'new'";
+
+                Tower.Report(expression.Position, message);
                 return DataType.Solved(type);
             }
 
@@ -2098,7 +2147,7 @@ namespace Mug.Generator
                 TypeKind.Void => 0,
                 TypeKind.EnumError => throw new NotImplementedException(),
                 TypeKind.Err => throw new NotImplementedException(),
-                TypeKind.Option => throw new NotImplementedException(),
+                TypeKind.Option => PointerSize() + 1,
                 TypeKind.Tuple => throw new NotImplementedException(),
             };
         }
@@ -2130,6 +2179,22 @@ namespace Mug.Generator
         {
             for (var i = 0; i < expression.Body.Count; i++)
                 EmitFieldInitialization(expression.Body[i], structure, assignedFields);
+
+            if (structure.BodyFields.Count != assignedFields.Count)
+                InitializeUninitializedFieldsWithDefaultValues(structure, expression.Position, assignedFields);
+        }
+
+        private void InitializeUninitializedFieldsWithDefaultValues(TypeStatement structure, ModulePosition position, List<string> assignedFields)
+        {
+            for (int i = 0; i < structure.BodyFields.Count; i++)
+            {
+                var field = structure.BodyFields[i];
+                if (!assignedFields.Contains(field.Name))
+                {
+                    EvaluateExpression(GetDefaultValueOf(field.Type, position));
+                    FunctionBuilder.EmitStoreField(i, LowerDataType(field.Type));
+                }
+            }
         }
 
         private void EmitFieldInitialization(FieldAssignmentNode field, TypeStatement structure, List<string> assignedFields)
