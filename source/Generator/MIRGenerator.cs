@@ -864,7 +864,7 @@ namespace Mug.Generator
         private DataType EvaluateToken(Token expression)
         {
             return
-                expression.Kind == TokenKind.Identifier ?
+                expression.Kind is TokenKind.Identifier ?
                     EvaluateIdentifier(expression.Value, expression.Position) :
                     EvaluateConstant(expression);
         }
@@ -1179,11 +1179,16 @@ namespace Mug.Generator
             var boxtype = valuetype.SolvedType.GetBaseElementType();
             var loweredBoxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(boxtype));
 
+            EmitUnbox(loweredBoxtype);
+
+            return boxtype;
+        }
+
+        private void EmitUnbox(MIRType loweredBoxtype)
+        {
             FunctionBuilder.EmitLoadField(1, MIRType.VoidPointer);
             FunctionBuilder.EmitCastPointerToPointer(loweredBoxtype);
             FunctionBuilder.EmitLoadValueFromPointer();
-
-            return boxtype;
         }
 
         private DataType EvaluateBuiltInBox(CallStatement expression)
@@ -1213,17 +1218,10 @@ namespace Mug.Generator
         {
             var tagtype = new MIRType(MIRTypeKind.UInt, 1);
 
-            PointerCastIFNeeded();
+            FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
             FunctionBuilder.EmitStoreField(1, MIRType.VoidPointer);
             FunctionBuilder.EmitLoadConstantValue(tag, tagtype);
             FunctionBuilder.EmitStoreField(0, tagtype);
-        }
-
-        private void PointerCastIFNeeded()
-        {
-            var type = FunctionBuilder.LastInstruction().Type;
-            if (type.IsInt() && type.GetIntBitSize() == MIRType.VoidPointer.GetIntBitSize())
-                FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
         }
 
         private static CallStatement LowerBoxToMallocCall(INode value)
@@ -1255,16 +1253,10 @@ namespace Mug.Generator
                 return DataType.Void;
             }
 
-            PointerCastIFNeeded(expressionType, parameterType);
+            FunctionBuilder.EmitCastPointerToPointer(parameterType);
             FunctionBuilder.EmitCall("free", loweredReturnType);
 
             return DataType.Void;
-        }
-
-        private void PointerCastIFNeeded(DataType expressionType, MIRType parameterType)
-        {
-            if (!LowerDataType(expressionType).GetPointerBaseType().Equals(parameterType))
-                FunctionBuilder.EmitCastPointerToPointer(parameterType);
         }
 
         private void TryDeclareExternFree(out MIRType loweredReturnType, out MIRType parameterType)
@@ -1311,7 +1303,7 @@ namespace Mug.Generator
             FunctionBuilder.EmitCall("malloc", loweredReturnType);
             FunctionBuilder.MoveLastInstructionTo(first++);
 
-            PointerCastIFNeeded(loweredResult, loweredReturnType, ref first);
+            EmitPointerCastIFNeededInMallocCall(loweredResult, loweredReturnType, ref first);
             FunctionBuilder.EmitDupplicate();
             FunctionBuilder.MoveLastInstructionTo(first);
 
@@ -1326,7 +1318,7 @@ namespace Mug.Generator
             return expressionType;
         }
 
-        private void PointerCastIFNeeded(MIRType loweredResult, MIRType loweredReturnType, ref int first)
+        private void EmitPointerCastIFNeededInMallocCall(MIRType loweredResult, MIRType loweredReturnType, ref int first)
         {
             if (!loweredResult.Equals(loweredReturnType))
             {
@@ -1998,8 +1990,29 @@ namespace Mug.Generator
                 return EvaluateArrayDotAccessOperator(expression.Member, baseType);
             if (baseType.SolvedType.IsPointer())
                 return EvaluatePointerDotAccessOperator(baseType, expression);
+            if (baseType.SolvedType.IsOption())
+                return EvaluateOptionDotAccessOperator(baseType, expression);
 
             return NotAccessibleViaDotOperator(baseType, expression.Base.Position);
+        }
+
+        private DataType EvaluateOptionDotAccessOperator(DataType baseType, MemberNode expression)
+        {
+            var boxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(baseType.SolvedType.GetBaseElementType()));
+            FunctionBuilder.EmitLoadField(1, MIRType.VoidPointer);
+            FunctionBuilder.EmitCastPointerToPointer(boxtype);
+            FunctionBuilder.EmitLoadValueFromPointer();
+
+            var optionBaseType = baseType.SolvedType.GetBaseElementType();
+
+            if (!optionBaseType.SolvedType.IsStruct())
+                return NotAccessibleViaDotOperator(optionBaseType, expression.Base.Position);
+
+            var structure = optionBaseType.SolvedType.GetStruct();
+            var fieldType = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
+            FunctionBuilder.EmitLoadField(index, LowerDataType(fieldType));
+
+            return fieldType;
         }
 
         private DataType NotAccessibleViaDotOperator(DataType type, ModulePosition position)

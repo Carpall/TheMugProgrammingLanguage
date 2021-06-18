@@ -3,6 +3,9 @@ type A {
 }
 
 fn a() {
+  var x = new A { }
+  if x.a == none|A|!() {
+  }
 }
 
 fn main() {

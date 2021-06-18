@@ -147,5 +147,10 @@ namespace Mug.TypeSystem
         {
             return Kind is TypeKind.String;
         }
+
+        public bool IsOption()
+        {
+            return Kind is TypeKind.Option;
+        }
     }
 }

@@ -33,7 +33,7 @@ namespace Mug.Generator.TargetGenerators.C
             AddDefine("int32", "int");
             AddDefine("int64", "long long");
 
-            AddDefine("uint1", "char");
+            AddDefine("uint1", "unsigned char");
             AddDefine("uint8", "unsigned char");
             AddDefine("uint16", "unsigned short");
             AddDefine("uint32", "unsigned int");

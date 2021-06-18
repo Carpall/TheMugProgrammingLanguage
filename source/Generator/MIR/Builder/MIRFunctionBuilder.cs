@@ -264,7 +264,8 @@ namespace Mug.Generator.IR.Builder
 
         public void EmitCastPointerToPointer(MIRType type)
         {
-            EmitInstruction(MIRInstructionKind.CastPointerToPointer, type);
+            if (!LastInstruction().Type.Equals(type))
+                EmitInstruction(MIRInstructionKind.CastPointerToPointer, type);
         }
 
         public void EmitStorePointer()
