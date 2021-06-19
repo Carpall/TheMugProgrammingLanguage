@@ -1,15 +1,15 @@
 type TokenPosition {
   source: *str,
-  start: usize,
-  end: usize
+  start: u32,
+  end: u32
 
-  pub fn from(source: *str, start, end: usize): TokenPosition {
+  pub fn from(source: *str, start, end: u32): TokenPosition {
     new { source: source, start: start, end: end }
   }
 
   pub fn source(self: TokenPosition): str { *self.source }
-  pub fn start(self: TokenPosition): usize { self.start }
-  pub fn end(self: TokenPosition): usize { self.end }
+  pub fn start(self: TokenPosition): u32 { self.start }
+  pub fn end(self: TokenPosition): u32 { self.end }
 }
 
 enum TokenKind {

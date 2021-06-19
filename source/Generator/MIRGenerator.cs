@@ -56,7 +56,6 @@ namespace Mug.Generator
         private void DeclareBuiltinStructs()
         {
             Module.DefineStruct(MIRType.String.GetStruct());
-            Module.DefineStruct(MIRType.Option.GetStruct());
         }
 
         private void AddToGlobalResources()
@@ -694,8 +693,30 @@ namespace Mug.Generator
                 || gottype.SolvedType.Kind is TypeKind.Undefined)
                 return;
 
+            MakeConvertions(ref expected, ref gottype, position);
+
             if (AreNotCompatible(expected, gottype))
                 Tower.Report(position, $"Type mismatch: expected type '{expected}', but got '{gottype}'");
+        }
+
+        private void MakeConvertions(ref DataType expected, ref DataType gottype, ModulePosition position)
+        {
+            if (expected.SolvedType.IsOption()
+                && !AreNotCompatible(expected.SolvedType.GetBaseElementType(), gottype))
+                gottype = EmitImplicitBox(expected, position);
+        }
+
+        private DataType EmitImplicitBox(DataType optiontype, ModulePosition position)
+        {
+            var optionBaseType = optiontype.SolvedType.GetBaseElementType();
+            var size = GetTypeByteSize(optionBaseType, position);
+            var first = FunctionBuilder.CurrentIndex();
+            var loweredResultType = LowerDataType(DataType.Pointer(optionBaseType));
+
+            EmitMallocCall(size, first, loweredResultType);
+            FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
+
+            return optiontype;
         }
 
         private static bool AreNotCompatible(DataType expected, DataType gottype)
@@ -1101,6 +1122,10 @@ namespace Mug.Generator
                     WarnWhenStatement();
                     type = EvaluateBuiltInIntCast(expression, name.Value);
                     break;
+                case "bool":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInBoolCast(expression);
+                    break;
                 case "exit":
                     type = EvaluateBuiltInExit(expression);
                     break;
@@ -1141,6 +1166,21 @@ namespace Mug.Generator
             }
         }
 
+        private DataType EvaluateBuiltInBoolCast(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
+            var value = expression.Parameters.FirstOrDefault() ?? GetDefaultValueOf(DataType.Int32, expression.Position);
+            var type = EvaluateExpression(value);
+
+            if (!type.SolvedType.IsInt())
+                Tower.Report(value.Position, "Expected int type");
+
+            FunctionBuilder.EmitCastIntToInt(new(MIRTypeKind.UInt, 1));
+
+            return DataType.Bool;
+        }
+
         private DataType EvaluateBuiltInNone(CallStatement expression)
         {
             ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
@@ -1153,13 +1193,11 @@ namespace Mug.Generator
                 return ContextType;
             }
 
-            type ??= ContextType.SolvedType.GetBaseElementType();
+            type = DataType.Option(type ?? ContextType.SolvedType.GetBaseElementType());
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(MIRType.Option);
-            FunctionBuilder.EmitLoadNull();
-            EmitBox(0);
+            FunctionBuilder.EmitLoadNull(LowerDataType(type));
 
-            return DataType.Option(type);
+            return type;
         }
 
         private DataType EvaluateBuiltInUnbox(CallStatement expression)
@@ -1177,18 +1215,11 @@ namespace Mug.Generator
                 return ContextType;
             }
             var boxtype = valuetype.SolvedType.GetBaseElementType();
-            var loweredBoxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(boxtype));
 
-            EmitUnbox(loweredBoxtype);
+            FunctionBuilder.EmitCastPointerToPointer(new(MIRTypeKind.Pointer, LowerDataType(boxtype)));
+            FunctionBuilder.EmitLoadValueFromPointer();
 
             return boxtype;
-        }
-
-        private void EmitUnbox(MIRType loweredBoxtype)
-        {
-            FunctionBuilder.EmitLoadField(1, MIRType.VoidPointer);
-            FunctionBuilder.EmitCastPointerToPointer(loweredBoxtype);
-            FunctionBuilder.EmitLoadValueFromPointer();
         }
 
         private DataType EvaluateBuiltInBox(CallStatement expression)
@@ -1197,31 +1228,21 @@ namespace Mug.Generator
             ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
             var value = expression.Parameters.FirstOrDefault();
             var generic = expression.Generics.FirstOrDefault();
+
             if (value is null)
                 return ContextType;
-
-            FunctionBuilder.EmitLoadZeroinitializedStruct(MIRType.Option);
 
             ContextTypes.Push(generic ?? DataType.Undefined);
             var valuetype = EvaluateNodeCallBuiltIn(LowerBoxToMallocCall(value), false).SolvedType.GetBaseElementType();
             ContextTypes.Pop();
 
             var genericType = generic ?? valuetype;
+            var result = DataType.Option(valuetype);
 
             FixAndCheckTypes(genericType, valuetype, value.Position);
-            EmitBox(1);
-
-            return DataType.Option(valuetype);
-        }
-
-        private void EmitBox(long tag)
-        {
-            var tagtype = new MIRType(MIRTypeKind.UInt, 1);
-
             FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
-            FunctionBuilder.EmitStoreField(1, MIRType.VoidPointer);
-            FunctionBuilder.EmitLoadConstantValue(tag, tagtype);
-            FunctionBuilder.EmitStoreField(0, tagtype);
+
+            return result;
         }
 
         private static CallStatement LowerBoxToMallocCall(INode value)
@@ -1289,15 +1310,15 @@ namespace Mug.Generator
             var result = DataType.Pointer(expressionType);
             var loweredResult = LowerDataType(result);
 
-            TryDeclareExternMalloc(out var loweredReturnType, out var loweredParameterType);
-
-            EmitMallocCall(byteSize, first, loweredResult, loweredReturnType, loweredParameterType);
+            EmitMallocCall(byteSize, first, loweredResult);
 
             return result;
         }
 
-        private void EmitMallocCall(long byteSize, int first, MIRType loweredResult, MIRType loweredReturnType, MIRType loweredParameterType)
+        private void EmitMallocCall(long byteSize, int first, MIRType loweredResult)
         {
+            TryDeclareExternMalloc(out var loweredReturnType, out var loweredParameterType);
+
             FunctionBuilder.EmitLoadConstantValue(byteSize, loweredParameterType);
             FunctionBuilder.MoveLastInstructionTo(first++);
             FunctionBuilder.EmitCall("malloc", loweredReturnType);
@@ -1999,7 +2020,6 @@ namespace Mug.Generator
         private DataType EvaluateOptionDotAccessOperator(DataType baseType, MemberNode expression)
         {
             var boxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(baseType.SolvedType.GetBaseElementType()));
-            FunctionBuilder.EmitLoadField(1, MIRType.VoidPointer);
             FunctionBuilder.EmitCastPointerToPointer(boxtype);
             FunctionBuilder.EmitLoadValueFromPointer();
 
@@ -2157,11 +2177,12 @@ namespace Mug.Generator
                 or TypeKind.String => PointerSize() + 8,
                 TypeKind.DefinedType => GetStructByteSize(type.SolvedType.GetStruct(), position),
                 TypeKind.GenericDefinedType => throw new NotImplementedException(),
-                TypeKind.Void => 0,
+                TypeKind.Void
+                or TypeKind.Undefined
+                or TypeKind.Auto => 0,
                 TypeKind.EnumError => throw new NotImplementedException(),
                 TypeKind.Err => throw new NotImplementedException(),
-                TypeKind.Option => PointerSize() + 1,
-                TypeKind.Tuple => throw new NotImplementedException(),
+                TypeKind.Option => PointerSize()
             };
         }
 
@@ -2185,7 +2206,7 @@ namespace Mug.Generator
         private int PointerSize()
         {
             // to fix
-            return 64;
+            return 8;
         }
 
         private void EvaluateTypeInitialization(TypeAllocationNode expression, TypeStatement structure, List<string> assignedFields)

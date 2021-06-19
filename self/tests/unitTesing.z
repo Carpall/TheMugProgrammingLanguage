@@ -1,0 +1,115 @@
+type TestResponse {
+  // true = passed
+  // false = failed
+  pub response: bool,
+  pub msg: str
+  
+  pub fn from(response: bool, msg: str): TestResponse {
+    new { response: response, msg: msg }
+  }
+}
+
+type UnitTesting[ISize: u32] {
+  responses: fixed[ISize, TestResponse],
+  idx: u8,
+  componentName: str
+
+  pub fn from(static size: u32, componentName: str): UnitTesting {
+    new UnitTesting[size] { componentName: componentName }
+  }
+
+  pub fn add(&self: UnitTesting, response: TestResponse) {
+    responses[self.idx++] = response
+  }
+
+  pub fn printResponses(unit: UnitTesting) {
+    println!("{}: ", unit.componentName)
+    
+    for response in unit.responses {
+      println!(
+        "  - {}: {}",
+        if response.response { "passed" } else { "failed" },
+        response.msg
+      )
+    }
+  }
+}
+
+static fn emitCallToMethod(
+  emissionPoint: MugEmissionPoint,
+  meth: MugFunctionNode,
+  unit: MugToken,
+  pos: MugNodePosition
+) {
+  /*
+    emit!() emits a node in the ast.
+  */
+  
+  emit!(
+    emissionPoint,
+    MugCallNode.from(
+      name: MugDotNode.from(
+        base: unit,
+        member: MugToken.from(.ident, "add", pos),
+        pos: pos
+      ),
+      params: new [MugNode] {
+        MugCallNode.from(
+          name: MugDotNode.from(
+            base: MugToken.from(.ident, "$", pos)
+            member: meth.name,
+            pos: pos
+          ),
+          pos: pos
+        )
+      },
+      pos: pos
+    )
+  )
+}
+
+static fn emitCallToMethodsOfType(
+  emissionPoint: MugEmissionPoint,
+  tests: MugTypeNode,
+  unit: MugToken,
+  pos: MugNodePosition
+) {
+  emit!(
+    emissionPoint,
+    MugVariablesNode.from(
+      name: MugToken.from(.ident, "$", pos)
+      datatype: datatype!(.struct, tests),
+      pos: pos
+    )
+  )
+  
+  emissionPoint.advance()
+
+  for func in tests.functions {
+    if !func.isPub { continue }
+    
+    if returnType != datatype!(.struct, node!(TestResponse)) {
+      report!(func.pos, "All public members of unit testing's type must return type 'TestResponse'")
+    } else {
+      emitCallToMethod(emissionPoint, func, unit, pos)
+      emissionPoint.advance()
+    }
+  }
+}
+
+fn testsFor(static tests: MugTypeNode) {
+  /*
+    ctx!() returns the current node in the context.
+    Context nodes are:
+      - the expresion's node in which you call ctx!() (function call to emitCallToMethodsOfType in this case)
+      - the function in which you wrote the expression's node (lexerTests in this case)
+      - the type in which there is the function ... (optional) (none in this case)
+      - the module ecc... (lexerTests.z)
+  */
+
+  var unit = UnitTesting.from(static tests.functions.len, tests.name.value)
+  
+  static emitCallToMethodsOfType(point!(), node!(LexerTests), tests, node!(unit).name, ctx!(.expr).pos)
+
+  unit.printResponses()
+}

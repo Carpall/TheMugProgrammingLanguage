@@ -24,12 +24,11 @@ namespace Mug.TypeSystem
         Undefined,
         Auto,
         Pointer,
+        Option,
         Array,
         DefinedType,
         GenericDefinedType,
         Void,
         EnumError,
-        Option,
-        Tuple
     }
 }

@@ -138,17 +138,15 @@ namespace Mug.Parser
 
         private DataType ExpectType(bool allowEnumError = false)
         {
-            if (MatchAdvance(TokenKind.OpenPar, out var token, true))
-                return CollectTupleType(token);
-            else if (MatchAdvance(TokenKind.OpenBracket, out token, true))
+            if (MatchAdvance(TokenKind.OpenBracket, out var token))
                 return CollectArrayType(token);
-            else if (MatchAdvance(TokenKind.Star, out token, true) || MatchAdvance(TokenKind.QuestionMark, out token, true))
+            if (MatchAdvance(TokenKind.Star, out token) || MatchAdvance(TokenKind.QuestionMark, out token))
                 return CollectPointerType(token);
 
             var find = ExpectBaseType();
 
             // struct generics
-            if (MatchAdvance(TokenKind.BooleanLess, true))
+            if (MatchAdvance(TokenKind.OpenBracket, true))
                 CollectGenericType(ref find);
 
             if (allowEnumError && MatchAdvance(TokenKind.Negation, true))
@@ -164,7 +162,7 @@ namespace Mug.Parser
 
         private void CollectGenericType(ref DataType find)
         {
-            if (find.UnsolvedType.Kind != TypeKind.DefinedType)
+            if (find.UnsolvedType.Kind is not TypeKind.DefinedType)
                 ParseError(find.Position, $"Generic parameters cannot be passed to type '{find}'");
 
             var genericTypes = new List<DataType>();
@@ -173,7 +171,7 @@ namespace Mug.Parser
                 genericTypes.Add(ExpectType());
             while (MatchAdvance(TokenKind.Comma));
 
-            Expect("", TokenKind.BooleanGreater);
+            Expect(UnexpectedToken, TokenKind.CloseBracket);
 
             find = UnsolvedType.Create(
                 Tower,
@@ -201,18 +199,6 @@ namespace Mug.Parser
                 new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End),
                 TypeKind.Array,
                 type);
-        }
-
-        private DataType CollectTupleType(Token token)
-        {
-            var types = new List<DataType>();
-            do
-                types.Add(ExpectType());
-            while (MatchAdvance(TokenKind.Comma));
-
-            Expect("", TokenKind.ClosePar);
-            var position = new ModulePosition(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End);
-            return UnsolvedType.Create(Tower, position, TypeKind.Tuple, types.ToArray());
         }
 
         private bool MatchAdvance(TokenKind kind, out Token token, bool linesensitive = false)
@@ -341,16 +327,16 @@ namespace Mug.Parser
 
         private void CollectPossibleArrayAccessNode(ref INode e)
         {
-            if (e is BadNode)
+            if (e is BadNode or null)
                 return;
 
-            while (MatchAdvance(TokenKind.OpenBracket, out var token))
+            while (MatchAdvance(TokenKind.OpenBracket))
             {
                 e = new ArraySelectElemNode()
                 {
                     IndexExpression = ExpectExpression(end: TokenKind.CloseBracket),
                     Left = e,
-                    Position = new(token.Position.Lexer, token.Position.Position.Start..Back.Position.Position.End)
+                    Position = GetModulePositionRange(e.Position, Back.Position)
                 };
             }
         }
@@ -409,27 +395,31 @@ namespace Mug.Parser
 
         private List<DataType> CollectGenericParameters(ref bool builtin)
         {
-            var oldindex = CurrentIndex;
-            List<DataType> generics = new();
+            if (!MatchAdvance(TokenKind.Colon, true))
+                return new();
 
-            if (MatchAdvance(TokenKind.Pipe, true))
-            {
-                if (builtin)
-                    Report(UnexpectedToken);
+            if (builtin)
+                Report(UnexpectedToken);
 
-                do
-                    generics.Add(ExpectType());
-                while (MatchAdvance(TokenKind.Comma));
+            var generics = new List<DataType>();
 
-                if (MatchAdvance(TokenKind.Pipe))
-                {
-                    builtin = CollectBuiltInSymbol();
-                    return generics;
-                }
-            }
+            if (!MatchAdvance(TokenKind.OpenBrace, true))
+                generics.Add(ExpectType());
+            else
+                CollectMultipleGenericParametersInExpression(ref generics);
 
-            CurrentIndex = oldindex;
+            builtin = CollectBuiltInSymbol();
+
             return generics;
+        }
+
+        private void CollectMultipleGenericParametersInExpression(ref List<DataType> generics)
+        {
+            do
+                generics.Add(ExpectType());
+            while (MatchAdvance(TokenKind.Comma));
+
+            Expect(UnexpectedToken, TokenKind.CloseBrace);
         }
 
         private bool CollectBuiltInSymbol()
@@ -443,7 +433,7 @@ namespace Mug.Parser
 
             var builtin = CollectBuiltInSymbol();
 
-            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.Pipe, true))
+            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.Colon, true))
                 return false;
             
             var generics = CollectGenericParameters(ref builtin);
@@ -1281,14 +1271,14 @@ namespace Mug.Parser
 
         private void CollectGenericParameterDefinitions(List<Token> generics)
         {
-            if (MatchAdvance(TokenKind.BooleanLess))
-            {
-                do
-                    generics.Add(Expect("Expected generic name", TokenKind.Identifier));
-                while (MatchAdvance(TokenKind.Comma));
+            if (!MatchAdvance(TokenKind.OpenBracket))
+                return;
 
-                Expect("", TokenKind.BooleanGreater);
-            }
+            do
+                generics.Add(Expect("", TokenKind.Identifier));
+            while (MatchAdvance(TokenKind.Comma));
+
+            Expect(UnexpectedToken, TokenKind.CloseBracket);
         }
 
         private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)

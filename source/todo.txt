@@ -34,6 +34,7 @@ NEW TODOS
 - adding enum member with type infer '.member'
 - move _currentCycle etc... to CurrentScope
 - fix '(*x).x = 1'
+- refactor parser
 
 OLD TODOS
 

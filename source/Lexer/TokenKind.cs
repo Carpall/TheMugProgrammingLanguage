@@ -136,6 +136,6 @@ namespace Mug.Tokenizer
         [Description("switch")]
         KeySwitch = -41,
         [Description("try")]
-        KeyTry = -42
+        KeyTry = -42,
     }
 }

@@ -30,11 +30,7 @@ namespace Mug.Generator.IR
 
         internal static MIRType CString => VoidPointer;
 
-        internal static MIRType Option => new(MIRTypeKind.Struct, new MIRStructure(true, $"$opt", new[]
-        {
-            new MIRType(MIRTypeKind.UInt, 1),
-            VoidPointer
-        }));
+        internal static MIRType Option => VoidPointer;
 
         internal static MIRType VoidPointer => new(MIRTypeKind.Pointer, new MIRType(MIRTypeKind.UInt, 8));
 

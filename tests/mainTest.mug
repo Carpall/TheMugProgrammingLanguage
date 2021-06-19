@@ -2,11 +2,7 @@ type A {
   pub a: ?A
 }
 
-fn a() {
-  var x = new A { }
-  if x.a == none|A|!() {
-  }
-}
-
 fn main() {
+  var x = box!(new A { })
+  var y = x.a
 }
