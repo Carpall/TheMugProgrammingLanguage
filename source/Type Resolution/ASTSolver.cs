@@ -22,12 +22,17 @@ namespace Mug.TypeResolution
             return unsolvedtype.Kind switch
             {
                 TypeKind.Array or
-                TypeKind.Option or
                 TypeKind.Pointer => SolvePrimitiveWithBase(unsolvedtype),
                 TypeKind.EnumError => SolveEnumError(unsolvedtype),
-                TypeKind.DefinedType => SolveStruct(unsolvedtype),
+                TypeKind.Struct => SolveStruct(unsolvedtype),
+                TypeKind.Option => SolveOption(unsolvedtype),
                 _ => SolvedType.Primitive(unsolvedtype.Kind),
             };
+        }
+
+        private SolvedType SolveOption(UnsolvedType unsolvedtype)
+        {
+            return SolvedType.WithBase(TypeKind.Option, DataType.Solved(ResolveType((DataType)unsolvedtype.BaseType)));
         }
 
         private SolvedType SolveStruct(UnsolvedType unsolvedtype)

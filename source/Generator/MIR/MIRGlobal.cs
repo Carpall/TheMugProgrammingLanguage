@@ -10,9 +10,9 @@ namespace Mug.Generator.IR
     public struct MIRGlobal
     {
         public string Name { get; }
-        public MIRType Type { get; }
+        public DataType Type { get; }
 
-        public MIRGlobal(string name, MIRType type)
+        public MIRGlobal(string name, DataType type)
         {
             Name = name;
             Type = type;

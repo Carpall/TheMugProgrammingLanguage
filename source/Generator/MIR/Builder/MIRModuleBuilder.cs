@@ -40,7 +40,7 @@ namespace Mug.Generator.IR.Builder
             return _functionPrototypes.FindIndex(functionPrototype => functionPrototype.Name == name) != -1;
         }
 
-        public void DefineFunctionPrototype(string name, MIRType type, MIRType[] parameterTypes)
+        public void DefineFunctionPrototype(string name, DataType type, DataType[] parameterTypes)
         {
             _functionPrototypes.Add(new(name, type, parameterTypes));
         }

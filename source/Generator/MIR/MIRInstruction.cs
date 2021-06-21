@@ -47,19 +47,17 @@ namespace Mug.Generator.IR
     public struct MIRInstruction
     {
         public MIRInstructionKind Kind { get; internal set; }
-        public MIRType Type { get; }
+        public DataType Type { get; }
         public object Value { get; }
 
-        internal MIRInstruction(MIRInstructionKind kind, MIRType type = default, object value = null)
+        internal MIRInstruction(MIRInstructionKind kind, DataType type = default, object value = null)
         {
             Kind = kind;
             Type = type;
             Value = value;
         }
 
-        internal long ConstantIntValue => Type.GetIntBitSize() != 1 ? (long)Value : Convert.ToInt64(Value);
-
-        internal MIRInstruction ParameterValue => (MIRInstruction)Value;
+        internal long ConstantIntValue => Convert.ToInt64(Value);
 
         public override string ToString()
         {

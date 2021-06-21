@@ -24,11 +24,11 @@ namespace Mug.TypeSystem
         Undefined,
         Auto,
         Pointer,
-        Option,
         Array,
-        DefinedType,
+        Struct,
         GenericDefinedType,
         Void,
         EnumError,
+        Option,
     }
 }

@@ -10,13 +10,13 @@ namespace Mug.Generator.IR
     public struct MIRFunctionPrototype
     {
         public string Name { get; }
-        public MIRType ReturnType { get; }
-        public MIRType[] ParameterTypes { get; }
+        public DataType ReturnType { get; }
+        public DataType[] ParameterTypes { get; }
 
         public MIRFunctionPrototype(
             string name,
-            MIRType returntype,
-            MIRType[] parametertypes)
+            DataType returntype,
+            DataType[] parametertypes)
         {
             Name = name;
             ReturnType = returntype;
@@ -25,7 +25,7 @@ namespace Mug.Generator.IR
 
         public override string ToString()
         {
-            return $@".fn {Name}({string.Join(", ", ParameterTypes)}) {ReturnType}";
+            return $@".fn {Name}({string.Join<DataType>(", ", ParameterTypes)}) {ReturnType}";
         }
     }
 }

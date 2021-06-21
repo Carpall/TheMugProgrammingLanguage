@@ -18,16 +18,10 @@ namespace Mug.Parser.AST.Statements
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }
         public bool IsPacked => Pragmas.PragmaIsTrue("packed");
-        internal MIRStructure? LoweredStructCache { get; set; }
 
         public override string ToString()
         {
             return Name;
-        }
-
-        public void CacheLoweredStruct(MIRStructure MIRStructure)
-        {
-            LoweredStructCache = MIRStructure;
         }
     }
 }

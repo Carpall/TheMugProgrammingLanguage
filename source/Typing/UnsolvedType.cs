@@ -68,7 +68,7 @@ namespace Mug.TypeSystem
                 "u32" => TypeKind.UInt32,
                 "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
-                _ => isInEnum && token.Value == "err" ? TypeKind.Err : TypeKind.DefinedType,
+                _ => isInEnum && token.Value == "err" ? TypeKind.Err : TypeKind.Struct,
             };
         }
 
@@ -122,7 +122,7 @@ namespace Mug.TypeSystem
                 TypeKind.Array => $"[{basetype}]",
                 TypeKind.Bool => "bool",
                 TypeKind.Char => "chr",
-                TypeKind.DefinedType => basetype.ToString(),
+                TypeKind.Struct => basetype,
                 // TypeKind.GenericDefinedType => GetGenericStructure().Item1.ToString(),
                 TypeKind.Int8 => "i8",
                 TypeKind.Int16 => "i16",
@@ -140,19 +140,19 @@ namespace Mug.TypeSystem
                 TypeKind.Void => "void",
                 TypeKind.Err => "err",
                 TypeKind.EnumError => $"{enumerror.Item1}!{enumerror.Item2}",
-                TypeKind.Option => $"?{basetype}",
                 TypeKind.Undefined => "undefined",
+                TypeKind.Option => $"option[{basetype}]"
             };
         }
 
         public bool IsInt()
         {
             return
-                Kind == TypeKind.Int32 ||
-                Kind == TypeKind.Int64 ||
-                Kind == TypeKind.UInt8 ||
-                Kind == TypeKind.UInt32 ||
-                Kind == TypeKind.UInt64;
+                Kind is TypeKind.Int32
+                or TypeKind.Int64
+                or TypeKind.UInt8
+                or TypeKind.UInt32
+                or TypeKind.UInt64;
         }
 
         public (DataType ErrorType, DataType SuccessType) GetEnumError()

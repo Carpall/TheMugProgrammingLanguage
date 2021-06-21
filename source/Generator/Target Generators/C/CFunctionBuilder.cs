@@ -1,4 +1,5 @@
 ﻿using Mug.Generator.IR;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,7 +11,7 @@ namespace Mug.Generator.TargetGenerators.C
         public int ParametersCount { get; }
         public string Prototype { get; }
         public List<List<string>> Body { get; } = new();
-        public List<(MIRType Type, string Attributes)> Allocations { get; } = new();
+        public List<(DataType Type, string Attributes)> Allocations { get; } = new();
         public List<string> CurrentBlock => Body[^1];
 
         public CFunctionBuilder(string prototype, int parametersCount)

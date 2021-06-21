@@ -45,7 +45,7 @@ namespace Mug.Generator
         {
             SetUpGlobals();
             DeclareBuiltinStructs();
-            WalkDeclarations();
+            WalkThroughDeclarations();
             Tower.CheckDiagnostic();
 
             CheckForConflicts();
@@ -55,7 +55,7 @@ namespace Mug.Generator
 
         private void DeclareBuiltinStructs()
         {
-            Module.DefineStruct(MIRType.String.GetStruct());
+            // Module.DefineStruct(LowerStruct());
         }
 
         private void AddToGlobalResources()
@@ -116,17 +116,17 @@ namespace Mug.Generator
         {
         }
 
-        private MIRType[] GetParameterTypes(ParameterNode[] parameters)
+        private static DataType[] GetParameterTypes(ParameterNode[] parameters)
         {
-            var result = new MIRType[parameters.Length];
+            var result = new DataType[parameters.Length];
 
             for (var i = 0; i < parameters.Length; i++)
-                result[i] = LowerDataType(parameters[i].Type);
+                result[i] = parameters[i].Type;
 
             return result;
         }
 
-        private MIRType LowerDataType(DataType type)
+        /*private DataType (DataType type)
         {
             var kind = type.SolvedType.Kind;
             return kind switch
@@ -152,44 +152,33 @@ namespace Mug.Generator
                     MIRTypeKind.Struct,
                     LowerStruct(type.SolvedType.GetStruct())),
 
-                TypeKind.Pointer => new(
-                    MIRTypeKind.Pointer,
-                    LowerDataType(type.SolvedType.GetBaseElementType())),
+                TypeKind.Pointer => DataType.VoidPointer,
 
-                TypeKind.String => MIRType.String,
+                TypeKind.String => DataType.String,
 
-                TypeKind.Option => MIRType.Option,
-
-                _ => ToImplement<MIRType>(kind.ToString(), nameof(LowerDataType))
+                _ => ToImplement<DataType>(kind.ToString(), nameof())
             };
+        }*/
+
+        private static MIRStructure LowerStruct(TypeStatement type)
+        {
+            return new MIRStructure(type.IsPacked, type.Name, LowerStructBody(type.BodyFields));
         }
 
-        private MIRStructure LowerStruct(TypeStatement type)
+        private static DataType[] LowerStructBody(List<FieldNode> bodyFields)
         {
-            if (type.LoweredStructCache.HasValue)
-                return type.LoweredStructCache.Value;
-
-            var result = new MIRStructure(type.IsPacked, type.Name, LowerStructBody(type.BodyFields));
-
-            type.CacheLoweredStruct(result);
-            Module.DefineStruct(result);
-            return result;
-        }
-
-        private MIRType[] LowerStructBody(List<FieldNode> bodyFields)
-        {
-            var result = new MIRType[bodyFields.Count];
+            var result = new DataType[bodyFields.Count];
             for (int i = 0; i < bodyFields.Count; i++)
-                result[i] = LowerDataType(bodyFields[i].Type);
+                result[i] = bodyFields[i].Type;
 
             return result;
         }
 
-        private static int GetIntBitSize(TypeKind kind)
+        /*private static int GetIntBitSize(TypeKind kind)
         {
             var value = kind.ToString();
             return value.Last() == '8' ? 8 : int.Parse(value.Substring(value.Length - 2, 2));
-        }
+        }*/
 
         private void GenerateBlock(BlockNode block)
         {
@@ -481,7 +470,7 @@ namespace Mug.Generator
         private void EmitReturnIfExpressionAsStatementIsInFunctionBlock(DataType type)
         {
             if (CurrentScope.IsInFunctionBlock)
-                FunctionBuilder.EmitReturn(LowerDataType(type));
+                FunctionBuilder.EmitReturn((type));
         }
 
         private void GenerateReturnStatement(ReturnStatement statement)
@@ -495,7 +484,7 @@ namespace Mug.Generator
                 ContextTypes.Pop();
             }
 
-            FunctionBuilder.EmitReturn(LowerDataType(CurrentFunction.ReturnType));
+            FunctionBuilder.EmitReturn(CurrentFunction.ReturnType);
         }
 
         private void GenerateAssignmentStatement(AssignmentStatement statement)
@@ -583,7 +572,7 @@ namespace Mug.Generator
             FixAndCheckTypes(statement.Type, expressiontype, statement.Body.Position);
             var allocation = DeclareVirtualMemorySymbol(statement.Name, statement.Type, statement.Position, statement.IsConst);
 
-            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, LowerDataType(allocation.Type));
+            FunctionBuilder.EmitStoreLocal(allocation.StackIndex, (allocation.Type));
 
             ContextTypes.Pop();
         }
@@ -639,11 +628,11 @@ namespace Mug.Generator
                 case TypeKind.Bool:
                     return token(TokenKind.ConstantBoolean, "false");
 
-                case TypeKind.DefinedType:
+                case TypeKind.Struct:
                     return GetDefaultValueOfStruct(type.SolvedType.GetStruct(), position);
 
                 case TypeKind.Option:
-                    return GetDefaultOfOption(ContextType, position);
+                    return GetDefaultOfOption(type.SolvedType.GetBaseElementType(), position);
 
                 default:
                     ToImplement<object>(type.SolvedType.Kind.ToString(), nameof(GetDefaultValueOf));
@@ -701,22 +690,6 @@ namespace Mug.Generator
 
         private void MakeConvertions(ref DataType expected, ref DataType gottype, ModulePosition position)
         {
-            if (expected.SolvedType.IsOption()
-                && !AreNotCompatible(expected.SolvedType.GetBaseElementType(), gottype))
-                gottype = EmitImplicitBox(expected, position);
-        }
-
-        private DataType EmitImplicitBox(DataType optiontype, ModulePosition position)
-        {
-            var optionBaseType = optiontype.SolvedType.GetBaseElementType();
-            var size = GetTypeByteSize(optionBaseType, position);
-            var first = FunctionBuilder.CurrentIndex();
-            var loweredResultType = LowerDataType(DataType.Pointer(optionBaseType));
-
-            EmitMallocCall(size, first, loweredResultType);
-            FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
-
-            return optiontype;
         }
 
         private static bool AreNotCompatible(DataType expected, DataType gottype)
@@ -839,7 +812,7 @@ namespace Mug.Generator
                 return ContextType;
             }
 
-            FunctionBuilder.EmitLoadValueFromPointer();
+            FunctionBuilder.EmitLoadValueFromPointer((type.SolvedType.GetBaseElementType()));
             LeftValueChecker = leftValueChecker;
             return (DataType)type.SolvedType.Base;
         }
@@ -860,7 +833,7 @@ namespace Mug.Generator
         private void EvaluateMinusPrefixOperator(PrefixOperator expression, DataType type)
         {
             ExpectSignedIntForMinusPrefixOperator(type, expression.Prefix.Position);
-            FunctionBuilder.EmitNeg(LowerDataType(type));
+            FunctionBuilder.EmitNeg((type));
         }
 
         private void EvaluateConstantMinusPrefixOperator(PrefixOperator expression, DataType type, ref string resultValue)
@@ -873,7 +846,7 @@ namespace Mug.Generator
         private void EvaluateNegationPrefixOperator(PrefixOperator expression, DataType type)
         {
             FixAndCheckTypes(DataType.Bool, type, expression.Prefix.Position);
-            FunctionBuilder.EmitNeg(LowerDataType(DataType.Bool));
+            FunctionBuilder.EmitNeg((DataType.Bool));
         }
 
         private void ExpectSignedIntForMinusPrefixOperator(DataType type, ModulePosition position)
@@ -964,7 +937,7 @@ namespace Mug.Generator
 
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(constantRight, LowerDataType(leftType));
+            FunctionBuilder.EmitLoadConstantValue(constantRight, (leftType));
 
             return leftType;
         }
@@ -979,7 +952,7 @@ namespace Mug.Generator
             var rightType = EvaluateExpression(expression.Right);
 
             ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), LowerDataType(rightType));
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), (rightType));
 
             ContextTypes.Pop();
 
@@ -995,7 +968,7 @@ namespace Mug.Generator
                 expression.Operator.Kind,
                 expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(result, LowerDataType(DataType.Bool));
+            FunctionBuilder.EmitLoadConstantValue(result, (DataType.Bool));
         }
 
         private bool FoldConstantBooleanExpressionIntoBool(INode left, INode right, TokenKind op, ModulePosition position)
@@ -1133,24 +1106,20 @@ namespace Mug.Generator
                     WarnWhenStatement();
                     type = EvaluateBuiltInName(expression);
                     break;
+                case "none":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInNone(expression);
+                    break;
+                case "some":
+                    WarnWhenStatement();
+                    type = EvaluateBuiltInSome(expression);
+                    break;
                 case "alloc":
                     WarnWhenStatement();
                     type = EvaluateBuiltInAlloc(expression);
                     break;
                 case "drop":
                     type = EvaluateBuiltInDrop(expression);
-                    break;
-                case "unbox":
-                    WarnWhenStatement();
-                    type = EvaluateBuiltInUnbox(expression);
-                    break;
-                case "box":
-                    WarnWhenStatement();
-                    type = EvaluateBuiltInBox(expression);
-                    break;
-                case "none":
-                    WarnWhenStatement();
-                    type = EvaluateBuiltInNone(expression);
                     break;
                 default:
                     Tower.Report(expression.Position, "Unknown builtin function");
@@ -1166,6 +1135,59 @@ namespace Mug.Generator
             }
         }
 
+        private DataType EvaluateBuiltInSome(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
+            var value = expression.Parameters.FirstOrDefault();
+            if (value is null)
+                return ContextType;
+
+            var first = FunctionBuilder.CurrentIndex();
+
+            ContextTypes.Push(OptionBaseTypeOr(DataType.Undefined));
+            var type = EvaluateExpression(value);
+            var result = DataType.Option(type);
+            ContextTypes.Pop();
+
+            FunctionBuilder.EmitLoadZeroinitializedStruct(result);
+            FunctionBuilder.MoveLastInstructionTo(first);
+
+            FunctionBuilder.EmitStoreField(1, type);
+            FunctionBuilder.EmitLoadConstantValue(1L, DataType.Bool);
+            FunctionBuilder.EmitStoreField(0, DataType.Bool);
+
+            return result;
+        }
+
+        private DataType OptionBaseTypeOr(DataType or)
+        {
+            return
+                ContextType.SolvedType.IsOption() ?
+                    ContextType.SolvedType.GetBaseElementType() :
+                    or;
+        }
+
+        private DataType EvaluateBuiltInNone(CallStatement expression)
+        {
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0);
+            var type = expression.Generics.FirstOrDefault();
+            if (type is null && !ContextType.SolvedType.IsOption())
+            {
+                Tower.Report(expression.Position, $"Unable to infer type from a non-option context type");
+                return ContextType;
+            }
+
+            type = type is not null ? DataType.Option(type) : ContextType;
+
+            FunctionBuilder.EmitLoadZeroinitializedStruct(type);
+            FunctionBuilder.EmitLoadNull(DataType.Bool);
+            FunctionBuilder.EmitStoreField(0, DataType.Bool);
+
+            return type;
+        }
+
         private DataType EvaluateBuiltInBoolCast(CallStatement expression)
         {
             ExpectGenericsNumber(expression.Generics, expression.Position, 0);
@@ -1176,87 +1198,9 @@ namespace Mug.Generator
             if (!type.SolvedType.IsInt())
                 Tower.Report(value.Position, "Expected int type");
 
-            FunctionBuilder.EmitCastIntToInt(new(MIRTypeKind.UInt, 1));
+            FunctionBuilder.EmitCastIntToInt(DataType.Bool);
 
             return DataType.Bool;
-        }
-
-        private DataType EvaluateBuiltInNone(CallStatement expression)
-        {
-            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
-            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0);
-            var type = expression.Generics.FirstOrDefault();
-
-            if (type is null && ContextType.SolvedType.Kind is not TypeKind.Option)
-            {
-                Tower.Report(expression.Name.Position, $"Type notation needed");
-                return ContextType;
-            }
-
-            type = DataType.Option(type ?? ContextType.SolvedType.GetBaseElementType());
-
-            FunctionBuilder.EmitLoadNull(LowerDataType(type));
-
-            return type;
-        }
-
-        private DataType EvaluateBuiltInUnbox(CallStatement expression)
-        {
-            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
-            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
-            var value = expression.Parameters.FirstOrDefault();
-            if (value is null)
-                return ContextType;
-
-            var valuetype = EvaluateExpression(value);
-            if (valuetype.SolvedType.Kind is not TypeKind.Option)
-            {
-                Tower.Report(value.Position, $"Expected option");
-                return ContextType;
-            }
-            var boxtype = valuetype.SolvedType.GetBaseElementType();
-
-            FunctionBuilder.EmitCastPointerToPointer(new(MIRTypeKind.Pointer, LowerDataType(boxtype)));
-            FunctionBuilder.EmitLoadValueFromPointer();
-
-            return boxtype;
-        }
-
-        private DataType EvaluateBuiltInBox(CallStatement expression)
-        {
-            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
-            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 1);
-            var value = expression.Parameters.FirstOrDefault();
-            var generic = expression.Generics.FirstOrDefault();
-
-            if (value is null)
-                return ContextType;
-
-            ContextTypes.Push(generic ?? DataType.Undefined);
-            var valuetype = EvaluateNodeCallBuiltIn(LowerBoxToMallocCall(value), false).SolvedType.GetBaseElementType();
-            ContextTypes.Pop();
-
-            var genericType = generic ?? valuetype;
-            var result = DataType.Option(valuetype);
-
-            FixAndCheckTypes(genericType, valuetype, value.Position);
-            FunctionBuilder.EmitCastPointerToPointer(MIRType.VoidPointer);
-
-            return result;
-        }
-
-        private static CallStatement LowerBoxToMallocCall(INode value)
-        {
-            var call = new CallStatement
-            {
-                IsBuiltIn = true,
-                Name = new Token(TokenKind.Identifier, "alloc", value.Position, false),
-                Position = value.Position
-            };
-
-            call.Parameters.Add(value);
-
-            return call;
         }
 
         private DataType EvaluateBuiltInDrop(CallStatement expression)
@@ -1280,10 +1224,10 @@ namespace Mug.Generator
             return DataType.Void;
         }
 
-        private void TryDeclareExternFree(out MIRType loweredReturnType, out MIRType parameterType)
+        private void TryDeclareExternFree(out DataType loweredReturnType, out DataType parameterType)
         {
-            loweredReturnType = new MIRType(MIRTypeKind.Void);
-            parameterType = LowerDataType(DataType.Pointer(DataType.UInt8));
+            loweredReturnType = DataType.Void;
+            parameterType = DataType.Pointer(DataType.UInt8);
             TryDeclareExternPrototype("free", loweredReturnType, parameterType);
         }
 
@@ -1299,23 +1243,32 @@ namespace Mug.Generator
             }
 
             var value = expression.Parameters.FirstOrDefault() ?? GetDefaultValueOf(expression.Generics.First(), expression.Parameters.Position);
-            var contextType = expression.Generics.FirstOrDefault() ?? ContextType;
+            var contextType = expression.Generics.FirstOrDefault() ?? PointerBaseTypeOr(ContextType, DataType.Undefined);
 
             var first = FunctionBuilder.CurrentIndex();
             var expressionType = EvaluateMallocExpression(contextType, value);
             var byteSize = GetTypeByteSize(expressionType);
 
-            FixAndCheckTypes(contextType, expressionType, value.Position);
+            if (expression.Generics.Count == 1)
+                FixAndCheckTypes(contextType, expressionType, value.Position);
 
             var result = DataType.Pointer(expressionType);
-            var loweredResult = LowerDataType(result);
+            var loweredResult = (result);
 
             EmitMallocCall(byteSize, first, loweredResult);
 
             return result;
         }
 
-        private void EmitMallocCall(long byteSize, int first, MIRType loweredResult)
+        private DataType PointerBaseTypeOr(DataType type, DataType or)
+        {
+            return
+                type.SolvedType.IsPointer() ?
+                    type.SolvedType.GetBaseElementType() :
+                    or;
+        }
+
+        private void EmitMallocCall(long byteSize, int first, DataType loweredResult)
         {
             TryDeclareExternMalloc(out var loweredReturnType, out var loweredParameterType);
 
@@ -1324,7 +1277,8 @@ namespace Mug.Generator
             FunctionBuilder.EmitCall("malloc", loweredReturnType);
             FunctionBuilder.MoveLastInstructionTo(first++);
 
-            EmitPointerCastIFNeededInMallocCall(loweredResult, loweredReturnType, ref first);
+            FunctionBuilder.EmitCastPointerToPointer(loweredResult);
+            FunctionBuilder.MoveLastInstructionTo(first++);
             FunctionBuilder.EmitDupplicate();
             FunctionBuilder.MoveLastInstructionTo(first);
 
@@ -1339,19 +1293,10 @@ namespace Mug.Generator
             return expressionType;
         }
 
-        private void EmitPointerCastIFNeededInMallocCall(MIRType loweredResult, MIRType loweredReturnType, ref int first)
+        private void TryDeclareExternMalloc(out DataType loweredReturnType, out DataType loweredParameterType)
         {
-            if (!loweredResult.Equals(loweredReturnType))
-            {
-                FunctionBuilder.EmitCastPointerToPointer(loweredResult);
-                FunctionBuilder.MoveLastInstructionTo(first++);
-            }
-        }
-
-        private void TryDeclareExternMalloc(out MIRType loweredReturnType, out MIRType loweredParameterType)
-        {
-            loweredReturnType = LowerDataType(DataType.Pointer(DataType.UInt8));
-            loweredParameterType = new MIRType(MIRTypeKind.UInt, 64);
+            loweredReturnType = (DataType.Pointer(DataType.UInt8));
+            loweredParameterType = DataType.UInt64;
 
             TryDeclareExternPrototype("malloc", loweredReturnType, loweredParameterType);
         }
@@ -1378,15 +1323,15 @@ namespace Mug.Generator
             return result;
         }
 
-        private void TryDeclareExternExit(DataType result, out MIRType loweredReturnType, out MIRType parameterType)
+        private void TryDeclareExternExit(DataType result, out DataType loweredReturnType, out DataType parameterType)
         {
-            loweredReturnType = LowerDataType(result);
-            parameterType = new MIRType(MIRTypeKind.Int, 32);
+            loweredReturnType = (result);
+            parameterType = DataType.Int32;
 
             TryDeclareExternPrototype("exit", loweredReturnType, parameterType);
         }
 
-        private void TryDeclareExternPrototype(string name, MIRType type, params MIRType[] parameterTypes)
+        private void TryDeclareExternPrototype(string name, DataType type, params DataType[] parameterTypes)
         {
             if (!Module.FunctionPrototypeIsDeclared(name))
                 Module.DefineFunctionPrototype(name, type, parameterTypes);
@@ -1422,7 +1367,7 @@ namespace Mug.Generator
 
         private void EmitLoadConstantString(string value)
         {
-            TryDeclareExternPrototype("$create_str", MIRType.String, MIRType.CString, new MIRType(MIRTypeKind.UInt, 64));
+            TryDeclareExternPrototype("$create_str", DataType.String, DataType.Pointer(DataType.UInt8), DataType.UInt64);
             FunctionBuilder.EmitLoadConstantString(value);
         }
 
@@ -1442,7 +1387,7 @@ namespace Mug.Generator
                 ReportExpectedValueOfTypeInt(value.Position);
 
             type = IntTypeStringToMIRType(name);
-            FunctionBuilder.EmitCastIntToInt(LowerDataType(type));
+            FunctionBuilder.EmitCastIntToInt((type));
             return type;
         }
 
@@ -1461,7 +1406,7 @@ namespace Mug.Generator
             var returnType = CoercedOr(DataType.Int32);
 
             if (type is not null)
-                FunctionBuilder.EmitLoadConstantValue(GetTypeByteSize(type, type.Position), LowerDataType(returnType));
+                FunctionBuilder.EmitLoadConstantValue(GetTypeByteSize(type, type.Position), (returnType));
 
             return returnType;
         }
@@ -1598,7 +1543,7 @@ namespace Mug.Generator
             for (var i = 0; i < expression.Parameters.Count; i++)
                 CheckAndEvaluateParameter(func, i, expression.Parameters[i]);
 
-            FunctionBuilder.EmitCall(typePrefix + func.Name, LowerDataType(func.ReturnType));
+            FunctionBuilder.EmitCall(typePrefix + func.Name, (func.ReturnType));
         }
 
         private void CheckAndEvaluateParameter(FunctionStatement func, int i, INode parameter)
@@ -1740,7 +1685,7 @@ namespace Mug.Generator
             var constant = long.Parse(FoldConstantIntoToken(expression).Value);
 
             var type = CoercedOr(DataType.Int32);
-            FunctionBuilder.EmitLoadConstantValue(constant, LowerDataType(type));
+            FunctionBuilder.EmitLoadConstantValue(constant, (type));
             CheckUnsignedOverflow(constant, expression.Position);
 
             return type;
@@ -1780,7 +1725,7 @@ namespace Mug.Generator
             ExpectIntTypeLeftTermOfSemiConstantExpression(leftType, expression.Position);
             ReportWhenDividingByZero(constantRight, expression.Operator.Kind == TokenKind.Slash, expression.Position);
 
-            FunctionBuilder.EmitLoadConstantValue(constantRight, LowerDataType(leftType));
+            FunctionBuilder.EmitLoadConstantValue(constantRight, (leftType));
 
             return leftType;
         }
@@ -1828,7 +1773,7 @@ namespace Mug.Generator
             var rightType = EvaluateExpression(expression.Right);
 
             ExpectIntTypeRightTermOfSemiConstantExpression(rightType, expression.Position);
-            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), LowerDataType(rightType));
+            FunctionBuilder.EmitLoadConstantValue(long.Parse(left.Value), (rightType));
 
             ContextTypes.Pop();
 
@@ -1838,7 +1783,7 @@ namespace Mug.Generator
 
         private void EmitOperation(TokenKind op, DataType type)
         {
-            FunctionBuilder.EmitInstruction((MIRInstructionKind)op, LowerDataType(type));
+            FunctionBuilder.EmitInstruction((MIRInstructionKind)op, (type));
         }
 
         private Token FoldConstantIntoToken(INode opaque)
@@ -2011,28 +1956,8 @@ namespace Mug.Generator
                 return EvaluateArrayDotAccessOperator(expression.Member, baseType);
             if (baseType.SolvedType.IsPointer())
                 return EvaluatePointerDotAccessOperator(baseType, expression);
-            if (baseType.SolvedType.IsOption())
-                return EvaluateOptionDotAccessOperator(baseType, expression);
 
             return NotAccessibleViaDotOperator(baseType, expression.Base.Position);
-        }
-
-        private DataType EvaluateOptionDotAccessOperator(DataType baseType, MemberNode expression)
-        {
-            var boxtype = new MIRType(MIRTypeKind.Pointer, LowerDataType(baseType.SolvedType.GetBaseElementType()));
-            FunctionBuilder.EmitCastPointerToPointer(boxtype);
-            FunctionBuilder.EmitLoadValueFromPointer();
-
-            var optionBaseType = baseType.SolvedType.GetBaseElementType();
-
-            if (!optionBaseType.SolvedType.IsStruct())
-                return NotAccessibleViaDotOperator(optionBaseType, expression.Base.Position);
-
-            var structure = optionBaseType.SolvedType.GetStruct();
-            var fieldType = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
-            FunctionBuilder.EmitLoadField(index, LowerDataType(fieldType));
-
-            return fieldType;
         }
 
         private DataType NotAccessibleViaDotOperator(DataType type, ModulePosition position)
@@ -2043,7 +1968,7 @@ namespace Mug.Generator
 
         private DataType EvaluatePointerDotAccessOperator(DataType baseType, MemberNode expression)
         {
-            FunctionBuilder.EmitLoadValueFromPointer();
+            FunctionBuilder.EmitLoadValueFromPointer((baseType.SolvedType.GetBaseElementType()));
 
             var pointerBaseType = baseType.SolvedType.GetBaseElementType();
 
@@ -2052,7 +1977,7 @@ namespace Mug.Generator
 
             var structure = pointerBaseType.SolvedType.GetStruct();
             var fieldType = GetFieldType(expression.Member.Value, structure, expression.Member.Position, out var index);
-            FunctionBuilder.EmitLoadField(index, LowerDataType(fieldType));
+            FunctionBuilder.EmitLoadField(index, (fieldType));
 
             return fieldType;
         }
@@ -2077,7 +2002,7 @@ namespace Mug.Generator
         {
             var type = ContextTypeIFIntOr(DataType.UInt64);
 
-            FunctionBuilder.EmitLoadField(0, new(MIRTypeKind.UInt, 64));
+            FunctionBuilder.EmitLoadField(0, DataType.UInt64);
             IntCastIfNeeded(type);
 
             return type;
@@ -2086,7 +2011,7 @@ namespace Mug.Generator
         private void IntCastIfNeeded(DataType type)
         {
             if (type.SolvedType.Kind is not TypeKind.UInt64)
-                FunctionBuilder.EmitCastIntToInt(LowerDataType(type));
+                FunctionBuilder.EmitCastIntToInt((type));
         }
 
         private DataType ContextTypeIFIntOr(DataType type)
@@ -2104,7 +2029,7 @@ namespace Mug.Generator
                 return;
             }
             
-            FunctionBuilder.EmitLoadField(index, LowerDataType(type));
+            FunctionBuilder.EmitLoadField(index, (type));
         }
 
         private void ExpectPublicFieldOrInternal(FieldNode field, TypeStatement type, ModulePosition position)
@@ -2142,7 +2067,7 @@ namespace Mug.Generator
 
             ReportStaticTypeAllocationIfNeeded(expression, structure);
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(LowerDataType(type));
+            FunctionBuilder.EmitLoadZeroinitializedStruct((type));
             EvaluateTypeInitialization(expression, structure, assignedFields);
             // FunctionBuilder.EmitLoadValueFromPointer();
 
@@ -2175,14 +2100,14 @@ namespace Mug.Generator
                 or TypeKind.UInt16 => 2,
                 TypeKind.Array
                 or TypeKind.String => PointerSize() + 8,
-                TypeKind.DefinedType => GetStructByteSize(type.SolvedType.GetStruct(), position),
+                TypeKind.Struct => GetStructByteSize(type.SolvedType.GetStruct(), position),
                 TypeKind.GenericDefinedType => throw new NotImplementedException(),
                 TypeKind.Void
                 or TypeKind.Undefined
                 or TypeKind.Auto => 0,
+                TypeKind.Option => GetTypeByteSize(type.SolvedType.GetBaseElementType()) + 1,
                 TypeKind.EnumError => throw new NotImplementedException(),
-                TypeKind.Err => throw new NotImplementedException(),
-                TypeKind.Option => PointerSize()
+                TypeKind.Err => throw new NotImplementedException()
             };
         }
 
@@ -2223,11 +2148,10 @@ namespace Mug.Generator
             for (int i = 0; i < structure.BodyFields.Count; i++)
             {
                 var field = structure.BodyFields[i];
-                if (!assignedFields.Contains(field.Name))
-                {
-                    EvaluateExpression(GetDefaultValueOf(field.Type, position));
-                    FunctionBuilder.EmitStoreField(i, LowerDataType(field.Type));
-                }
+                if (assignedFields.Contains(field.Name)) continue;
+                
+                EvaluateExpression(GetDefaultValueOf(field.Type, position));
+                FunctionBuilder.EmitStoreField(i, (field.Type));
             }
         }
 
@@ -2255,8 +2179,8 @@ namespace Mug.Generator
         {
             ContextTypes.Push(fieldType);
 
-            FixAndCheckTypes(fieldType, EvaluateExpression(field.Body), field.Position);
-            FunctionBuilder.EmitStoreField(fieldIndex, LowerDataType(fieldType));
+            FixAndCheckTypes(fieldType, EvaluateExpression(field.Body), field.Body.Position);
+            FunctionBuilder.EmitStoreField(fieldIndex, (fieldType));
 
             ContextTypes.Pop();
         }
@@ -2301,7 +2225,7 @@ namespace Mug.Generator
             if (allocation.IsConst && LeftValueChecker.IsLeftValue)
                 Tower.Report(LeftValueChecker.Position, "Constant allocation cannot be referred or assigned");
 
-            FunctionBuilder.EmitLoadLocal(allocation.StackIndex, LowerDataType(allocation.Type));
+            FunctionBuilder.EmitLoadLocal(allocation.StackIndex, (allocation.Type));
         }
 
         private AllocationData ReportVariableNotDeclared(string value, ModulePosition position)
@@ -2345,7 +2269,7 @@ namespace Mug.Generator
                     break;
             }
 
-            FunctionBuilder.EmitLoadConstantValue(value, LowerDataType(result));
+            FunctionBuilder.EmitLoadConstantValue(value, (result));
 
             return result;
         }
@@ -2361,7 +2285,7 @@ namespace Mug.Generator
             var allocation = new AllocationData(localindex, type, isconst);
             CheckForRedeclaration(name, position, allocation);
 
-            FunctionBuilder.DeclareAllocation((MIRAllocationAttribute)Convert.ToInt32(isconst), LowerDataType(type));
+            FunctionBuilder.DeclareAllocation((MIRAllocationAttribute)Convert.ToInt32(isconst), (type));
 
             return allocation;
         }
@@ -2379,7 +2303,7 @@ namespace Mug.Generator
 
         private void GenerateFunction(FunctionStatement func, string irFunctionName)
         {
-            FunctionBuilder = new(irFunctionName, LowerDataType(func.ReturnType), GetParameterTypes(func.ParameterList));
+            FunctionBuilder = new(irFunctionName, (func.ReturnType), GetParameterTypes(func.ParameterList));
             CurrentFunction = func;
             CurrentScope = new(func.ReturnType, true, new());
 
@@ -2402,12 +2326,12 @@ namespace Mug.Generator
             if (!CurrentFunction.ReturnType.SolvedType.IsVoid())
                 EvaluateExpression(GetDefaultValueOf(CurrentFunction.ReturnType, CurrentFunction.Position));
 
-            FunctionBuilder.EmitReturn(LowerDataType(CurrentFunction.ReturnType));
+            FunctionBuilder.EmitReturn((CurrentFunction.ReturnType));
         }
 
         private void GenerateFunctionPrototype(FunctionStatement func)
         {
-            Module.DefineFunctionPrototype(func.Name, LowerDataType(func.ReturnType), GetParameterTypes(func.ParameterList));
+            Module.DefineFunctionPrototype(func.Name, (func.ReturnType), GetParameterTypes(func.ParameterList));
         }
 
         private void SetEntryBlock()
@@ -2429,6 +2353,7 @@ namespace Mug.Generator
                 GenerateFunction(method, $"{type.Name}.{method.Name}");
 
             CurrentType = null;
+            Module.DefineStruct(LowerStruct(type));
         }
 
         private bool ProcessingMethodOf(TypeStatement type)
@@ -2442,35 +2367,39 @@ namespace Mug.Generator
 
             foreach (var field in type.BodyFields)
             {
-                var fieldType = field.Type.SolvedType;
-                if (!fieldType.IsStruct() &&
-                    (!fieldType.IsPointer() || !fieldType.GetBaseElementType().SolvedType.IsStruct())) continue;
+                var structure = SearchForStructureInsideType(field.Type.SolvedType);
+                if (structure is null) continue;
 
-                var fieldStructType =
-                (
-                    fieldType.Kind is TypeKind.Pointer ?
-                        ((DataType)fieldType.Base).SolvedType :
-                        fieldType
-                ).GetStruct();
+                if (illegalTypes.Contains(structure.Name))
+                    Tower.Throw(field.Type.Position, $"Recursion in type, use '*{field.Type}' instead");
 
-                CheckIfThereIsARecursion(type, illegalTypes, field, fieldType, fieldStructType);
+                CheckRecursiveType(structure, illegalTypes);
             }
         }
 
-        private void CheckIfThereIsARecursion(
-            TypeStatement type,
-            List<string> illegalTypes,
-            FieldNode field,
-            SolvedType fieldType,
-            TypeStatement fieldStructType)
+        private TypeStatement SearchForStructureInsideType(SolvedType type)
         {
-            if (illegalTypes.Contains(fieldType.ToString()))
-                Tower.Throw(field.Type.Position, $"Recursive type, use '?{fieldType}' instead");
-            else
-                CheckRecursiveType(fieldStructType, illegalTypes);
+            if (type.Base is null
+                || type.IsPointer()
+                || type.IsArray())
+                return null;
+
+            return
+                type.IsStruct() ?
+                    type.GetStruct() :
+                    SearchForStructureInsideType(type.GetBaseElementType().SolvedType);
         }
 
-        private void WalkDeclarations()
+        private void CheckStructureLayoutRecursion(TypeStatement type)
+        {
+            var errorsCount = Tower.Diagnostic.Count;
+
+            CheckRecursiveType(type, new());
+
+            Tower.CheckDiagnostic(errorsCount);
+        }
+
+        private void WalkThroughDeclarations()
         {
             FunctionStatement entrypoint = null;
             foreach (var symbol in Tower.Symbols.GetCache())
@@ -2524,7 +2453,7 @@ namespace Mug.Generator
                     CheckEnumValues(enumSymbol);
                     break;
                 case TypeStatement structSymbol:
-                    CheckRecursiveType(structSymbol, new());
+                    CheckStructureLayoutRecursion(structSymbol);
                     GenerateStruct(structSymbol);
                     break;
                 case FunctionStatement funcSymbol:

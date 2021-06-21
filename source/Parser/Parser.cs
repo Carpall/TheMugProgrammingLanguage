@@ -138,9 +138,11 @@ namespace Mug.Parser
 
         private DataType ExpectType(bool allowEnumError = false)
         {
+            if (MatchSpecificIdentifier("option"))
+                return CollectOptionType();
             if (MatchAdvance(TokenKind.OpenBracket, out var token))
                 return CollectArrayType(token);
-            if (MatchAdvance(TokenKind.Star, out token) || MatchAdvance(TokenKind.QuestionMark, out token))
+            if (MatchAdvance(TokenKind.Star, out token))
                 return CollectPointerType(token);
 
             var find = ExpectBaseType();
@@ -155,6 +157,16 @@ namespace Mug.Parser
             return find;
         }
 
+        private DataType CollectOptionType()
+        {
+            var pos = Back.Position;
+            Expect("", TokenKind.OpenBracket);
+            var result = UnsolvedType.Create(Tower, pos, TypeKind.Option, ExpectType());
+            Expect("", TokenKind.CloseBracket);
+
+            return result;
+        }
+
         private void CollectEnumErrorType(ref DataType find)
         {
             find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
@@ -162,7 +174,7 @@ namespace Mug.Parser
 
         private void CollectGenericType(ref DataType find)
         {
-            if (find.UnsolvedType.Kind is not TypeKind.DefinedType)
+            if (find.UnsolvedType.Kind is not TypeKind.Struct)
                 ParseError(find.Position, $"Generic parameters cannot be passed to type '{find}'");
 
             var genericTypes = new List<DataType>();
@@ -186,7 +198,7 @@ namespace Mug.Parser
             return UnsolvedType.Create(
                 Tower,
                 new(token.Position.Lexer, token.Position.Position.Start..type.UnsolvedType.Position.Position.End),
-                token.Kind == TokenKind.Star ? TypeKind.Pointer : TypeKind.Option,
+                TypeKind.Pointer,
                 type);
         }
 
@@ -297,11 +309,11 @@ namespace Mug.Parser
         private bool MatchConstantAdvance()
         {
             return
-                MatchAdvance(TokenKind.ConstantChar) ||
-                MatchAdvance(TokenKind.ConstantDigit) ||
-                MatchAdvance(TokenKind.ConstantFloatDigit) ||
-                MatchAdvance(TokenKind.ConstantString) ||
-                MatchAdvance(TokenKind.ConstantBoolean);
+                MatchAdvance(TokenKind.ConstantChar)
+                || MatchAdvance(TokenKind.ConstantDigit)
+                || MatchAdvance(TokenKind.ConstantFloatDigit)
+                || MatchAdvance(TokenKind.ConstantString)
+                || MatchAdvance(TokenKind.ConstantBoolean);
         }
 
         private BadNode CreateBadNode()

@@ -89,7 +89,7 @@ namespace Mug.Generator.TargetGenerators.C
             _stackBlocksHistory.Add(
                 StackValues.Count == 1 ?
                     PopValue() :
-                    new(new(), null));
+                    new(null, null));
         }
 
         private void EmitLoweredInstruction(MIRInstruction instruction)
@@ -175,7 +175,7 @@ namespace Mug.Generator.TargetGenerators.C
             LoadValue(reg, instance.Type);
         }
 
-        private void LoadValue(string value, MIRType type)
+        private void LoadValue(string value, DataType type)
         {
             StackValues.Push(new(type, value));
         }
@@ -195,7 +195,7 @@ namespace Mug.Generator.TargetGenerators.C
             EmitUnaryOperation("*", instruction.Type);
         }
 
-        private string CreateTempStackAllocation(MIRType type, out string reg)
+        private string CreateTempStackAllocation(DataType type, out string reg)
         {
             reg = $"R{GetRegCountAndInc()}";
             return $"{type} {reg}";
@@ -249,7 +249,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitCall(MIRInstruction instruction)
         {
-            var isNotVoid = !instruction.Type.IsVoid();
+            var isNotVoid = !instruction.Type.SolvedType.IsVoid();
             var call = BuildCallExpression(instruction.GetName());
 
             if (isNotVoid)
@@ -258,7 +258,7 @@ namespace Mug.Generator.TargetGenerators.C
                 EmitStatement(call);
         }
 
-        private void LoadInVirtualReg(string expression, MIRType type)
+        private void LoadInVirtualReg(string expression, DataType type)
         {
             LoadValue(MovInVirtualReg(expression, type), type);
         }
@@ -309,7 +309,7 @@ namespace Mug.Generator.TargetGenerators.C
             EmitUnaryOperation("!", instruction.Type);
         }
 
-        private void EmitUnaryOperation(string op, MIRType type)
+        private void EmitUnaryOperation(string op, DataType type)
         {
             LoadValue($"({op} {PopValue()})", type);
         }
@@ -334,7 +334,7 @@ namespace Mug.Generator.TargetGenerators.C
             EmitOperation("+", instruction.Type);
         }
 
-        private void EmitOperation(string op, MIRType type)
+        private void EmitOperation(string op, DataType type)
         {
             var right = PopValue();
             LoadValue($"({PopValue()} {op} {right})", type);
@@ -358,7 +358,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void EmitReturn(MIRInstruction instruction)
         {
-            EmitStatement("return", !instruction.Type.IsVoid() ? PopValue().Value : null);
+            EmitStatement("return", !instruction.Type.SolvedType.IsVoid() ? PopValue().Value : null);
         }
 
         private void EmitLoadConstant(MIRInstruction instruction)
@@ -368,11 +368,10 @@ namespace Mug.Generator.TargetGenerators.C
 
         private static string MIRConstantToCConstant(MIRInstruction instruction)
         {
-            return instruction.Type.Kind switch
-            {
-                MIRTypeKind.Int or MIRTypeKind.UInt => instruction.ConstantIntValue.ToString(),
-                MIRTypeKind.Pointer => MIRPointerConstantToCConstant(instruction)
-            };
+            return
+                instruction.Type.SolvedType.IsInt() ?
+                    instruction.ConstantIntValue.ToString() :
+                    MIRPointerConstantToCConstant(instruction);
         }
 
         private static string MIRPointerConstantToCConstant(MIRInstruction instruction)
@@ -402,7 +401,7 @@ namespace Mug.Generator.TargetGenerators.C
             return new(type, name);
         }
 
-        private string DeclareAllocation(MIRType type, string attributes = null)
+        private string DeclareAllocation(DataType type, string attributes = null)
         {
             var result = GetLocal(CurrentFunctionBuilder.Allocations.Count);
             CurrentFunctionBuilder.Allocations.Add((type, attributes));
@@ -419,10 +418,10 @@ namespace Mug.Generator.TargetGenerators.C
             }
         }
 
-        private string[] CollectPhiNodesRelatedToBlock(List<int> currentBlockReferences, out MIRType type)
+        private string[] CollectPhiNodesRelatedToBlock(List<int> currentBlockReferences, out DataType type)
         {
             var values = new List<string>();
-            type = new();
+            type = null;
 
             foreach (var blockIndex in currentBlockReferences)
             {
@@ -446,7 +445,7 @@ namespace Mug.Generator.TargetGenerators.C
             CurrentFunctionBuilder.CurrentBlock.Add($"{statement}{(expression is not null ? $" {expression}" : "")};");
         }
 
-        private string MovInVirtualReg(string expression, MIRType type)
+        private string MovInVirtualReg(string expression, DataType type)
         {
             var allocation = CreateTempStackAllocation(type, out var reg);
             EmitStatement($"{allocation} =", expression);
@@ -464,7 +463,7 @@ namespace Mug.Generator.TargetGenerators.C
             return $"mug__{name.Replace('.', '_')}";
         }
 
-        private static string BuildParametersInCFunctionPrototypes(MIRType[] parameterTypes)
+        private static string BuildParametersInCFunctionPrototypes(DataType[] parameterTypes)
         {
             var result = new StringBuilder();
             for (int i = 0; i < parameterTypes.Length; i++)
@@ -497,7 +496,7 @@ namespace Mug.Generator.TargetGenerators.C
 
         private void LowerFunctionPrototype(MIRFunctionPrototype functionPrototype)
         {
-            Module.FunctionPrototypes.Add($"{functionPrototype.ReturnType} {functionPrototype.Name}({string.Join(", ", functionPrototype.ParameterTypes)});");
+            Module.FunctionPrototypes.Add($"{functionPrototype.ReturnType} {functionPrototype.Name}({string.Join<DataType>(", ", functionPrototype.ParameterTypes)});");
         }
 
         private void LowerGlobals()

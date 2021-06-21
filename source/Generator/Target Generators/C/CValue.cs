@@ -1,4 +1,5 @@
 ﻿using Mug.Generator.IR;
+using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,10 +10,10 @@ namespace Mug.Generator.TargetGenerators.C
 {
     struct CValue
     {
-        public MIRType Type { get; }
+        public DataType Type { get; }
         public string Value { get; }
 
-        public CValue(MIRType type, string value)
+        public CValue(DataType type, string value)
         {
             Type = type;
             Value = value;

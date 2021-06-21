@@ -103,7 +103,7 @@ namespace Mug.TypeResolution
 
         private void ReportNameIfIsPrimitiveLike(string name, ModulePosition position)
         {
-            if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.DefinedType)
+            if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.Struct)
                 Tower.Report(position, $"Type '{name}' is automaticaly hidden by the builtin type");
         }
 

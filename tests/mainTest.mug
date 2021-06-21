@@ -1,8 +1,10 @@
 type A {
-  pub a: ?A
+  pub a: option[*A]
+}
+
+fn a(): A {
+  new { a: some!(alloc:A!()) }
 }
 
 fn main() {
-  var x = box!(new A { })
-  var y = x.a
 }

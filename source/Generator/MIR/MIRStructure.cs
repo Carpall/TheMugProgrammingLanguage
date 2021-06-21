@@ -11,12 +11,12 @@ namespace Mug.Generator.IR
     {
         public bool IsPacked { get; }
         public string Name { get; }
-        public MIRType[] Body { get; }
+        public DataType[] Body { get; }
 
         public MIRStructure(
             bool isPacked,
             string name,
-            MIRType[] body)
+            DataType[] body)
         {
             IsPacked = isPacked;
             Name = name;
@@ -40,7 +40,7 @@ namespace Mug.Generator.IR
             if (Body.Length == 0)
                 body.Append(".empty");
 
-            body.Append(string.Join("\n    ", Body));
+            body.Append(string.Join<DataType>("\n    ", Body));
 
             return body.ToString();
         }

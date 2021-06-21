@@ -20,7 +20,7 @@ namespace Mug.TypeSystem
 
         public static SolvedType Struct(TypeStatement symbol)
         {
-            return new SolvedType { Kind = TypeKind.DefinedType, Base = symbol };
+            return new SolvedType { Kind = TypeKind.Struct, Base = symbol };
         }
 
         public static SolvedType WithBase(TypeKind kind, DataType baseElementType)
@@ -45,7 +45,7 @@ namespace Mug.TypeSystem
 
         public bool IsStruct()
         {
-            return Kind == TypeKind.DefinedType || Kind == TypeKind.GenericDefinedType;
+            return Kind == TypeKind.Struct || Kind == TypeKind.GenericDefinedType;
         }
 
         public DataType GetBaseElementType()
@@ -93,7 +93,7 @@ namespace Mug.TypeSystem
         {
             return
                 Kind is TypeKind.GenericDefinedType
-                or TypeKind.DefinedType
+                or TypeKind.Struct
                 or TypeKind.Array;
         }
 

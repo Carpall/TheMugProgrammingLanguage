@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Parser.AST.Statements;
 using Mug.Tokenizer;
 using System;
 using System.Collections.Generic;
@@ -24,17 +25,22 @@ namespace Mug.TypeSystem
             IsSolved = issolved;
         }
 
-        internal static DataType Bool => Primitive(TypeKind.Bool);
-        internal static DataType Int32 => Primitive(TypeKind.Int32);
-        internal static DataType Int64 => Primitive(TypeKind.Int64);
-        internal static DataType Void => Primitive(TypeKind.Void);
-        internal static DataType Auto => Primitive(TypeKind.Auto);
-        internal static DataType String => Primitive(TypeKind.String);
-        internal static DataType Char => Primitive(TypeKind.Char);
-        internal static DataType Float32 => Primitive(TypeKind.Float32);
-        internal static DataType Undefined => Primitive(TypeKind.Undefined);
-        internal static DataType UInt64 => Primitive(TypeKind.UInt64);
-        internal static DataType UInt8 => Primitive(TypeKind.UInt8);
+        internal static DataType Bool = Primitive(TypeKind.Bool);
+        internal static DataType Int32 = Primitive(TypeKind.Int32);
+        internal static DataType Int64 = Primitive(TypeKind.Int64);
+        internal static DataType Void = Primitive(TypeKind.Void);
+        internal static DataType Auto = Primitive(TypeKind.Auto);
+        internal static DataType String = Primitive(TypeKind.String);
+        internal static DataType Char = Primitive(TypeKind.Char);
+        internal static DataType Float32 = Primitive(TypeKind.Float32);
+        internal static DataType Undefined = Primitive(TypeKind.Undefined);
+        internal static DataType UInt64 = Primitive(TypeKind.UInt64);
+        internal static DataType UInt8 = Primitive(TypeKind.UInt8);
+
+        internal static DataType Struct(TypeStatement type)
+        {
+            return Solved(TypeSystem.SolvedType.Struct(type));
+        }
 
         internal static DataType Option(DataType type)
         {

@@ -10,8 +10,8 @@ namespace Mug.Generator.IR.Builder
     internal class MIRFunctionBuilder
     {
         private readonly string _name;
-        private readonly MIRType _returnType;
-        private readonly MIRType[] _parameterTypes;
+        private readonly DataType _returnType;
+        private readonly DataType[] _parameterTypes;
         private readonly List<MIRBlock> _body = new();
         private readonly List<MIRAllocation> _allocations = new();
 
@@ -19,7 +19,7 @@ namespace Mug.Generator.IR.Builder
         private int _currentBlockIndex = 0;
         private bool _currentBlockIsTerminated = false;
 
-        public MIRFunctionBuilder(string name, MIRType returntype, MIRType[] parametertypes)
+        public MIRFunctionBuilder(string name, DataType returntype, DataType[] parametertypes)
         {
             _name = name;
             _returnType = returntype;
@@ -43,7 +43,7 @@ namespace Mug.Generator.IR.Builder
             return new(_name, _returnType, _parameterTypes, _body.ToArray(), _allocations.ToArray());
         }
 
-        public void DeclareAllocation(MIRAllocationAttribute attributes, MIRType type)
+        public void DeclareAllocation(MIRAllocationAttribute attributes, DataType type)
         {
             _allocations.Add(new(attributes, type));
         }
@@ -91,27 +91,27 @@ namespace Mug.Generator.IR.Builder
             EmitInstruction(new MIRInstruction(kind));
         }
 
-        public void EmitInstruction(MIRInstructionKind kind, MIRType type)
+        public void EmitInstruction(MIRInstructionKind kind, DataType type)
         {
             EmitInstruction(new MIRInstruction(kind, type));
         }
 
-        private void EmitInstruction(MIRInstructionKind kind, MIRType type, object value)
+        private void EmitInstruction(MIRInstructionKind kind, DataType type, object value)
         {
             EmitInstruction(new MIRInstruction(kind, type, value));
         }
 
-        public void EmitLoadConstantValue(object constant, MIRType type)
+        public void EmitLoadConstantValue(object constant, DataType type)
         {
             EmitInstruction(MIRInstructionKind.Load, type, constant);
         }
 
-        public void EmitStoreLocal(int stackIndex, MIRType type)
+        public void EmitStoreLocal(int stackIndex, DataType type)
         {
             EmitInstruction(MIRInstructionKind.StoreLocal, type, stackIndex);
         }
 
-        public void EmitLoadZeroinitializedStruct(MIRType type)
+        public void EmitLoadZeroinitializedStruct(DataType type)
         {
             EmitInstruction(MIRInstructionKind.LoadZeroinitialized, type);
         }
@@ -121,12 +121,12 @@ namespace Mug.Generator.IR.Builder
             EmitInstruction(MIRInstructionKind.Dupplicate);
         }
 
-        public void EmitStoreField(int stackindex, MIRType type)
+        public void EmitStoreField(int stackindex, DataType type)
         {
             EmitInstruction(MIRInstructionKind.StoreField, type, stackindex);
         }
 
-        public void EmitLoadLocal(int stackindex, MIRType type)
+        public void EmitLoadLocal(int stackindex, DataType type)
         {
             EmitInstruction(MIRInstructionKind.LoadLocal, type, stackindex);
         }
@@ -136,7 +136,7 @@ namespace Mug.Generator.IR.Builder
             return _currentBlock.Last();
         }
 
-        public void EmitLoadField(int index, MIRType type)
+        public void EmitLoadField(int index, DataType type)
         {
             EmitInstruction(MIRInstructionKind.LoadField, type, index);
         }
@@ -193,7 +193,7 @@ namespace Mug.Generator.IR.Builder
             return _allocations.Count;
         }
 
-        public void EmitReturn(MIRType type)
+        public void EmitReturn(DataType type)
         {
             EmitInstruction(MIRInstructionKind.Return, type);
         }
@@ -203,27 +203,27 @@ namespace Mug.Generator.IR.Builder
             return _currentBlock.Count > 0 && _currentBlock[^1].Kind is MIRInstructionKind.Return;
         }
 
-        public void EmitCall(string name, MIRType type)
+        public void EmitCall(string name, DataType type)
         {
             EmitInstruction(MIRInstructionKind.Call, type, name);
         }
 
-        public void EmitLoadValueFromPointer()
+        public void EmitLoadValueFromPointer(DataType type)
         {
-            EmitInstruction(MIRInstructionKind.LoadValueFromPointer, LastInstruction().Type.GetPointerBaseType());
+            EmitInstruction(MIRInstructionKind.LoadValueFromPointer, type);
         }
 
-        public void EmitNeg(MIRType type)
+        public void EmitNeg(DataType type)
         {
             EmitInstruction(MIRInstructionKind.Neg, type);
         }
 
-        public void StoreGlobal(string name, MIRType type)
+        public void StoreGlobal(string name, DataType type)
         {
             EmitInstruction(new MIRInstruction(MIRInstructionKind.StoreGlobal, type, name));
         }
 
-        public void EmitCastIntToInt(MIRType type)
+        public void EmitCastIntToInt(DataType type)
         {
             EmitInstruction(MIRInstructionKind.CastIntToInt, type);
         }
@@ -246,9 +246,9 @@ namespace Mug.Generator.IR.Builder
 
         public void EmitLoadConstantString(string value)
         {
-            EmitLoadConstantValue(value, MIRType.CString);
-            EmitLoadConstantValue((long)value.Length, new(MIRTypeKind.UInt, 64));
-            EmitCall("$create_str", MIRType.String);
+            EmitLoadConstantValue(value, DataType.Pointer(DataType.UInt8));
+            EmitLoadConstantValue((long)value.Length, DataType.UInt64);
+            EmitCall("$create_str", DataType.String);
         }
 
         public MIRInstruction[] PopUntil(int first, int last)
@@ -262,10 +262,9 @@ namespace Mug.Generator.IR.Builder
             return result;
         }
 
-        public void EmitCastPointerToPointer(MIRType type)
+        public void EmitCastPointerToPointer(DataType type)
         {
-            if (!LastInstruction().Type.Equals(type))
-                EmitInstruction(MIRInstructionKind.CastPointerToPointer, type);
+            EmitInstruction(MIRInstructionKind.CastPointerToPointer, type);
         }
 
         public void EmitStorePointer()
@@ -273,7 +272,7 @@ namespace Mug.Generator.IR.Builder
             EmitInstruction(MIRInstructionKind.StorePointer);
         }
 
-        public void EmitLoadNull(MIRType type)
+        public void EmitLoadNull(DataType type)
         {
             EmitLoadConstantValue(0L, type);
         }

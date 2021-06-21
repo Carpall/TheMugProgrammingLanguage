@@ -15,8 +15,8 @@ namespace Mug.Generator.IR
 
         public MIRFunction(
             string name,
-            MIRType returntype,
-            MIRType[] parametertypes,
+            DataType returntype,
+            DataType[] parametertypes,
             MIRBlock[] body,
             MIRAllocation[] allocations)
         {

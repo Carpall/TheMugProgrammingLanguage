@@ -1,4 +1,4 @@
-﻿using Mug.Parser.AST.Statements;
+﻿/*using Mug.Parser.AST.Statements;
 using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
@@ -86,3 +86,4 @@ namespace Mug.Generator.IR
         }
     }
 }
+*/
