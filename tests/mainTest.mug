@@ -1,3 +1,6 @@
+enum A {
+}
+
 type A {
   pub a: option[*A]
 }

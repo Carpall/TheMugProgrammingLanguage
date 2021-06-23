@@ -41,7 +41,10 @@ namespace Mug.Symbols
                 Tower.Report(position, $"'{name}' is a private member of module '{moduleName}'");
 
             if (symbol is not T)
+            {
                 Tower.Report(position, $"'{name}' is not a {memberKind}");
+                return default;
+            }
 
             return (T)symbol;
         }

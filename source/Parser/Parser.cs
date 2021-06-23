@@ -1454,7 +1454,7 @@ namespace Mug.Parser
             if (!MatchAdvance(TokenKind.OpenPar))
                 return UnsolvedType.Create(Tower, Back.Position, TypeKind.UInt8);
 
-            var type = ExpectPrimitiveType(true);
+            var type = ExpectType(true);
             Expect("", TokenKind.ClosePar);
             return type;
         }
@@ -1467,7 +1467,7 @@ namespace Mug.Parser
                 return false;
 
             var name = Expect("Expected the type name after 'enum' keyword", TokenKind.Identifier);
-            var statement = new EnumStatement()
+            var statement = new EnumStatement
             {
                 Modifier = GetModifier(),
                 Pragmas = GetPramas(),

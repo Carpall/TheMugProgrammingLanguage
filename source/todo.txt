@@ -35,6 +35,7 @@ NEW TODOS
 - move _currentCycle etc... to CurrentScope
 - fix '(*x).x = 1'
 - refactor parser
+- implement floats
 
 OLD TODOS
 
