@@ -1,0 +1,37 @@
+type DataType {
+
+}
+
+type Token(INode) {
+}
+
+type CallNode(INode) {
+  name: Node,
+  params: [Node],
+}
+
+type VarNode(INode) {
+  isConst: bool,
+  name: Token,
+  datatype: DataType,
+  body: Node
+}
+
+type BinExprNode(INode) {
+  left: Node,
+  right: Node
+}
+
+type UnaryExprNode(INode) {
+  
+}
+
+// a union for all types that implement INode
+type Node(INode) = ( *CallNode | *VarNode | *BinExprNode | *UnaryExprNode )
+
+trait INode {
+  pos: NodePosition
+}
+
+fn main() {
+}

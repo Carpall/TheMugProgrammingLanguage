@@ -43,13 +43,13 @@ namespace Mug.TypeSystem
         /// <summary>
         /// converts a keyword token into a type
         /// </summary>
-        public static DataType FromToken(CompilationTower tower, Token token, bool isInEnum = false)
+        public static DataType FromToken(CompilationTower tower, Token token)
         {
-            var type = GetTypeKindFromToken(token, isInEnum);
+            var type = GetTypeKindFromToken(token);
             return Create(tower, token.Position, type, token.Value);
         }
 
-        public static TypeKind GetTypeKindFromToken(Token token, bool isInEnum = false)
+        public static TypeKind GetTypeKindFromToken(Token token)
         {
             return token.Value switch
             {
@@ -68,7 +68,7 @@ namespace Mug.TypeSystem
                 "u32" => TypeKind.UInt32,
                 "u64" => TypeKind.UInt64,
                 "void" => TypeKind.Void,
-                _ => isInEnum && token.Value == "err" ? TypeKind.Err : TypeKind.Struct,
+                _ => TypeKind.CustomType,
             };
         }
 
@@ -85,12 +85,7 @@ namespace Mug.TypeSystem
         /// </summary>
         public bool IsAutomatic()
         {
-            return Kind == TypeKind.Auto;
-        }
-
-        public bool IsEnumError()
-        {
-            return Kind == TypeKind.EnumError;
+            return Kind is TypeKind.Auto;
         }
 
         public (UnsolvedType, List<UnsolvedType>) GetGenericStructure()
@@ -110,11 +105,12 @@ namespace Mug.TypeSystem
         {
             return TypeKindToString(
                 Kind,
-                BaseType is not null ? BaseType.ToString() : "",
-                IsEnumError() ? (GetEnumError().ToString(), GetEnumError().ToString()) : new());
+                BaseType is not null ?
+                    BaseType.ToString() :
+                    "");
         }
 
-        public static string TypeKindToString(TypeKind kind, string basetype, (string, string) enumerror)
+        public static string TypeKindToString(TypeKind kind, string basetype)
         {
             return kind switch
             {
@@ -122,7 +118,7 @@ namespace Mug.TypeSystem
                 TypeKind.Array => $"[{basetype}]",
                 TypeKind.Bool => "bool",
                 TypeKind.Char => "chr",
-                TypeKind.Struct => basetype,
+                TypeKind.CustomType => basetype,
                 // TypeKind.GenericDefinedType => GetGenericStructure().Item1.ToString(),
                 TypeKind.Int8 => "i8",
                 TypeKind.Int16 => "i16",
@@ -138,19 +134,22 @@ namespace Mug.TypeSystem
                 TypeKind.Pointer => $"*{basetype}",
                 TypeKind.String => "str",
                 TypeKind.Void => "void",
-                TypeKind.Err => "err",
-                TypeKind.EnumError => $"{enumerror.Item1}!{enumerror.Item2}",
                 TypeKind.Undefined => "undefined",
-                TypeKind.Option => $"option[{basetype}]"
+                TypeKind.Option => $"option[{basetype}]",
+                TypeKind.Enum => basetype,
+                TypeKind.EmptyEnum => "anyerror"
             };
         }
 
         public bool IsInt()
         {
             return
-                Kind is TypeKind.Int32
+                Kind is TypeKind.Int8
+                or TypeKind.Int16
+                or TypeKind.Int32
                 or TypeKind.Int64
                 or TypeKind.UInt8
+                or TypeKind.UInt16
                 or TypeKind.UInt32
                 or TypeKind.UInt64;
         }
@@ -169,6 +168,15 @@ namespace Mug.TypeSystem
                 return BaseType.Equals(type.BaseType);
 
             return true;
+        }
+
+        public bool IsUnsignedInt()
+        {
+            return
+                Kind is TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64;
         }
     }
 }

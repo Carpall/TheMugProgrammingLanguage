@@ -9,5 +9,6 @@ namespace Mug.Parser.AST
         public string Name { get; set; }
         public Token Value { get; set; }
         public ModulePosition Position { get; set; }
+        public bool IsNegative { get; set; }
     }
 }

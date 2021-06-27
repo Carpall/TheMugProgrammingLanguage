@@ -15,5 +15,10 @@ namespace Mug.Parser.AST.Statements
         public List<EnumMemberNode> Body { get; set; } = new();
         public TokenKind Modifier { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

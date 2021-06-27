@@ -136,7 +136,7 @@ namespace Mug.Parser
             return match;
         }
 
-        private DataType ExpectType(bool allowEnumError = false)
+        private DataType ExpectType()
         {
             if (MatchSpecificIdentifier("option"))
                 return CollectOptionType();
@@ -151,30 +151,33 @@ namespace Mug.Parser
             if (MatchAdvance(TokenKind.OpenBracket, true))
                 CollectGenericType(ref find);
 
-            if (allowEnumError && MatchAdvance(TokenKind.Negation, true))
-                CollectEnumErrorType(ref find);
-
             return find;
         }
 
         private DataType CollectOptionType()
         {
             var pos = Back.Position;
+            var types = new List<DataType>();
+
             Expect("", TokenKind.OpenBracket);
-            var result = UnsolvedType.Create(Tower, pos, TypeKind.Option, ExpectType());
+
+            do
+                types.Add(ExpectType());
+            while (MatchAdvance(TokenKind.Comma));
+
             Expect("", TokenKind.CloseBracket);
 
-            return result;
-        }
+            if (types.Count == 1)
+                types.Insert(0, DataType.Unsolved(UnsolvedType.Create(TypeKind.EmptyEnum)));
+            else if (types.Count > 2)
+                Tower.Report(pos, $"Too many generic parameters for option type");
 
-        private void CollectEnumErrorType(ref DataType find)
-        {
-            find = UnsolvedType.Create(Tower, Back.Position, TypeKind.EnumError, (find, ExpectType()));
+            return UnsolvedType.Create(Tower, pos, TypeKind.Option, (types[0], types[1]));
         }
 
         private void CollectGenericType(ref DataType find)
         {
-            if (find.UnsolvedType.Kind is not TypeKind.Struct)
+            if (find.UnsolvedType.Kind is not TypeKind.CustomType)
                 ParseError(find.Position, $"Generic parameters cannot be passed to type '{find}'");
 
             var genericTypes = new List<DataType>();
@@ -275,14 +278,14 @@ namespace Mug.Parser
             return true;
         }
 
-        private bool MatchPrimitiveType(out Token type, bool allowErr = false)
+        private bool MatchPrimitiveType(out Token type)
         {
             type = Current;
 
             return
                 MatchSpecificIdentifier("str") ||
                 MatchSpecificIdentifier("chr") ||
-                MatchSpecificIdentifier("u8")  ||
+                MatchSpecificIdentifier("u8") ||
                 MatchSpecificIdentifier("u16") ||
                 MatchSpecificIdentifier("u32") ||
                 MatchSpecificIdentifier("u64") ||
@@ -295,8 +298,7 @@ namespace Mug.Parser
                 MatchSpecificIdentifier("f128") ||
                 MatchSpecificIdentifier("void") ||
                 MatchSpecificIdentifier("bool") ||
-                MatchSpecificIdentifier("unknown") ||
-                (allowErr && MatchSpecificIdentifier("err"));
+                MatchSpecificIdentifier("unknown");
         }
 
         private bool MatchValue()
@@ -469,25 +471,22 @@ namespace Mug.Parser
                 Position = GetModulePositionRange(name.Position, Back.Position)
             };
 
-            CollectCatchExpression(ref e);
-
             return true;
         }
 
         private void CollectCatchExpression(ref INode e)
         {
-            if (MatchAdvance(TokenKind.KeyCatch))
-            {
-                var match = MatchAdvance(TokenKind.Identifier, out var error);
+            if (!MatchAdvance(TokenKind.KeyCatch))
+                return;
+            var match = MatchAdvance(TokenKind.Identifier, out var error);
 
-                e = new CatchExpressionNode()
-                {
-                    Expression = e,
-                    OutError = match ? new Token?(error) : null,
-                    Position = Back.Position,
-                    Body = ExpectBlock()
-                };
-            }
+            e = new CatchExpressionNode()
+            {
+                Expression = e,
+                OutError = match ? new Token?(error) : null,
+                Position = Back.Position,
+                Body = ExpectBlock()
+            };
         }
 
         private void CollectDotExpression(ref INode e)
@@ -546,9 +545,9 @@ namespace Mug.Parser
         {
             if (Match(TokenKind.OpenBrace))
                 return CollectBlockExpression(out e);
-            else if (MatchAdvance(TokenKind.KeyTry))
+            if (MatchAdvance(TokenKind.KeyTry))
                 return CollectTryExpression(out e);
-            else if (MatchPrefixOperator(out var prefixOP))
+            if (MatchPrefixOperator(out var prefixOP))
                 return CollectPrefixOperator(out e, allowNullExpression, prefixOP);
 
             // arr[]
@@ -840,7 +839,7 @@ namespace Mug.Parser
                     Left = e
                 };
 
-                if (boolOP.Kind != TokenKind.KeyIs)
+                if (boolOP.Kind is not TokenKind.KeyIs)
                 {
                     boolean.Right = ExpectExpression(false, false, end: end);
                     boolean.Position = GetModulePositionRange(boolean.Left.Position, boolean.Right.Position);
@@ -856,6 +855,8 @@ namespace Mug.Parser
 
                 e = boolean;
             }
+
+            CollectCatchExpression(ref e);
 
             while (allowLogicOP && MatchAndOrOperator())
             {
@@ -1190,7 +1191,7 @@ namespace Mug.Parser
 
             DataType type =
                 MatchAdvance(TokenKind.Colon) ?
-                    ExpectType(true) :
+                    ExpectType() :
                     UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
 
             var prototype = new FunctionStatement
@@ -1371,42 +1372,38 @@ namespace Mug.Parser
             }
         }
 
-        private VariableStatement CheckConstInTypeDefinitionAndEatComma(INode opaque)
+        private EnumMemberNode ExpectMemberDefinition(int lastvalue)
         {
-            var node = opaque as VariableStatement;
-            if (!node.IsConst)
-                Report(opaque.Position, "Expected keyword 'const' not 'var'");
+            var name = Expect(UnexpectedToken, TokenKind.Identifier);
+            var isnegative = false;
+            var value =
+                MatchAdvance(TokenKind.Colon) ?
+                    ExpectEnumConstant(out isnegative) :
+                    new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false);
 
             EatComma();
-
-            return node;
-        }
-
-        private EnumMemberNode ExpectMemberDefinition(bool basetypeisint, int lastvalue)
-        {
-            var name = Expect("Expected enum's member name", TokenKind.Identifier);
-            EatComma();
-            var usedimplicitconstant = false;
-
-            if (!MatchAdvance(TokenKind.Colon))
-            {
-                if (basetypeisint)
-                    usedimplicitconstant = true;
-                else
-                    Report(name.Position, "Enum member must have an explicit constant value when base type is not int");
-            }
-            else if (!MatchConstantAdvance())
-            {
-                Report("Invalid member's explicit constant value");
-                return null;
-            }
-            
-            return new EnumMemberNode()
+            return new EnumMemberNode
             {
                 Name = name.Value,
-                Value = usedimplicitconstant ? new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false) : Back,
-                Position = name.Position
+                Value = value,
+                Position = name.Position,
+                IsNegative = isnegative
             };
+        }
+
+        private Token ExpectEnumConstant(out bool isnegative)
+        {
+            isnegative = MatchAdvance(TokenKind.Minus);
+            var result = ExpectConstant("Expected constant");
+            if (result.Kind is TokenKind.ConstantChar)
+                result = new(TokenKind.ConstantDigit, ((int)result.Value.First()).ToString(), result.Position, result.IsOnNewLine);
+            else if (result.Kind is not TokenKind.ConstantDigit)
+            {
+                Report(result.Position, "Expected constant int or char value");
+                result.Value = "0";
+            }
+
+            return result;
         }
 
         private void EatComma()
@@ -1414,15 +1411,15 @@ namespace Mug.Parser
             MatchAdvance(TokenKind.Comma);
         }
 
-        private DataType ExpectPrimitiveType(bool allowErr)
+        private DataType ExpectPrimitiveType()
         {
-            if (!MatchPrimitiveType(out var type, allowErr))
+            if (!MatchPrimitiveType(out var type))
             {
                 Report("Expected primitive type");
                 return UnsolvedType.Automatic(Tower, type.Position);
             }
 
-            return UnsolvedType.FromToken(Tower, type, true);
+            return UnsolvedType.FromToken(Tower, type);
         }
 
         private void Report(string error)
@@ -1454,7 +1451,7 @@ namespace Mug.Parser
             if (!MatchAdvance(TokenKind.OpenPar))
                 return UnsolvedType.Create(Tower, Back.Position, TypeKind.UInt8);
 
-            var type = ExpectType(true);
+            var type = ExpectPrimitiveType();
             Expect("", TokenKind.ClosePar);
             return type;
         }
@@ -1488,16 +1485,14 @@ namespace Mug.Parser
         private void CollectEnumBody(EnumStatement statement)
         {
             Expect(UnexpectedToken, TokenKind.OpenBrace);
-
+            
             while (Match(TokenKind.Identifier))
             {
                 var value = -1;
                 if (statement.Body.Count > 0)
                     _ = int.TryParse(statement.Body.Last().Value.Value, out value);
 
-                var member = ExpectMemberDefinition(
-                    statement.BaseType.UnsolvedType.IsInt() || statement.BaseType.UnsolvedType.Kind == TypeKind.Err,
-                    value);
+                var member = ExpectMemberDefinition(value);
 
                 statement.Body.Add(member);
             }

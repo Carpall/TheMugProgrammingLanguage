@@ -103,7 +103,7 @@ namespace Mug.TypeResolution
 
         private void ReportNameIfIsPrimitiveLike(string name, ModulePosition position)
         {
-            if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.Struct)
+            if (UnsolvedType.GetTypeKindFromToken(Token.NewInfo(TokenKind.Identifier, name)) is not TypeKind.CustomType)
                 Tower.Report(position, $"Type '{name}' is automaticaly hidden by the builtin type");
         }
 
@@ -214,19 +214,27 @@ namespace Mug.TypeResolution
         private void DeclareEnum(EnumStatement statement)
         {
             ReportNameIfIsPrimitiveLike(statement.Name, statement.Position);
-            CheckEnum(statement.BaseType, statement.Pragmas, statement.Position);
+            CheckEnum(statement.Body, statement.BaseType, statement.Pragmas, statement.Position);
             DeclareSymbol(statement.Name, statement);
         }
 
-        private void CheckEnum(DataType baseType, Pragmas pragmas, ModulePosition position)
+        private void CheckEnum(List<EnumMemberNode> body, DataType baseType, Pragmas pragmas, ModulePosition position)
         {
-            if (!IsValidEnumBaseType(baseType.SolvedType.Kind))
-                Tower.Report(position, $"'{baseType}' is not a valid enum's base type");
+            if (body.Count == 0)
+                Tower.Report(position, $"Enums must declare at leat one member");
+
+            var basetypeIsUnsigned = baseType.UnsolvedType.IsUnsignedInt();
+            foreach (var member in body)
+                if (member.IsNegative && basetypeIsUnsigned)
+                    Tower.Report(member.Value.Position, "Negative value on unsigned enum member");
+
+            if (!IsValidEnumBaseType(baseType.UnsolvedType))
+                Tower.Report(baseType.Position, $"'{baseType}' is not a valid enum's base type");
         }
 
-        private static bool IsValidEnumBaseType(TypeKind kind)
+        private static bool IsValidEnumBaseType(UnsolvedType type)
         {
-            return kind >= 0 && kind <= TypeKind.Err;
+            return type.IsInt() || type.Kind is TypeKind.Char;
         }
 
         private void RecognizeGlobalStatement(INode global)

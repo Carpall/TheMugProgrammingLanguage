@@ -66,11 +66,19 @@ namespace Mug.Generator.TargetGenerators.LLVM
             {
                 TypeKind.Void => LLType.Void,
                 TypeKind.Bool => LLType.Int1,
-                TypeKind.Struct => Module.GetTypeByName(type.SolvedType.GetStruct().Name),
+                TypeKind.CustomType => Module.GetTypeByName(type.SolvedType.GetStruct().Name),
                 TypeKind.Pointer => LLType.CreatePointer(LowerDataType(type.SolvedType.GetBaseElementType()), 0),
-                TypeKind.Option => LLType.CreateStruct(new[] { LLType.Int1, LowerDataType(type.SolvedType.GetBaseElementType()) }, true),
+                TypeKind.Option => LowerOption(type),
+                TypeKind.Enum => LowerDataType(type.SolvedType.GetEnum().BaseType),
+                TypeKind.EmptyEnum => LLType.Int1,
                 _ => ToImplement<LLType>(kind.ToString(), nameof(LowerDataType))
             };
+        }
+
+        private LLType LowerOption(DataType type)
+        {
+            var option = type.SolvedType.GetOption();
+            return LLType.CreateStruct(new[] { LowerDataType(option.Error), LowerDataType(option.Success) }, true);
         }
 
         private void LowerStruct(MIRStructure type)

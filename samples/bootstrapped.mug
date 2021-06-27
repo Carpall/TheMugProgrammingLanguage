@@ -1,0 +1,36 @@
+const Calculator = type {
+  x, y: i64
+  r: i64
+
+  pub static const PI = 3.14159
+  pub static const from = fn (x, y: i64): Self {
+    new { x: x, y: y }
+  }
+
+  pub const sum = fn { self.r = self.x + self.y }
+  pub const sub = fn { self.r = self.x - self.y }
+  pub const mul = fn { self.r = self.x * self.y }
+  pub const div = fn { self.r = self.x / self.y as i64 }
+
+  pub const result = fn (): i64 { self.r }
+}
+
+const makeFastSum = fn {
+  println!("PI: ", Calculator::PI)
+
+  var calc = Calculator::from(1, 2)
+  calc.sum()
+  let result = calc.result()
+
+  println!("Result: ", result)
+}
+
+const main = fn {
+  static {
+    println!("Compile-Time Executed:")
+    makeFastSum()
+  }
+
+  println!("Runtime Executed:")
+  makeFastSum()
+}

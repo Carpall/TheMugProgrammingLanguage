@@ -18,6 +18,8 @@ namespace Mug.TypeSystem
         public bool IsSolved { get; private set; }
         public ModulePosition Position => UnsolvedType.Position;
 
+        public TypeKind Kind => !IsSolved ? UnsolvedType.Kind : SolvedType.Kind;
+
         DataType(UnsolvedType unsolvedtype, SolvedType solvedtype, bool issolved)
         {
             UnsolvedType = unsolvedtype;
@@ -37,14 +39,19 @@ namespace Mug.TypeSystem
         internal static DataType UInt64 = Primitive(TypeKind.UInt64);
         internal static DataType UInt8 = Primitive(TypeKind.UInt8);
 
+        internal static DataType Enum(EnumStatement @enum)
+        {
+            return Solved(TypeSystem.SolvedType.Enum(@enum));
+        }
+
         internal static DataType Struct(TypeStatement type)
         {
             return Solved(TypeSystem.SolvedType.Struct(type));
         }
 
-        internal static DataType Option(DataType type)
+        internal static DataType Option(DataType error, DataType type)
         {
-            return Solved(TypeSystem.SolvedType.WithBase(TypeKind.Option, type));
+            return Solved(TypeSystem.SolvedType.Create(TypeKind.Option, (error, type)));
         }
 
         internal static DataType Pointer(DataType type)
@@ -52,9 +59,9 @@ namespace Mug.TypeSystem
             return Solved(TypeSystem.SolvedType.WithBase(TypeKind.Pointer, type));
         }
 
-        internal static DataType Primitive(TypeKind typekind)
+        internal static DataType Primitive(TypeKind kind)
         {
-            return Solved(TypeSystem.SolvedType.Primitive(typekind));
+            return Solved(TypeSystem.SolvedType.Primitive(kind));
         }
 
         internal static DataType Unsolved(UnsolvedType unsolvedtype)

@@ -36,6 +36,8 @@ NEW TODOS
 - fix '(*x).x = 1'
 - refactor parser
 - implement floats
+- add 'and or'
+- check negative numbers in enum
 
 OLD TODOS
 

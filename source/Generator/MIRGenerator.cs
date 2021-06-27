@@ -594,50 +594,41 @@ namespace Mug.Generator
 
         private INode GetDefaultValueOf(DataType type, ModulePosition position)
         {
-            switch (type.SolvedType.Kind)
+            return type.SolvedType.Kind switch
             {
-                case TypeKind.Undefined
+                TypeKind.Undefined
                 or TypeKind.Auto
-                or TypeKind.Void:
-                    return new BadNode(position);
+                or TypeKind.Void => new BadNode(position),
 
-                case TypeKind.Pointer:
-                    return error("Uninitialized pointer");
+                TypeKind.Pointer => error("Uninitialized pointer"),
 
-                case TypeKind.String:
-                    return token(TokenKind.ConstantString, "");
+                TypeKind.String => token(TokenKind.ConstantString, ""),
 
-                case TypeKind.Int8:
-                case TypeKind.Int16:
-                case TypeKind.Int32:
-                case TypeKind.Int64:
-                case TypeKind.UInt8:
-                case TypeKind.UInt16:
-                case TypeKind.UInt32:
-                case TypeKind.UInt64:
-                    return token(TokenKind.ConstantDigit, "0");
+                TypeKind.Int8
+                or TypeKind.Int16
+                or TypeKind.Int32
+                or TypeKind.Int64
+                or TypeKind.UInt8
+                or TypeKind.UInt16
+                or TypeKind.UInt32
+                or TypeKind.UInt64 => token(TokenKind.ConstantDigit, "0"),
 
-                case TypeKind.Float32:
-                case TypeKind.Float64:
-                case TypeKind.Float128:
-                    return token(TokenKind.ConstantFloatDigit, "0");
+                TypeKind.Float32
+                or TypeKind.Float64
+                or TypeKind.Float128 => token(TokenKind.ConstantFloatDigit, "0"),
 
-                case TypeKind.Char:
-                    return token(TokenKind.ConstantChar, "\0");
+                TypeKind.Enum => GetDefaultOfEnum(type, position),
 
-                case TypeKind.Bool:
-                    return token(TokenKind.ConstantBoolean, "false");
+                TypeKind.Char => token(TokenKind.ConstantChar, "\0"),
 
-                case TypeKind.Struct:
-                    return GetDefaultValueOfStruct(type.SolvedType.GetStruct(), position);
+                TypeKind.Bool => token(TokenKind.ConstantBoolean, "false"),
 
-                case TypeKind.Option:
-                    return GetDefaultOfOption(type.SolvedType.GetBaseElementType(), position);
+                TypeKind.CustomType => GetDefaultOfStruct(type.SolvedType.GetStruct(), position),
 
-                default:
-                    ToImplement<object>(type.SolvedType.Kind.ToString(), nameof(GetDefaultValueOf));
-                    return null;
-            }
+                TypeKind.Option => GetDefaultOfOption(type, position),
+
+                _ => toImpl(),
+            };
 
             INode error(string message)
             {
@@ -649,23 +640,43 @@ namespace Mug.Generator
             {
                 return new Token(kind, value, position, false);
             }
+
+            INode toImpl()
+            {
+                ToImplement<object>(type.SolvedType.Kind.ToString(), nameof(GetDefaultValueOf));
+                return null;
+            }
         }
 
-        private static INode GetDefaultOfOption(DataType type, ModulePosition position)
+        private static INode GetDefaultOfEnum(DataType type, ModulePosition position)
         {
+            return new MemberNode
+            {
+                Base = new Token(TokenKind.Identifier, type.ToString(), position, false),
+                Member = new Token(TokenKind.Identifier, type.SolvedType.GetEnum().Body.First().Name, position, false),
+                Position = position
+            };
+        }
+
+        private INode GetDefaultOfOption(DataType type, ModulePosition position)
+        {
+            var successType = type.SolvedType.GetOption().Success;
+            var def = GetDefaultValueOf(successType, position);
+
             var call = new CallStatement
             {
+                Name = new Token(TokenKind.Identifier, "some", position, false),
                 IsBuiltIn = true,
-                Name = new Token(TokenKind.Identifier, "none", position, false),
                 Position = position
             };
 
-            call.Generics.Add(type);
+            call.Parameters.Add(def);
+            call.Generics.Add(successType);
 
             return call;
         }
 
-        private static INode GetDefaultValueOfStruct(TypeStatement type, ModulePosition position)
+        private static INode GetDefaultOfStruct(TypeStatement type, ModulePosition position)
         {
             return new TypeAllocationNode
             {
@@ -1145,9 +1156,9 @@ namespace Mug.Generator
 
             var first = FunctionBuilder.CurrentIndex();
 
-            ContextTypes.Push(OptionBaseTypeOr(DataType.Undefined));
+            ContextTypes.Push(OptionBaseTypeOrDefault().Success);
             var type = EvaluateExpression(value);
-            var result = DataType.Option(type);
+            var result = DataType.Option(OptionBaseTypeOrDefault().Error, type);
             ContextTypes.Pop();
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(result);
@@ -1160,32 +1171,39 @@ namespace Mug.Generator
             return result;
         }
 
-        private DataType OptionBaseTypeOr(DataType or)
+        private (DataType Error, DataType Success) OptionBaseTypeOrDefault()
         {
             return
                 ContextType.SolvedType.IsOption() ?
-                    ContextType.SolvedType.GetBaseElementType() :
-                    or;
+                    ContextType.SolvedType.GetOption() :
+                    (DataType.Primitive(TypeKind.EmptyEnum), DataType.Undefined);
         }
 
         private DataType EvaluateBuiltInNone(CallStatement expression)
         {
-            ExpectGenericsNumber(expression.Generics, expression.Position, 0, 1);
-            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0);
-            var type = expression.Generics.FirstOrDefault();
-            if (type is null && !ContextType.SolvedType.IsOption())
+            ExpectGenericsNumber(expression.Generics, expression.Position, 0);
+            ExpectParametersNumber(expression.Parameters, expression.Parameters.Position, 0, 1);
+            var value = expression.Parameters.FirstOrDefault();
+
+            if (!ContextType.SolvedType.IsOption())
             {
-                Tower.Report(expression.Position, $"Unable to infer type from a non-option context type");
+                Tower.Report(expression.Position, "Unable to infer type from a non-option context type");
                 return ContextType;
             }
 
-            type = type is not null ? DataType.Option(type) : ContextType;
+            var errortype = ContextType.SolvedType.GetOption().Error;
 
-            FunctionBuilder.EmitLoadZeroinitializedStruct(type);
-            FunctionBuilder.EmitLoadNull(DataType.Bool);
-            FunctionBuilder.EmitStoreField(0, DataType.Bool);
+            if (value is null == errortype.Kind is TypeKind.Enum)
+                Tower.Report(expression.Position, "Expected value or empty");
 
-            return type;
+            FunctionBuilder.EmitLoadZeroinitializedStruct(ContextType);
+            if (value is not null)
+                EvaluateExpression(value);
+            else
+                FunctionBuilder.EmitLoadConstantValue(0L, errortype);
+            FunctionBuilder.EmitStoreField(0, errortype);
+
+            return ContextType;
         }
 
         private DataType EvaluateBuiltInBoolCast(CallStatement expression)
@@ -1260,7 +1278,7 @@ namespace Mug.Generator
             return result;
         }
 
-        private DataType PointerBaseTypeOr(DataType type, DataType or)
+        private static DataType PointerBaseTypeOr(DataType type, DataType or)
         {
             return
                 type.SolvedType.IsPointer() ?
@@ -1911,29 +1929,47 @@ namespace Mug.Generator
         {
             if (expression.Base is Token { Kind: TokenKind.Identifier } expressionBase
                 && !GetLocalVariable(expressionBase.Value, out _))
-                Tower.Report(expressionBase.Position, $"Undeclared local variable '{expressionBase.Value}'");
+                return EvaluateStaticMemberNode(expressionBase, expression);
 
             return EvaluateInstanceMemberNode(expression);
         }
 
-        /*private DataType EvaluateStaticMemberNode(string baseValue, MemberNode expression)
+        private DataType EvaluateStaticMemberNode(Token expressionBase, MemberNode expression)
         {
-            var symbols = GetImportedModule(baseValue, expression.Base.Position);
-            if (symbols is null)
+            var enumtype = GetEnum(expressionBase.Value, expressionBase.Position);
+            if (enumtype is null)
                 return ContextType;
 
-            CompilationTower.Todo($"implement {nameof(EvaluateStaticMemberNode)}");
-            return default;
-        }*/
-/*
-        private SymbolTable GetImportedModule(string moduleName, ModulePosition position)
-        {
-            var response = Tower.Symbols.ImportedModules.TryGetValue(moduleName, out var symbols);
-            if (!response)
-                Tower.Report(position, $"No module '{moduleName}' was imported");
+            var result = DataType.Enum(enumtype);
 
-            return symbols;
-        }*/
+            FunctionBuilder.EmitLoadConstantValue(GetEnumMemberValue(enumtype, expression.Member.Value, expression.Member.Position), result);
+
+            return result;
+        }
+
+        private long GetEnumMemberValue(EnumStatement enumtype, string name, ModulePosition position)
+        {
+            foreach (var member in enumtype.Body)
+                if (member.Name == name)
+                    return GetEnumMemberValue(member);
+            
+            Tower.Report(position, $"Enum '{enumtype}' does not contain a definition for '{name}'");
+            return -1;
+        }
+
+        private static long GetEnumMemberValue(EnumMemberNode member)
+        {
+            var result = long.Parse(member.Value.Value);
+            if (member.IsNegative)
+                result = -result;
+
+            return result;
+        }
+
+        private EnumStatement GetEnum(string name, ModulePosition position)
+        {
+            return Tower.Symbols.GetSymbol<EnumStatement>(name, position, "enum neither a variable");
+        }
 
         private DataType EvaluateInstanceMemberNode(MemberNode expression)
         {
@@ -2100,14 +2136,12 @@ namespace Mug.Generator
                 or TypeKind.UInt16 => 2,
                 TypeKind.Array
                 or TypeKind.String => PointerSize() + 8,
-                TypeKind.Struct => GetStructByteSize(type.SolvedType.GetStruct(), position),
+                TypeKind.CustomType => GetStructByteSize(type.SolvedType.GetStruct(), position),
                 TypeKind.GenericDefinedType => throw new NotImplementedException(),
                 TypeKind.Void
                 or TypeKind.Undefined
                 or TypeKind.Auto => 0,
-                TypeKind.Option => GetTypeByteSize(type.SolvedType.GetBaseElementType()) + 1,
-                TypeKind.EnumError => throw new NotImplementedException(),
-                TypeKind.Err => throw new NotImplementedException()
+                TypeKind.Option => GetTypeByteSize(type.SolvedType.GetBaseElementType()) + 1
             };
         }
 
@@ -2449,8 +2483,7 @@ namespace Mug.Generator
         {
             switch (value)
             {
-                case EnumStatement enumSymbol:
-                    CheckEnumValues(enumSymbol);
+                case EnumStatement:
                     break;
                 case TypeStatement structSymbol:
                     CheckStructureLayoutRecursion(structSymbol);
@@ -2466,10 +2499,6 @@ namespace Mug.Generator
                     ToImplement<object>(value.ToString(), nameof(RecognizeSymbol));
                     break;
             }
-        }
-
-        private void CheckEnumValues(EnumStatement enumSymbol)
-        {
         }
 
         private FunctionStatement SetEntryPointAndGenerateFunction(FunctionStatement funcSymbol, ref FunctionStatement entrypoint)

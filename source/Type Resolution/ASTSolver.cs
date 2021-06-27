@@ -23,34 +23,38 @@ namespace Mug.TypeResolution
             {
                 TypeKind.Array or
                 TypeKind.Pointer => SolvePrimitiveWithBase(unsolvedtype),
-                TypeKind.EnumError => SolveEnumError(unsolvedtype),
-                TypeKind.Struct => SolveStruct(unsolvedtype),
+                TypeKind.CustomType => SolveCustomType(unsolvedtype),
                 TypeKind.Option => SolveOption(unsolvedtype),
                 _ => SolvedType.Primitive(unsolvedtype.Kind),
             };
         }
 
-        private SolvedType SolveOption(UnsolvedType unsolvedtype)
+        private static SolvedType SolveOption(UnsolvedType unsolvedtype)
         {
-            return SolvedType.WithBase(TypeKind.Option, DataType.Solved(ResolveType((DataType)unsolvedtype.BaseType)));
+            return SolvedType.Create(TypeKind.Option, ((DataType, DataType))unsolvedtype.BaseType);
         }
 
-        private SolvedType SolveStruct(UnsolvedType unsolvedtype)
+        private SolvedType SolveCustomType(UnsolvedType unsolvedtype)
         {
-            return SolvedType.Struct(
-                Tower.Symbols.GetSymbol<TypeStatement>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type"));
+            var symbol = Tower.Symbols.GetSymbol<ISymbol>(unsolvedtype.BaseType as string, unsolvedtype.Position, "type");
+
+            return symbol switch
+            {
+                TypeStatement type => SolvedType.Struct(type),
+                EnumStatement enumtype => SolvedType.Enum(enumtype),
+                _ => error()
+            };
+
+            SolvedType error()
+            {
+                Tower.Report(unsolvedtype.Position, $"'{unsolvedtype}' is not a type");
+                return SolvedType.Primitive(TypeKind.Undefined);
+            }
         }
 
         private SolvedType SolvePrimitiveWithBase(UnsolvedType unsolvedtype)
         {
             return SolvedType.WithBase(unsolvedtype.Kind, DataType.Solved(ResolveType(unsolvedtype.BaseType as DataType)));
-        }
-
-        private SolvedType SolveEnumError(UnsolvedType unsolvedtype)
-        {
-            return SolvedType.EnumError(
-                DataType.Solved(ResolveType(unsolvedtype.GetEnumError().ErrorType)),
-                DataType.Solved(ResolveType(unsolvedtype.GetEnumError().SuccessType)));
         }
 
         private void WalkTypes()

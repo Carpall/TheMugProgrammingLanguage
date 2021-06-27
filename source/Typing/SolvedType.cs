@@ -18,9 +18,19 @@ namespace Mug.TypeSystem
         public object Base { get; set; }
         public string BaseReppresentation => Base is not null ? Base.ToString() : "";
 
+        internal static SolvedType Create(TypeKind kind, object @base)
+        {
+            return new SolvedType { Kind = kind, Base = @base };
+        }
+
+        internal static SolvedType Enum(EnumStatement @enum)
+        {
+            return new SolvedType { Kind = TypeKind.Enum, Base = @enum};
+        }
+
         public static SolvedType Struct(TypeStatement symbol)
         {
-            return new SolvedType { Kind = TypeKind.Struct, Base = symbol };
+            return new SolvedType { Kind = TypeKind.CustomType, Base = symbol };
         }
 
         public static SolvedType WithBase(TypeKind kind, DataType baseElementType)
@@ -33,11 +43,6 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = kind };
         }
 
-        public static SolvedType EnumError(DataType errorType, DataType successType)
-        {
-            return new SolvedType { Kind = TypeKind.EnumError, Base = (errorType, successType) };
-        }
-
         public TypeStatement GetStruct()
         {
             return Base as TypeStatement;
@@ -45,7 +50,12 @@ namespace Mug.TypeSystem
 
         public bool IsStruct()
         {
-            return Kind == TypeKind.Struct || Kind == TypeKind.GenericDefinedType;
+            return Kind is TypeKind.CustomType or TypeKind.GenericDefinedType;
+        }
+
+        public (DataType Error, DataType Success) GetOption()
+        {
+            return ((DataType, DataType))Base;
         }
 
         public DataType GetBaseElementType()
@@ -63,17 +73,15 @@ namespace Mug.TypeSystem
             return IsArray() || IsString();
         }
 
-        public (DataType ErrorType, DataType SuccessType) GetEnumError()
-        {
-            return ((DataType, DataType))Base;
-        }
-
         public override string ToString()
         {
             return UnsolvedType.TypeKindToString(
                 Kind,
-                Base is not null ? Base is ISymbol symbol ? symbol.ToString() : Base.ToString() : "",
-                Kind == TypeKind.EnumError ? (GetEnumError().ToString(), GetEnumError().ToString()) : new());
+                Base is not null ?
+                    Base is ISymbol symbol ?
+                        symbol.ToString() :
+                            Base.ToString() :
+                            "");
         }
 
         public bool IsInt()
@@ -93,7 +101,7 @@ namespace Mug.TypeSystem
         {
             return
                 Kind is TypeKind.GenericDefinedType
-                or TypeKind.Struct
+                or TypeKind.CustomType
                 or TypeKind.Array;
         }
 
@@ -151,6 +159,11 @@ namespace Mug.TypeSystem
         public bool IsOption()
         {
             return Kind is TypeKind.Option;
+        }
+
+        public EnumStatement GetEnum()
+        {
+            return (EnumStatement)Base;
         }
     }
 }
