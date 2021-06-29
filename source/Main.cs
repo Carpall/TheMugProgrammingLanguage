@@ -1,18 +1,19 @@
 ﻿using Mug.Compilation;
 using System;
-using System.IO;
+using System.Collections.Immutable;
 
 #if DEBUG
 
-var pathHead = Path.GetFullPath(@"C:\Users\carpal\Desktop\mug\tests");
-var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}\\mainTest.mug");
+const string path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
+
+var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.ReadFromPath(path)));
 
 /*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
 
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-string ir;
+string output;
 CompilationException e;
 
 Console.Write("(C | IR | LLVMIR): ");
@@ -21,16 +22,13 @@ Console.WriteLine();
 
 switch (r)
 {
-    case 'c': e = unit.GenerateC(out ir); break;
-    default:
-    case 'i': e = unit.GenerateIR(out var mir); ir = mir.ToString(); break;
-    case 'l': e = unit.GenerateLLVMIR(out var llvmir); ir = llvmir.ToString(); break;
+    case 'a': compiler.GenerateAST(); break;
 }
 
 PrettyPrinter.PrintAlerts(e);
 
-if (!unit.HasErrors())
-    Console.WriteLine(ir);
+if (!compiler.HasErrors())
+    Console.WriteLine(output);
 
 #else
 

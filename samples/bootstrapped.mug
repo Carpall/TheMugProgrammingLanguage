@@ -1,9 +1,10 @@
-const Calculator = type {
-  x, y: i64
-  r: i64
+const Calculator = struct {
+  x, y, r: i64
+
+  static const Self = self!()
 
   pub static const PI = 3.14159
-  pub static const from = fn (x, y: i64): Self {
+  pub static const from = fn(x, y: i64): Self {
     new { x: x, y: y }
   }
 
@@ -12,13 +13,13 @@ const Calculator = type {
   pub const mul = fn { self.r = self.x * self.y }
   pub const div = fn { self.r = self.x / self.y as i64 }
 
-  pub const result = fn (): i64 { self.r }
+  pub const result = fn(): i64 { self.r }
 }
 
 const makeFastSum = fn {
-  println!("PI: ", Calculator::PI)
+  println!("PI: ", Calculator.PI)
 
-  var calc = Calculator::from(1, 2)
+  let mut calc = Calculator.from(1, 2)
   calc.sum()
   let result = calc.result()
 

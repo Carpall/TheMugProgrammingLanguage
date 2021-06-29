@@ -1,9 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
+using Mug.Grammar;
 using System;
 using System.Collections.Generic;
 
-namespace Mug.Parser
+namespace Mug.Syntax
 {
     public class Pragmas
     {
@@ -47,7 +47,7 @@ namespace Mug.Parser
             SetWithCheck("extern", symbol);
         }
 
-        internal void SetPragma(string pragma, Token value, CompilationTower tower, ModulePosition position)
+        internal void SetPragma(string pragma, Token value, CompilationInstance tower, ModulePosition position)
         {
             if (!_table.ContainsKey(pragma))
                 tower.Report(position, "Unknown pragma");

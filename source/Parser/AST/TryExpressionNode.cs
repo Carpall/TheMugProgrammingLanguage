@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
+using Mug.Grammar;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public struct TryExpressionNode : INode
     {

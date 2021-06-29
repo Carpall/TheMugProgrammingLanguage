@@ -1,13 +1,13 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
-using Mug.Parser;
+using Mug.Grammar;
+using Mug.Syntax;
 using Mug.Symbols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Mug.Parser.AST.Statements;
+using Mug.Syntax.AST;
 
 namespace Mug.TypeSystem
 {
@@ -23,12 +23,12 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = kind, Base = @base };
         }
 
-        internal static SolvedType Enum(EnumStatement @enum)
+        internal static SolvedType Enum(EnumNode @enum)
         {
             return new SolvedType { Kind = TypeKind.Enum, Base = @enum};
         }
 
-        public static SolvedType Struct(TypeStatement symbol)
+        public static SolvedType Struct(StructureNode symbol)
         {
             return new SolvedType { Kind = TypeKind.CustomType, Base = symbol };
         }
@@ -43,9 +43,9 @@ namespace Mug.TypeSystem
             return new SolvedType { Kind = kind };
         }
 
-        public TypeStatement GetStruct()
+        public StructureNode GetStruct()
         {
-            return Base as TypeStatement;
+            return Base as StructureNode;
         }
 
         public bool IsStruct()
@@ -161,9 +161,9 @@ namespace Mug.TypeSystem
             return Kind is TypeKind.Option;
         }
 
-        public EnumStatement GetEnum()
+        public EnumNode GetEnum()
         {
-            return (EnumStatement)Base;
+            return (EnumNode)Base;
         }
     }
 }

@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 using Newtonsoft.Json;
-using Mug.Parser.AST;
+using Mug.Syntax.AST;
 
-namespace Mug.Parser
+namespace Mug.Syntax
 {
     public class NodeBuilder : INode, ICollection<INode>
     {

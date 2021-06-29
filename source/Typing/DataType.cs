@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
-using Mug.Parser.AST.Statements;
-using Mug.Tokenizer;
+using Mug.Syntax.AST;
+using Mug.Grammar;
 using System;
 using System.Collections.Generic;
 
@@ -39,12 +39,12 @@ namespace Mug.TypeSystem
         internal static DataType UInt64 = Primitive(TypeKind.UInt64);
         internal static DataType UInt8 = Primitive(TypeKind.UInt8);
 
-        internal static DataType Enum(EnumStatement @enum)
+        internal static DataType Enum(EnumNode @enum)
         {
             return Solved(TypeSystem.SolvedType.Enum(@enum));
         }
 
-        internal static DataType Struct(TypeStatement type)
+        internal static DataType Struct(StructureNode type)
         {
             return Solved(TypeSystem.SolvedType.Struct(type));
         }

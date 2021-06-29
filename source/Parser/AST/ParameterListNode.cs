@@ -1,9 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
+using Mug.Grammar;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public struct ParameterNode : INode
     {

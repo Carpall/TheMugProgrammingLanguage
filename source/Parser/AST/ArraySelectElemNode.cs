@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public class ArraySelectElemNode : INode
     {

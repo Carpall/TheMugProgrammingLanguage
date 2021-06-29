@@ -1,5 +1,5 @@
 using Mug.Compilation;
-using Mug.Tokenizer;
+using Mug.Grammar;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

@@ -1,37 +1,38 @@
-type DataType {
+const DataType = struct {
 
 }
 
-type Token(INode) {
+const Token = struct(INode) {
+  
 }
 
-type CallNode(INode) {
+const CallNode = struct(INode) {
   name: Node,
   params: [Node],
 }
 
-type VarNode(INode) {
+const VarNode = struct(INode) {
   isConst: bool,
   name: Token,
   datatype: DataType,
   body: Node
 }
 
-type BinExprNode(INode) {
+const BinExprNode = struct(INode) {
   left: Node,
   right: Node
 }
 
-type UnaryExprNode(INode) {
+const UnaryExprNode = struct(INode) {
   
 }
 
 // a union for all types that implement INode
-type Node(INode) = ( *CallNode | *VarNode | *BinExprNode | *UnaryExprNode )
+const Node = variant(INode) = ( *CallNode | *VarNode | *BinExprNode | *UnaryExprNode )
 
-trait INode {
+const INode = trait {
   pos: NodePosition
 }
 
-fn main() {
+const main = fn {
 }

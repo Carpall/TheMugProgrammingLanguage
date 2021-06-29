@@ -1,13 +1,15 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
+using System;
 
 namespace Mug.Syntax.AST
 {
-    public class CastExpressionNode : INode
+    public struct ConstantNode : INode
     {
-        public string NodeName => "Cast";
-        public INode Expression { get; set; }
+        public string NodeName => "Const";
+        public String Name { get; set; }
         public DataType Type { get; set; }
+        public INode Body { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

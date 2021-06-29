@@ -1,29 +1,24 @@
-﻿using Mug.Tokenizer;
+﻿using Mug.Grammar;
 using Newtonsoft.Json;
 using System;
 
 namespace Mug.Compilation
 {
-  public struct ModulePosition
+    public struct ModulePosition
     {
         [JsonIgnore]
-        public Tokenizer.Lexer Lexer { get; }
+        public Source Source { get; }
         public Range Position { get; }
 
-        public ModulePosition(Tokenizer.Lexer lexer, Range position)
+        public ModulePosition(Source source, Range position)
         {
-            Lexer = lexer;
+            Source = source;
             Position = position;
-        }
-
-        public override string ToString()
-        {
-            return $"{Lexer.ModuleName}({Position})";
         }
 
         public int LineAt()
         {
-            return PrettyPrinter.CountLines(Lexer.Source, Position.Start.Value);
+            return PrettyPrinter.CountLines(Source.Code, Position.Start.Value);
         }
     }
 }

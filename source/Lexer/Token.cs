@@ -1,10 +1,10 @@
 ﻿using Mug.Compilation;
-using Mug.Parser;
-using Mug.Parser.AST;
+using Mug.Syntax;
+using Mug.Syntax.AST;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Tokenizer
+namespace Mug.Grammar
 {
     public struct Token : INode
     {

@@ -1,24 +1,34 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
-using Mug.Parser.AST;
-using Mug.Parser.AST.Directives;
-using Mug.Parser.AST.Statements;
+using Mug.Grammar;
+using Mug.Syntax.AST;
+using Mug.Syntax.AST.Directives;
+using Mug.Syntax.AST;
 using Mug.TypeSystem;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System;
 using System.Data;
+using System.Collections.Immutable;
 
-namespace Mug.Parser
+namespace Mug.Syntax
 {
     public class Parser : CompilerComponent
     {
-        public NamespaceNode Module { get; } = new();
+        public NamespaceNode Head { get; } = new();
+
         private int CurrentIndex { get; set; }
 
+        private ImmutableArray<Token> Tokens { get; set; }
+
         private Pragmas _pragmas = null;
+
         private TokenKind _modifier = TokenKind.Bad;
+
+        internal void SetTokens(ImmutableArray<Token> tokens)
+        {
+            Tokens = tokens;
+        }
 
         private void ParseError(string error)
         {
@@ -41,7 +51,7 @@ namespace Mug.Parser
             Tower.Throw(Back, $"Unexpected <EOF>{(error != "" ? $": {error}" : "")}");
         }
 
-        public Parser(CompilationTower tower) : base(tower)
+        public Parser(CompilationInstance tower) : base(tower)
         {
         }
 
@@ -49,10 +59,10 @@ namespace Mug.Parser
         {
             get
             {
-                if (CurrentIndex >= Tower.TokenCollection.Count)
+                if (CurrentIndex >= Tokens.Length)
                     ParseErrorEOF("");
 
-                return Tower.TokenCollection[CurrentIndex];
+                return Tokens[CurrentIndex];
             }
         }
 
@@ -61,7 +71,7 @@ namespace Mug.Parser
             get
             {
                 if (CurrentIndex - 1 >= 0)
-                    return Tower.TokenCollection[CurrentIndex - 1];
+                    return Tokens[CurrentIndex - 1];
 
                 return new Token();
             }
@@ -466,7 +476,7 @@ namespace Mug.Parser
 
             var parameters = CollectParameters();
 
-            e = new CallStatement()
+            e = new CallNode()
             {
                 Generics = generics,
                 IsBuiltIn = builtin,
@@ -505,7 +515,7 @@ namespace Mug.Parser
             {
                 var parameters = CollectParameters();
 
-                e = new CallStatement()
+                e = new CallNode()
                 {
                     Generics = generics,
                     IsBuiltIn = builtin,
@@ -595,7 +605,7 @@ namespace Mug.Parser
 
         private bool CollectTryExpression(out INode e)
         {
-            if (!MatchTerm(out e, false) || e is not CallStatement)
+            if (!MatchTerm(out e, false) || e is not CallNode)
             {
                 Report(Back.Position, "Expected call expression after 'try'");
                 return false;
@@ -876,7 +886,7 @@ namespace Mug.Parser
             }
 
             if (MatchAssigmentOperators(out var @operator))
-                e = new AssignmentStatement()
+                e = new AssignmentNode()
                 {
                     Name = e,
                     Operator = @operator,
@@ -912,7 +922,7 @@ namespace Mug.Parser
             var type = ExpectVariableType();
             var body = MatchAdvance(TokenKind.Equal) ? ExpectExpression(true) : CreateBadNode();
 
-            statement = new VariableStatement()
+            statement = new VariableNode()
             {
                 Body = body,
                 Name = name.Value.ToString(),
@@ -926,7 +936,7 @@ namespace Mug.Parser
 
         private bool NextIsOnSameLine()
         {
-            return CurrentIndex < Tower.TokenCollection.Count && !Tower.TokenCollection[CurrentIndex].IsOnNewLine;
+            return CurrentIndex < Tokens.Length && !Tokens[CurrentIndex].IsOnNewLine;
         }
 
         private bool ReturnDeclaration(out INode statement)
@@ -938,7 +948,7 @@ namespace Mug.Parser
 
             var pos = Back.Position;
 
-            statement = new ReturnStatement()
+            statement = new ReturnNode()
             {
                 Position = pos,
                 Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression()
@@ -1018,7 +1028,7 @@ namespace Mug.Parser
             if (key.Kind != TokenKind.KeyWhile && key.Kind != TokenKind.KeyElse && (Match(TokenKind.KeyElif) || Match(TokenKind.KeyElse)))
                 ConditionDefinition(out elif, false);
 
-            statement = new ConditionalStatement() { Position = key.Position, Expression = expression, Kind = key.Kind, Body = body, ElseNode = (ConditionalStatement)elif };
+            statement = new ConditionalNode() { Position = key.Position, Expression = expression, Kind = key.Kind, Body = body, ElseNode = (ConditionalNode)elif };
 
             return true;
         }
@@ -1037,7 +1047,7 @@ namespace Mug.Parser
 
             // CurrentIndex--; // returning on '{' token
 
-            statement = new ForLoopStatement()
+            statement = new ForLoopNode()
             {
                 Body = ExpectBlock(),
                 LeftExpression = leftexpr,
@@ -1057,7 +1067,7 @@ namespace Mug.Parser
                 !MatchAdvance(TokenKind.KeyBreak))
                 return false;
 
-            statement = new LoopManagementStatement() { Kind = Back.Kind, Position = Back.Position };
+            statement = new LoopManagementNode() { Kind = Back.Kind, Position = Back.Position };
 
             return true;
         }
@@ -1198,7 +1208,7 @@ namespace Mug.Parser
                     ExpectType() :
                     UnsolvedType.Create(Tower, name.Position, TypeKind.Void);
 
-            var prototype = new FunctionStatement
+            var prototype = new FunctionNode
             {
                 Modifier = modifier,
                 Pragmas = pragmas,
@@ -1301,7 +1311,7 @@ namespace Mug.Parser
         private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
         {
             node = CreateBadNode();
-            var variant = new VariantStatement()
+            var variant = new VariantNode()
             {
                 Pragmas = pragmas,
                 Modifier = modifier,
@@ -1338,7 +1348,7 @@ namespace Mug.Parser
             var modifier = GetModifier();
             var pragmas = GetPramas();
             var name = Expect("Expected the type name after 'type' keyword", TokenKind.Identifier);
-            node = new TypeStatement()
+            node = new StructureNode()
             {
                 Modifier = modifier,
                 Pragmas = pragmas,
@@ -1347,7 +1357,7 @@ namespace Mug.Parser
             };
 
             // struct generics
-            CollectGenericParameterDefinitions((node as TypeStatement).Generics);
+            CollectGenericParameterDefinitions((node as StructureNode).Generics);
 
             // variant definition
             if (MatchAdvance(TokenKind.Equal))
@@ -1356,13 +1366,13 @@ namespace Mug.Parser
             {
                 // struct body
                 Expect(UnexpectedToken, TokenKind.OpenBrace);
-                CollectTypeBody(node as TypeStatement);
+                CollectTypeBody(node as StructureNode);
             }
 
             return true;
         }
 
-        private void CollectTypeBody(TypeStatement statement)
+        private void CollectTypeBody(StructureNode statement)
         {
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
@@ -1370,7 +1380,7 @@ namespace Mug.Parser
                 CollectPragmas();
 
                 if (FunctionDefinition(out var node))
-                    statement.BodyMethods.Add(node as FunctionStatement);
+                    statement.BodyMethods.Add(node as FunctionNode);
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
             }
@@ -1468,7 +1478,7 @@ namespace Mug.Parser
                 return false;
 
             var name = Expect("Expected the type name after 'enum' keyword", TokenKind.Identifier);
-            var statement = new EnumStatement
+            var statement = new EnumNode
             {
                 Modifier = GetModifier(),
                 Pragmas = GetPramas(),
@@ -1486,7 +1496,7 @@ namespace Mug.Parser
             return true;
         }
 
-        private void CollectEnumBody(EnumStatement statement)
+        private void CollectEnumBody(EnumNode statement)
         {
             Expect(UnexpectedToken, TokenKind.OpenBrace);
             
@@ -1583,17 +1593,17 @@ namespace Mug.Parser
         {
             // to avoid bugs
             if (Match(TokenKind.EOF))
-                return Module;
+                return Head;
 
-            Module.Name = Token.NewInfo(TokenKind.Identifier, Tower.OutputFilename);
+            Head.Name = Token.NewInfo(TokenKind.Identifier, Tower.OutputFilename);
 
             // search for members
-            Module.Members = ExpectNamespaceMembers();
+            Head.Members = ExpectNamespaceMembers();
             
             // breaking the compiler workflow if diagnostic is bad
             // Tower.CheckDiagnostic();
 
-            return Module;
+            return Head;
         }
     }
 }

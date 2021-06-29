@@ -2,7 +2,7 @@
 using Newtonsoft.Json.Converters;
 using System.ComponentModel;
 
-namespace Mug.Tokenizer
+namespace Mug.Grammar
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TokenKind

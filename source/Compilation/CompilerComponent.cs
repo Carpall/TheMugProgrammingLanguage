@@ -8,9 +8,9 @@ namespace Mug.Compilation
 {
     public class CompilerComponent
     {
-        public CompilationTower Tower { get; }
+        public CompilationInstance Tower { get; }
 
-        public CompilerComponent(CompilationTower tower)
+        public CompilerComponent(CompilationInstance tower)
         {
             Tower = tower;
         }

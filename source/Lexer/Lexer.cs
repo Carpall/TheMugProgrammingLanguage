@@ -1,18 +1,21 @@
 ﻿using Mug.Compilation;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Mug.Tokenizer
+namespace Mug.Grammar
 {
     public class Lexer : CompilerComponent
     {
         public List<Token> TokenCollection { get; set; }
 
-        public readonly string Source;
-        public readonly string ModuleName;
+        public Source Source { get; set; }
+
+        private string SourceCode => Source.Code;
+
         public readonly char[] ValidBacktickSequenceCharacters = { '[', ']', '!', '-', '+', '*', '/', '=', '$', '^', '~' };
 
         private StringBuilder CurrentSymbol { get; set; }
@@ -41,21 +44,22 @@ namespace Mug.Tokenizer
         {
             get
             {
-                return DoesNotMatchEOF() ? Source[CurrentIndex] : '\0';
+                return DoesNotMatchEOF() ? SourceCode[CurrentIndex] : '\0';
             }
         }
 
-        public string ModuleRelativePath => Path.GetRelativePath(Environment.CurrentDirectory, ModuleName);
-
-        public Lexer(string moduleName, string source, CompilationTower tower) : base(tower)
+        public Lexer(CompilationInstance tower) : base(tower)
         {
-            ModuleName = moduleName;
+        }
+
+        internal void SetSource(Source source)
+        {
             Source = source;
         }
 
         private ModulePosition ModPos(Range position)
         {
-            return new(this, position);
+            return new(Source, position);
         }
 
         private bool GetEOL()
@@ -129,12 +133,12 @@ namespace Mug.Tokenizer
         /// </summary>
         private bool HasNext()
         {
-            return CurrentIndex + 1 < Source.Length;
+            return CurrentIndex + 1 < SourceCode.Length;
         }
 
         private char GetNext()
         {
-            return Source[CurrentIndex + 1];
+            return SourceCode[CurrentIndex + 1];
         }
 
         /// <summary>
@@ -184,7 +188,7 @@ namespace Mug.Tokenizer
         /// </summary>
         private bool MatchInlineComment()
         {
-            return HasNext() && Source[CurrentIndex] == '/' && GetNext() == '/';
+            return HasNext() && Current == '/' && GetNext() == '/';
         }
 
         /// <summary>
@@ -192,7 +196,7 @@ namespace Mug.Tokenizer
         /// </summary>
         private bool MatchEolOrEof()
         {
-            return CurrentIndex == Source.Length || Source[CurrentIndex] == '\n';
+            return CurrentIndex == SourceCode.Length || Current == '\n';
         }
 
         /// <summary>
@@ -200,7 +204,7 @@ namespace Mug.Tokenizer
         /// </summary>
         private bool MatchStartMultiLineComment()
         {
-            return HasNext() && Source[CurrentIndex] == '/' && GetNext() == '*';
+            return HasNext() && Current == '/' && GetNext() == '*';
         }
 
         /// <summary>
@@ -208,7 +212,7 @@ namespace Mug.Tokenizer
         /// </summary>
         private bool MatchEndMultiLineComment()
         {
-            return HasNext() && Source[CurrentIndex] == '*' && GetNext() == '/';
+            return HasNext() && Current == '*' && GetNext() == '/';
         }
 
         /// <summary>
@@ -240,7 +244,7 @@ namespace Mug.Tokenizer
 
         private void EatMultiLineComment()
         {
-            while (!MatchEndMultiLineComment() && CurrentIndex != Source.Length)
+            while (!MatchEndMultiLineComment() && CurrentIndex != SourceCode.Length)
                 CurrentIndex++;
         }
 
@@ -259,7 +263,7 @@ namespace Mug.Tokenizer
             //consume string until EOF or closed " is found
             while (DoesNotMatchEOFOrClose('\''))
             {
-                var c = Source[CurrentIndex++];
+                var c = SourceCode[CurrentIndex++];
                 CollectEscapedCharIfNeeded(ref c);
 
                 CurrentSymbol.Append(c);
@@ -291,13 +295,13 @@ namespace Mug.Tokenizer
 
         private void ReportNotCorrectlyEnclosedIfNeeded(char delimiter, string kind)
         {
-            if (CurrentIndex == Source.Length && Source[CurrentIndex - 1] != delimiter)
+            if (CurrentIndex == SourceCode.Length && SourceCode[CurrentIndex - 1] != delimiter)
                 Tower.Report(this, CurrentIndex - 1, $"{kind} has not been correctly enclosed");
         }
 
         private bool DoesNotMatchEOFOrClose(char delimiter)
         {
-            return DoesNotMatchEOF() && Source[CurrentIndex] != delimiter;
+            return DoesNotMatchEOF() && Current != delimiter;
         }
 
         private void CollectEscapedCharIfNeeded(ref char c)
@@ -332,7 +336,7 @@ namespace Mug.Tokenizer
             //consume string until EOF or closed " is found
             while (DoesNotMatchEOFOrClose('"'))
             {
-                var c = Source[CurrentIndex++];
+                var c = SourceCode[CurrentIndex++];
                 CollectEscapedCharIfNeeded(ref c);
 
                 CurrentSymbol.Append(c);
@@ -371,7 +375,7 @@ namespace Mug.Tokenizer
             var start = CurrentIndex++;
 
             while (DoesNotMatchEOFOrClose('`'))
-                CurrentSymbol.Append(Source[CurrentIndex++]);
+                CurrentSymbol.Append(SourceCode[CurrentIndex++]);
 
             var end = CurrentIndex;
 
@@ -484,7 +488,7 @@ namespace Mug.Tokenizer
         private void CollectHomogeneousWord()
         {
             do
-                CurrentSymbol.Append(Source[CurrentIndex++]);
+                CurrentSymbol.Append(SourceCode[CurrentIndex++]);
             while (HasCurrentAndItIsValidIdentifierChar());
         }
 
@@ -533,12 +537,12 @@ namespace Mug.Tokenizer
 
         private bool DoesNotMatchEOF()
         {
-            return CurrentIndex < Source.Length;
+            return CurrentIndex < SourceCode.Length;
         }
 
         private bool CollectFloatDecimalPartAndReturnTrueIfHasToBreak(ref bool isfloat, ref bool skipConstantFloatF)
         {
-            if (CurrentIndex >= Source.Length || !char.IsDigit(Source[CurrentIndex + 1]))
+            if (CurrentIndex >= SourceCode.Length || !char.IsDigit(SourceCode[CurrentIndex + 1]))
                 return skipConstantFloatF = true;
 
             if (isfloat)
@@ -617,13 +621,13 @@ namespace Mug.Tokenizer
 
         private bool ReachedEOF()
         {
-            return CurrentIndex >= Source.Length;
+            return CurrentIndex >= SourceCode.Length;
         }
 
         /// <summary>
         /// generates a token stream from a string
         /// </summary>
-        public List<Token> Tokenize()
+        public ImmutableArray<Token> Tokenize()
         {
             // set up all fields
             Reset();
@@ -638,7 +642,7 @@ namespace Mug.Tokenizer
             // end of file token
             AddSingle(TokenKind.EOF, "<EOF>");
 
-            return TokenCollection;
+            return TokenCollection.ToImmutableArray();
         }
     }
 }

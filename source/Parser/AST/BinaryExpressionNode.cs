@@ -1,9 +1,9 @@
 ﻿using Mug.Compilation;
-using Mug.Tokenizer;
+using Mug.Grammar;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public class BinaryExpressionNode : INode
     {

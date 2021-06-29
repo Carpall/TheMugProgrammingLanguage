@@ -1,4 +1,4 @@
-﻿using Mug.Tokenizer;
+﻿using Mug.Grammar;
 using System;
 using System.Collections.Generic;
 
@@ -12,9 +12,9 @@ namespace Mug.Compilation
         public int Count => _diagnostic.Count - _otherAlertsCount;
 
 
-        public void Report(Tokenizer.Lexer lexer, int pos, string error)
+        public void Report(Source source, int pos, string error)
         {
-            Report(new(CompilationAlertKind.Error, new(lexer, pos..(pos + 1)), error));
+            Report(new(CompilationAlertKind.Error, new(source, pos..(pos + 1)), error));
         }
 
         public void Report(ModulePosition position, string message)
@@ -49,6 +49,11 @@ namespace Mug.Compilation
         {
             _otherAlertsCount += diagnostic._otherAlertsCount;
             _diagnostic.AddRange(diagnostic._diagnostic);
+        }
+
+        public CompilationException GetException()
+        {
+            return _diagnostic.Count > 0 ? new(this) : null;
         }
 
         internal void RestoreTo(int errors)

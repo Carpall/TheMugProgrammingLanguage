@@ -1,16 +1,17 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
 using Mug.TypeSystem;
+using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
 {
-    public class FieldNode : INode
+    public class VariantNode : INode
     {
-        public string NodeName => "Field";
+        public string NodeName => "Variant";
         public Pragmas Pragmas { get; set; }
-        public TokenKind Modifier { get; set; }
         public string Name { get; set; }
-        public DataType Type { get; set; }
+        public List<DataType> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
+        public TokenKind Modifier { get; set; }
     }
 }

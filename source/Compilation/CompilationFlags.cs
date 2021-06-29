@@ -1,4 +1,4 @@
-﻿using LLVMSharp.Interop;
+﻿/*using LLVMSharp.Interop;
 using Mug.Generator.IR;
 using Mug.Parser;
 using Mug.Parser.AST;
@@ -165,7 +165,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             var files = GetFlag<string[]>(CompilationFlagKind.Source);
 
             if (files is null || files.Length == 0)
-                CompilationTower.Throw("Undefined src to compile");
+                CompilationInstance.Throw("Undefined src to compile");
 
             pathHead = GetPathHead(files);
             return files;
@@ -300,7 +300,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     DumpMIR(ir, target is CompilationTarget.MIRJSON);
                     break;
                 default:
-                    CompilationTower.Throw("Unsupported target, try with another");
+                    CompilationInstance.Throw("Unsupported target, try with another");
                     break;
             }
         }
@@ -326,7 +326,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         {
             foreach (var unusable in unusables)
                 if (!IsDefault(unusable))
-                    CompilationTower.Throw($"Unable to use flag '{unusable}' when compilation action is '{compilationAction}'");
+                    CompilationInstance.Throw($"Unable to use flag '{unusable}' when compilation action is '{compilationAction}'");
         }
 
         private void DumpMIR(MIR ir, bool generatejson)
@@ -371,13 +371,13 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void ReportIfCompilationTargetIsNotExe()
         {
             if (GetFlag<CompilationTarget>(CompilationFlagKind.Target) is not CompilationTarget.EXE)
-                CompilationTower.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
+                CompilationInstance.Throw("Unable to perform compilation action 'run' when target is not 'exe'");
         }
 
         private static string CheckPath(string path)
         {
             if (!File.Exists(path))
-                CompilationTower.Throw($"Unable to find path '{path}'");
+                CompilationInstance.Throw($"Unable to find path '{path}'");
 
             return path;
         }
@@ -398,7 +398,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
             CheckPath(source);
 
             if (!CompilationUnit.AllowedExtensions.Contains(Path.GetExtension(source)))
-                CompilationTower.Throw($"Unable to recognize source file kind '{source}'");
+                CompilationInstance.Throw($"Unable to recognize source file kind '{source}'");
 
             return source;
         }
@@ -406,7 +406,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void ConfigureFlag(CompilationFlagKind flag, object value)
         {
             if (!IsDefault(flag))
-                CompilationTower.Throw($"Impossible to specify multiple times the flag '{flag}'");
+                CompilationInstance.Throw($"Impossible to specify multiple times the flag '{flag}'");
             else
                 SetFlag(flag, value);
         }
@@ -414,7 +414,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private string NextArgument()
         {
             if (++_argumentSelector >= _arguments.Length)
-                CompilationTower.Throw($"Expected a specification after flag '{_arguments[_argumentSelector-1][1..]}'");
+                CompilationInstance.Throw($"Expected a specification after flag '{_arguments[_argumentSelector-1][1..]}'");
 
             return _arguments[_argumentSelector];
         }
@@ -430,7 +430,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 if (_targets[i] == target)
                     return (CompilationTarget)i;
             
-            CompilationTower.Throw($"Unable to recognize target '{target}'");
+            CompilationInstance.Throw($"Unable to recognize target '{target}'");
             return CompilationTarget.EXE;
         }
 
@@ -441,7 +441,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                 case "debug": return CompilationMode.Debug;
                 case "release": return CompilationMode.Release;
                 default:
-                    CompilationTower.Throw($"Unable to recognize compilation mode '{mode}'");
+                    CompilationInstance.Throw($"Unable to recognize compilation mode '{mode}'");
                     return default;
             }
         }
@@ -518,10 +518,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                         ConfigureFlag(arg, NextArgument());
                         break;
                     case CompilationFlagKind.Empty:
-                        CompilationTower.Throw("Invalid empty flag");
+                        CompilationInstance.Throw("Invalid empty flag");
                         break;
                     default:
-                        CompilationTower.Throw($"Unknown compiler flag '{arg}'");
+                        CompilationInstance.Throw($"Unknown compiler flag '{arg}'");
                         break;
                 }
             }
@@ -540,7 +540,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
 
             CompilationMeans error()
             {
-                CompilationTower.Throw($"Invalid compilation means '{value}'");
+                CompilationInstance.Throw($"Invalid compilation means '{value}'");
                 return default;
             }
         }
@@ -612,7 +612,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Console.WriteLine(ARGS_HELP);
                     break;
                 default:
-                    CompilationTower.Throw($"Unkown compiler flag '{flag}'");
+                    CompilationInstance.Throw($"Unkown compiler flag '{flag}'");
                     break;
             }
         
@@ -621,7 +621,7 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
         private void Help()
         {
             if (_arguments.Length > 1)
-                CompilationTower.Throw("Compilation action 'help' expects 1 argument");
+                CompilationInstance.Throw("Compilation action 'help' expects 1 argument");
             else if (_arguments.Length == 1)
                 PrintHelpFor(_arguments[_argumentSelector]);
             else
@@ -645,9 +645,10 @@ HELP: uses the next argument as arguments to pass to the compiled program, avail
                     Help();
                     break;
                 default:
-                    CompilationTower.Throw($"Invalid compilation action '{actionid}'");
+                    CompilationInstance.Throw($"Invalid compilation action '{actionid}'");
                     break;
             }
         }
     }
 }
+*/

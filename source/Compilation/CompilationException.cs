@@ -9,8 +9,7 @@ namespace Mug.Compilation
         {
             get
             {
-                return
-                    Message != "";
+                return Message != "";
             }
         }
 

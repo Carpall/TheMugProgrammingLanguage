@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using Newtonsoft.Json;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public interface INode
     {

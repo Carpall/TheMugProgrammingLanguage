@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using Mug.TypeSystem;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public struct BadNode : INode
     {

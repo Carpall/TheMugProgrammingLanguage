@@ -1,7 +1,7 @@
 ﻿using Mug.Compilation;
 using System;
 
-namespace Mug.Parser.AST
+namespace Mug.Syntax.AST
 {
     public class FieldAssignmentNode : INode
     {

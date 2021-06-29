@@ -1,4 +1,4 @@
-﻿using LLVMSharp.Interop;
+﻿/*using LLVMSharp.Interop;
 using Mug.Generator.TargetGenerators.C;
 using Mug.Generator.IR;
 using Mug.Tokenizer;
@@ -16,7 +16,7 @@ namespace Mug.Compilation
 {
     public class CompilationUnit : CompilerComponent
     {
-        public static readonly string[] AllowedExtensions = new[] { ".mug", ".z" };
+        public static readonly string[] AllowedExtensions = new[] { ".mug" };
 
         public string[] Paths { get; }
         public List<(string Path, SymbolTable Symbols)> GlobalResources { get; }
@@ -73,7 +73,7 @@ namespace Mug.Compilation
 
             // writes the module to a file
             if (llvmmodule.WriteBitcodeToFile(bitcode) != 0)
-                CompilationTower.Throw("Error writing to file");
+                CompilationInstance.Throw("Error writing to file");
 
             if (onlyBitcode) return;
 
@@ -140,7 +140,7 @@ namespace Mug.Compilation
                 if (string.IsNullOrEmpty(output))
                     output = call.StandardError.ReadToEnd();
 
-                CompilationTower.Throw($"External compiler: {output}");
+                CompilationInstance.Throw($"External compiler: {output}");
             }
         }
 
@@ -149,12 +149,12 @@ namespace Mug.Compilation
             foreach (var path in Paths)
             {
                 if (!File.Exists(path))
-                    CompilationTower.Throw($"Invalid path '{path}'");
+                    CompilationInstance.Throw($"Invalid path '{path}'");
 
                 if (!AllowedExtensions.Contains(Path.GetExtension(path)))
                     continue;
 
-                var subtower = new CompilationTower(path, this);
+                var subtower = new CompilationInstance(path, this);
                 (subtower.Lexer = new(Path.GetFileNameWithoutExtension(path), File.ReadAllText(path), subtower)).Tokenize();
 
                 var head = subtower.Parser.Parse();
@@ -240,3 +240,4 @@ namespace Mug.Compilation
         }
     }
 }
+*/
