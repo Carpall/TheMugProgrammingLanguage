@@ -172,7 +172,7 @@ namespace Mug.Syntax
             if (!MatchAdvance(TokenKind.Colon))
                 return new(null, name.Value, default, isPassedAsReference, name.Position);
 
-            var type = ExpectExpression();
+            var type = ExpectType();
             var defaultvalue = new Token();
 
             if (MatchAdvance(TokenKind.Equal))
@@ -214,7 +214,7 @@ namespace Mug.Syntax
             if (!MatchAdvance(TokenKind.OpenPar))
                 return false;
 
-            e = ExpectExpression(end: TokenKind.ClosePar);
+            e = ExpectExpression(true, true, false, true, TokenKind.ClosePar);
 
             var end = Back.Position;
 
@@ -236,7 +236,7 @@ namespace Mug.Syntax
             {
                 e = new ArraySelectElemNode()
                 {
-                    IndexExpression = ExpectExpression(end: TokenKind.CloseBracket),
+                    IndexExpression = ExpectExpression(TokenKind.CloseBracket),
                     Left = e,
                     Position = GetModulePositionRange(e.Position, Back.Position)
                 };
@@ -276,7 +276,7 @@ namespace Mug.Syntax
 
             if (!MatchAdvance(TokenKind.ClosePar))
                 do
-                    parameters.Add(ExpectExpression(end: new[] { TokenKind.Comma, TokenKind.ClosePar }));
+                    parameters.Add(ExpectExpression(TokenKind.Comma, TokenKind.ClosePar));
                 while (MatchAdvance(TokenKind.Comma));
 
             parameters.Position = GetModulePositionRange(start, Back.Position);
@@ -495,7 +495,7 @@ namespace Mug.Syntax
             var name = Back;
             Expect(TokenKind.Colon);
 
-            var expression = ExpectExpression(end: TokenKind.Comma, TokenKind.CloseBrace);
+            var expression = ExpectExpression(TokenKind.Comma, TokenKind.CloseBrace);
             CurrentIndex--;
 
             return new FieldAssignmentNode() { Name = name.Value.ToString(), Body = expression, Position = name.Position };
@@ -559,7 +559,7 @@ namespace Mug.Syntax
         private INode CollectNodeNew(ModulePosition newposition)
         {
             // could be type inferred
-            var name = ExpectExpressionOr(TokenKind.OpenBrace);
+            var name = ExpectTypeOr(TokenKind.OpenBrace);
 
             var allocation = new TypeAllocationNode() { Name = name, Position = newposition };
 
@@ -580,7 +580,15 @@ namespace Mug.Syntax
             if (Match(kind))
                 return CreateBadNode();
             
-            return ExpectExpression();
+            return ExpectExpression(kind);
+        }
+
+        private INode ExpectTypeOr(TokenKind kind)
+        {
+            if (Match(kind))
+                return CreateBadNode();
+            
+            return ExpectType(kind);
         }
 
         private bool MatchAndOrOperator()
@@ -603,10 +611,10 @@ namespace Mug.Syntax
         }
 
         private INode ExpectExpression(
-            bool allowBoolOP = true,
-            bool allowLogicOP = true,
-            bool allowNullExpression = false,
-            bool allowAssignment = true,
+            bool allowBoolOP,
+            bool allowLogicOP,
+            bool allowNullExpression,
+            bool allowAssignment = false,
             params TokenKind[] end)
         {
             var isFirstCallToExpectExpression = allowBoolOP & allowLogicOP;
@@ -636,7 +644,7 @@ namespace Mug.Syntax
         private void CollectAssignmentNode(ref INode e)
         {
             if (MatchAssigmentOperators(out var @operator))
-                e = new AssignmentNode()
+                e = new AssignmentNode
                 {
                     Name = e,
                     Operator = @operator,
@@ -650,7 +658,12 @@ namespace Mug.Syntax
             while (allowLogicOP && MatchAndOrOperator())
             {
                 var op = Back;
-                var right = ExpectExpression(allowLogicOP: false, end: end);
+                var right = ExpectExpression(
+                    allowBoolOP: true,
+                    allowLogicOP: false,
+                    allowNullExpression: false,
+                    end: end);
+                    
                 e = new BooleanBinaryExpressionNode()
                 {
                     Operator = op,
@@ -668,7 +681,11 @@ namespace Mug.Syntax
                 {
                     Operator = boolOP,
                     Left = e,
-                    Right = ExpectExpression(false, false, end: end),
+                    Right = ExpectExpression(
+                        allowBoolOP: false,
+                        allowLogicOP: false,
+                        allowNullExpression: false,
+                        end: end),
                     Position = GetModulePositionRange(e.Position, e.Position)
                 };
         }
@@ -698,12 +715,12 @@ namespace Mug.Syntax
         private void CollectAsExpression(ref INode e)
         {
             if (MatchAdvance(TokenKind.KeyAs, out var token))
-                e = new CastExpressionNode() { Expression = e, Type = ExpectExpression(), Position = token.Position };
+                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
         }
 
         private INode ExpectVariableType()
         {
-            return MatchAdvance(TokenKind.Colon) ? ExpectExpression() : CreateBadNode();
+            return MatchAdvance(TokenKind.Colon) ? ExpectType() : CreateBadNode();
         }
 
         private bool VariableDefinition(out INode statement)
@@ -747,7 +764,7 @@ namespace Mug.Syntax
 
             var pos = Back.Position;
 
-            statement = new ReturnNode()
+            statement = new ReturnNode
             {
                 Position = pos,
                 Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression()
@@ -768,7 +785,7 @@ namespace Mug.Syntax
 
         private bool CollectMatchExpression(out INode statement, ModulePosition position)
         {
-            var matchexpr = new SwitchExpression() { Position = position, Expression = ExpectExpression(end: TokenKind.OpenBrace) };
+            var matchexpr = new SwitchExpression() { Position = position, Expression = ExpectExpression(TokenKind.OpenBrace) };
 
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
@@ -817,7 +834,7 @@ namespace Mug.Syntax
             INode expression = CreateBadNode();
             if (key.Kind != TokenKind.KeyElse)
             {
-                expression = ExpectExpression(end: TokenKind.OpenBrace);
+                expression = ExpectExpression(TokenKind.OpenBrace);
                 CurrentIndex--;
             }
 
@@ -841,7 +858,7 @@ namespace Mug.Syntax
 
             var leftexpr = ExpectStatement(true, true);
             Expect(TokenKind.Comma);
-            var conditionexpr = ExpectExpression(allowNullExpression: true, end: TokenKind.Comma);
+            var conditionexpr = ExpectExpression(true, true, allowNullExpression: true, end: TokenKind.Comma);
             var rightexpr = ExpectStatement(true, true);
 
             // CurrentIndex--; // returning on '{' token
@@ -879,7 +896,12 @@ namespace Mug.Syntax
                 !ReturnDeclaration(out statement) && // return value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
-                statement = ExpectExpression(true, allowNullExpression: allowNull);
+                statement =
+                    ExpectExpression(
+                        allowBoolOP: true,
+                        allowLogicOP: true,
+                        allowNullExpression: allowNull,
+                        allowAssignment: true);
 
             if (multipleStatementsOnTheSameLine)
                 Tower.Warn(statement.Position, "Maintain statements on different lines");
@@ -1003,7 +1025,7 @@ namespace Mug.Syntax
 
             INode type =
                 MatchAdvance(TokenKind.Colon) ?
-                    ExpectExpression() :
+                    ExpectType() :
                     Token.NewInfo(TokenKind.Identifier, "void", key.Position);
 
             var prototype = new FunctionNode
@@ -1032,7 +1054,7 @@ namespace Mug.Syntax
                 return new FieldNode { Name = "", Type = Token.NewInfo(TokenKind.Identifier, "void", name.Position) };
             }
 
-            var type = ExpectExpression(); // field: <error>
+            var type = ExpectType(); // field: <error>
             EatComma();
 
             return new FieldNode()
@@ -1074,7 +1096,7 @@ namespace Mug.Syntax
                 return;
 
             do
-                variant.Body.Add(ExpectExpression());
+                variant.Body.Add(ExpectType());
             while (MatchAdvance(TokenKind.BooleanOR));
 
             Expect(TokenKind.ClosePar);

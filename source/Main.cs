@@ -5,7 +5,7 @@ using System.IO;
 
 #if DEBUG
 
-var path = "../tests/mainTest.mug";
+var path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
 
 var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.ReadFromPath(path)));
 
