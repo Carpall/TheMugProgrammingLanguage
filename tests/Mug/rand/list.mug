@@ -1,0 +1,72 @@
+pub const LListErr = error {
+  indexOutOfBounds  
+}
+
+const LListNode = fn (static T: type): type {
+  const t = struct {
+    value: T,
+    next: LListNode
+  }
+
+  type Option[*t]
+}
+
+pub const LinkedList = struct[T] {
+  
+  base: LListNode(T),
+  len: 0
+  
+  pub static const create = fn (static T: type): *LinkedList[T] {
+    alloc!(init(T))
+  }
+
+  pub static const init = fn (static T: type): LinkedList[T] {
+    new { base: none!(), len: 0 }
+  }
+  
+  pub const add = fn (item: T) {
+    self.len += 1
+    
+    if self.len == 1 {
+      base = item
+      return
+    }
+    
+    let mut result = base
+    
+    while true {
+      if result.isSome() { result }
+    }
+  }
+
+  pub const remove = fn (index: u64): Option[LListErr, void] {
+    if index >= self.len {
+      return err!(LListErr.indexOutOfBounds)
+    }
+
+    let mut elem = self.base
+    let mut i: i32
+    while i < index - 1 {
+      elem = elem.unpack().next
+    }
+
+    elem.
+
+    self.len -= 1
+  }
+
+  pub const clear = fn (index: u64) {
+    
+  }
+
+  pub const insert = fn (index: u64, item: T) {
+    self.base
+  }
+  
+}
+
+const test1 = test!(fn {
+  let mut list = LinkedList.init(type i32)
+  list.add(1)
+  list.remove()
+})

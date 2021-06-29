@@ -126,40 +126,6 @@ namespace Mug.Generator
             return result;
         }
 
-        /*private DataType (DataType type)
-        {
-            var kind = type.SolvedType.Kind;
-            return kind switch
-            {
-                TypeKind.Auto
-                or TypeKind.Undefined => new(),
-
-                TypeKind.Int8
-                or TypeKind.Int16
-                or TypeKind.Int32
-                or TypeKind.Int64 => new(MIRTypeKind.Int, GetIntBitSize(kind)),
-
-                TypeKind.UInt8
-                or TypeKind.UInt16
-                or TypeKind.UInt32
-                or TypeKind.UInt64 => new(MIRTypeKind.UInt, GetIntBitSize(kind)),
-
-                TypeKind.Char => new(MIRTypeKind.UInt, 8),
-                TypeKind.Bool => new(MIRTypeKind.UInt, 1),
-                TypeKind.Void => new(MIRTypeKind.Void),
-
-                TypeKind.DefinedType => new(
-                    MIRTypeKind.Struct,
-                    LowerStruct(type.SolvedType.GetStruct())),
-
-                TypeKind.Pointer => DataType.VoidPointer,
-
-                TypeKind.String => DataType.String,
-
-                _ => ToImplement<DataType>(kind.ToString(), nameof())
-            };
-        }*/
-
         private static MIRStructure LowerStruct(TypeStatement type)
         {
             return new MIRStructure(type.IsPacked, type.Name, LowerStructBody(type.BodyFields));
@@ -660,8 +626,7 @@ namespace Mug.Generator
 
         private INode GetDefaultOfOption(DataType type, ModulePosition position)
         {
-            var successType = type.SolvedType.GetOption().Success;
-            var def = GetDefaultValueOf(successType, position);
+            var def = GetDefaultValueOf(type.SolvedType.GetOption().Success, position);
 
             var call = new CallStatement
             {
@@ -671,7 +636,6 @@ namespace Mug.Generator
             };
 
             call.Parameters.Add(def);
-            call.Generics.Add(successType);
 
             return call;
         }
@@ -1158,15 +1122,16 @@ namespace Mug.Generator
 
             ContextTypes.Push(OptionBaseTypeOrDefault().Success);
             var type = EvaluateExpression(value);
-            var result = DataType.Option(OptionBaseTypeOrDefault().Error, type);
             ContextTypes.Pop();
+            var errortype = OptionBaseTypeOrDefault().Error;
+            var result = DataType.Option(errortype, type);
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(result);
             FunctionBuilder.MoveLastInstructionTo(first);
 
             FunctionBuilder.EmitStoreField(1, type);
-            FunctionBuilder.EmitLoadConstantValue(1L, DataType.Bool);
-            FunctionBuilder.EmitStoreField(0, DataType.Bool);
+            FunctionBuilder.EmitLoadConstantValue(0L, errortype);
+            FunctionBuilder.EmitStoreField(0, errortype);
 
             return result;
         }
@@ -1194,13 +1159,15 @@ namespace Mug.Generator
             var errortype = ContextType.SolvedType.GetOption().Error;
 
             if (value is null == errortype.Kind is TypeKind.Enum)
-                Tower.Report(expression.Position, "Expected value or empty");
+                Tower.Report(expression.Position, $"Expected value of type '{errortype}'");
 
             FunctionBuilder.EmitLoadZeroinitializedStruct(ContextType);
+
             if (value is not null)
                 EvaluateExpression(value);
             else
-                FunctionBuilder.EmitLoadConstantValue(0L, errortype);
+                FunctionBuilder.EmitLoadConstantValue(1L, errortype);
+
             FunctionBuilder.EmitStoreField(0, errortype);
 
             return ContextType;
@@ -2147,7 +2114,7 @@ namespace Mug.Generator
 
         private long GetStructByteSize(TypeStatement type, ModulePosition position = default)
         {
-            long result = 0;
+            var result = 0L;
             for (int i = 0; i < type.BodyFields.Count; i++)
                 result += GetTypeByteSize(type.BodyFields[i].Type, position);
 

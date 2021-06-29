@@ -1,17 +1,11 @@
 ﻿using Mug.Compilation;
-using Mug.Parser;
 using System;
-using System.Collections.Immutable;
 using System.IO;
-using System.Text;
-using System.Linq;
-using Mug.Generator.IR;
-using System.Collections.Generic;
 
 #if DEBUG
 
-var pathHead = Path.GetFullPath(@"../../../../tests");
-var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}/mainTest.mug");
+var pathHead = Path.GetFullPath(@"C:\Users\carpal\Desktop\mug\tests");
+var unit = new CompilationUnit(true, "test.mir", pathHead, $"{pathHead}\\mainTest.mug");
 
 /*PrettyPrinter.PrintAlerts(unit.GenerateAST(out var ast));
 

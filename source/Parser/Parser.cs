@@ -168,7 +168,7 @@ namespace Mug.Parser
             Expect("", TokenKind.CloseBracket);
 
             if (types.Count == 1)
-                types.Insert(0, DataType.Unsolved(UnsolvedType.Create(TypeKind.EmptyEnum)));
+                types.Insert(0, UnsolvedType.Create(Tower, pos, TypeKind.EmptyEnum));
             else if (types.Count > 2)
                 Tower.Report(pos, $"Too many generic parameters for option type");
 
@@ -283,22 +283,21 @@ namespace Mug.Parser
             type = Current;
 
             return
-                MatchSpecificIdentifier("str") ||
-                MatchSpecificIdentifier("chr") ||
-                MatchSpecificIdentifier("u8") ||
-                MatchSpecificIdentifier("u16") ||
-                MatchSpecificIdentifier("u32") ||
-                MatchSpecificIdentifier("u64") ||
-                MatchSpecificIdentifier("i8") ||
-                MatchSpecificIdentifier("i16") ||
-                MatchSpecificIdentifier("i32") ||
-                MatchSpecificIdentifier("i64") ||
-                MatchSpecificIdentifier("f32") ||
-                MatchSpecificIdentifier("f64") ||
-                MatchSpecificIdentifier("f128") ||
-                MatchSpecificIdentifier("void") ||
-                MatchSpecificIdentifier("bool") ||
-                MatchSpecificIdentifier("unknown");
+                MatchSpecificIdentifier("str")
+                || MatchSpecificIdentifier("chr")
+                || MatchSpecificIdentifier("u8")
+                || MatchSpecificIdentifier("u16")
+                || MatchSpecificIdentifier("u32")
+                || MatchSpecificIdentifier("u64")
+                || MatchSpecificIdentifier("i8")
+                || MatchSpecificIdentifier("i16")
+                || MatchSpecificIdentifier("i32")
+                || MatchSpecificIdentifier("i64")
+                || MatchSpecificIdentifier("f32")
+                || MatchSpecificIdentifier("f64")
+                || MatchSpecificIdentifier("f128")
+                || MatchSpecificIdentifier("void")
+                || MatchSpecificIdentifier("bool");
         }
 
         private bool MatchValue()
@@ -339,9 +338,14 @@ namespace Mug.Parser
             return true;
         }
 
+        private bool IsInvalidNode(INode node)
+        {
+            return node is BadNode or null;
+        }
+
         private void CollectPossibleArrayAccessNode(ref INode e)
         {
-            if (e is BadNode or null)
+            if (IsInvalidNode(e))
                 return;
 
             while (MatchAdvance(TokenKind.OpenBracket))
@@ -564,7 +568,7 @@ namespace Mug.Parser
                     return true;
             }
 
-            if (!allowNullExpression && e is BadNode)
+            if (!allowNullExpression && IsInvalidNode(e))
                 return false;
 
             CollectPossibleArrayAccessNode(ref e);
@@ -687,27 +691,27 @@ namespace Mug.Parser
             if (!MatchTerm(out e, allowNullExpression))
                 return false;
 
-            if (MatchFactorOps())
+            if (!MatchFactorOps())
+                return true;
+                
+            var op = Back;
+            var right = ExpectTerm(allowNullExpression);
+
+            do
             {
-                var op = Back;
-                var right = ExpectTerm(allowNullExpression);
-
-                do
+                e = new BinaryExpressionNode()
                 {
-                    e = new BinaryExpressionNode()
-                    {
-                        Left = e,
-                        Right = right,
-                        Operator = op,
-                        Position = GetModulePositionRange(e.Position, right.Position)
-                    };
+                    Left = e,
+                    Right = right,
+                    Operator = op,
+                    Position = GetModulePositionRange(e.Position, right.Position)
+                };
 
-                    if (MatchFactorOps())
-                        op = Back;
-                    else
-                        break;
-                } while (MatchTerm(out right, allowNullExpression));
-            }
+                if (MatchFactorOps())
+                    op = Back;
+                else
+                    break;
+            } while (MatchTerm(out right, allowNullExpression));
 
             return true;
         }
@@ -765,7 +769,7 @@ namespace Mug.Parser
 
             Expect("Expected ']' and the array body", TokenKind.CloseBracket);
 
-            var array = new ArrayAllocationNode() { SizeIsImplicit = size is BadNode, Size = size, Type = type };
+            var array = new ArrayAllocationNode() { SizeIsImplicit = IsInvalidNode(size), Size = size, Type = type };
             Expect("Expected the array body, empty ('{}') if has to be instanced with type default values", TokenKind.OpenBrace);
 
             if (!Match(TokenKind.CloseBrace))
@@ -825,7 +829,7 @@ namespace Mug.Parser
                 } while (MatchFactor(out right, allowNullExpression));
             }
 
-            if (e is BadNode && !allowNullExpression)
+            if (IsInvalidNode(e) && !allowNullExpression)
             {
                 Report($"Expected expression, found '{Current.Value}'");
                 CurrentIndex++; // skipping bad token
@@ -943,14 +947,14 @@ namespace Mug.Parser
             return true;
         }
 
-        private bool MatchAssigmentOperators(out Token @operator)
+        private bool MatchAssigmentOperators(out Token op)
         {
             return
-                MatchAdvance(TokenKind.Equal, out @operator) ||
-                MatchAdvance(TokenKind.AddAssignment, out @operator) ||
-                MatchAdvance(TokenKind.SubAssignment, out @operator) ||
-                MatchAdvance(TokenKind.MulAssignment, out @operator) ||
-                MatchAdvance(TokenKind.DivAssignment, out @operator);
+                MatchAdvance(TokenKind.Equal, out op)
+                || MatchAdvance(TokenKind.AddAssignment, out op)
+                || MatchAdvance(TokenKind.SubAssignment, out op)
+                || MatchAdvance(TokenKind.MulAssignment, out op)
+                || MatchAdvance(TokenKind.DivAssignment, out op);
         }
 
         private bool CollectMatchExpression(out INode statement, ModulePosition position)
@@ -1155,7 +1159,7 @@ namespace Mug.Parser
 
         private TokenKind GetModifier()
         {
-            if (_modifier == TokenKind.Bad)
+            if (_modifier is TokenKind.Bad)
                 return TokenKind.KeyPriv;
 
             var old = _modifier;

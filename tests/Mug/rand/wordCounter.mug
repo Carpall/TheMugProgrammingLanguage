@@ -1,56 +1,56 @@
-import io
+const io = import!(io)
 
-type WordCounter {
+const WordCounter = type {
+  
   words: u32,
-  prev_was_ctrl: bool
-  pos: usize
+  pos: u64,
   text: str
 
-  pub fn count_in_string(text: str) {
-    var counter = new WordCounter { text: text }
+  pub static const countInString = fn (text: str): u32 {
+    let mut counter: WordCounter = new { text: text }
     counter.count()
 
     counter.words
   }
 
-  fn cur(self: WordCounter): chr { self.text[self.pos] }
-
-  fn count(&self: WordCounter) {
-    for , self.pos < self.text, self.pos++ {
-      const cur_is_special = is_special(self.cur())
-
-      if cur_is_special and !self.prev_was_ctrl { self.words++ }
-
-      self.prev_was_ctrl = cur_is_special
-    }
+  const cur = fn (): chr { self.text[self.pos] }
+    
+  const bck = fn (): chr {
+    if self.pos > 0 {
+      self.text[self.pos - 1]
+    } else { '\0' }
   }
+
+  const count = fn {
+    // ! is the first character in the ascii table http://www.asciitable.com/
+    const isSpecial = fn (c: chr): bool { u8!(c) < u8!('!') }
+
+    for self.pos = 0, self.pos < self.text.len, self.pos += 1 {
+      if isSpecial(self.cur()) and !isSpecial(self.bck()) { self.words += 1 }
+    }
+
+    self.words += 1
+  }
+  
 }
 
-fn is_specials(c: chr): bool {
-  // ! is the first character in the ascii table
-  u8!(c) < u8!('!')
-}
-
-fn get_path(): !str {
-  const args = args!()
-  const len = args.len
+const getPath = fn (): option[str] {
+  let args = args!()
+  let len = args.len
 
   if len != 1 {
     println!("Expected 1 parameter, found {}", len)
-    err!()
-  } else { ok!(args[0]) }
+    none!()
+  } else {
+    ok!(args[0])
+  }
 }
 
-fn get_plural(count: u32): (str, chr) {
-  if count == 1 { new ("is", '\0') } else { new ("are", 's') }
-}
+const main = fn (): option[void] {
+  let path = try getPath()
+  let mut file = File.open(path, FileMode.read)
 
-fn main(): !void {
-  var path = try get_path()
-  var file = File.open(path, FileMode.read)
+  let count = WordCounter.countInString(file.readToEnd())
 
-  const count = WordCounter.count_in_string(file.read_end())
-  const correct_grammar = get_plural(count)
-
-  println!("In path '{}' there {} {} word{}", path, correct_grammar[0], count, correct_grammar[1])
+  println!("In path '{}' there are {} words", path, count)
 }

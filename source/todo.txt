@@ -37,7 +37,8 @@ NEW TODOS
 - refactor parser
 - implement floats
 - add 'and or'
-- check negative numbers in enum
+- uncover for cycle's scope
+- emit negative number when IsNegative is true at enum member
 
 OLD TODOS
 

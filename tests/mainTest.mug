@@ -3,7 +3,8 @@ enum Err(u8) {
   b
 }
 
-fn a(): option[Err, u32] {
+fn a(): option[u32] {
+  none!()
 }
 
 fn main() {
