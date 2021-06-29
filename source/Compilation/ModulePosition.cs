@@ -7,10 +7,10 @@ namespace Mug.Compilation
     public struct ModulePosition
     {
         [JsonIgnore]
-        public Source Source { get; }
+        public Source? Source { get; }
         public Range Position { get; }
 
-        public ModulePosition(Source source, Range position)
+        public ModulePosition(Source? source, Range position)
         {
             Source = source;
             Position = position;
@@ -18,7 +18,7 @@ namespace Mug.Compilation
 
         public int LineAt()
         {
-            return PrettyPrinter.CountLines(Source.Code, Position.Start.Value);
+            return PrettyPrinter.CountLines(Source?.Code, Position.Start.Value);
         }
     }
 }

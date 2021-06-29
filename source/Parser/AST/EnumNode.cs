@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-using Mug.TypeSystem;
+
 using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
@@ -9,7 +9,7 @@ namespace Mug.Syntax.AST
     {
         public string NodeName => "Enum";
         public Pragmas Pragmas { get; set; }
-        public DataType BaseType { get; set; }
+        public INode BaseType { get; set; }
         public string Name { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         public TokenKind Modifier { get; set; }

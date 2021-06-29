@@ -111,7 +111,8 @@ namespace Mug.Grammar
                 "elif" => TokenKind.KeyElif,
                 "else" => TokenKind.KeyElse,
                 "fn" => TokenKind.KeyFunc,
-                "var" => TokenKind.KeyVar,
+                "let" => TokenKind.KeyLet,
+                "nut" => TokenKind.KeyMut,
                 "const" => TokenKind.KeyConst,
                 "catch" => TokenKind.KeyCatch,
                 "switch" => TokenKind.KeySwitch,
@@ -124,7 +125,7 @@ namespace Mug.Grammar
 
         private T InExpressionError<T>(string error)
         {
-            Tower.Report(this, CurrentIndex, error);
+            Tower.Report(Source, CurrentIndex, error);
             return default;
         }
 
@@ -296,7 +297,7 @@ namespace Mug.Grammar
         private void ReportNotCorrectlyEnclosedIfNeeded(char delimiter, string kind)
         {
             if (CurrentIndex == SourceCode.Length && SourceCode[CurrentIndex - 1] != delimiter)
-                Tower.Report(this, CurrentIndex - 1, $"{kind} has not been correctly enclosed");
+                Tower.Report(Source, CurrentIndex - 1, $"{kind} has not been correctly enclosed");
         }
 
         private bool DoesNotMatchEOFOrClose(char delimiter)
@@ -546,7 +547,7 @@ namespace Mug.Grammar
                 return skipConstantFloatF = true;
 
             if (isfloat)
-                Tower.Report(this, CurrentIndex, "Invalid dot here");
+                Tower.Report(Source, CurrentIndex, "Invalid dot here");
 
             isfloat = true;
             CurrentSymbol.Append(',');

@@ -1,4 +1,4 @@
-const DataType = struct {
+const INode = struct {
 
 }
 
@@ -14,7 +14,7 @@ const CallNode = struct(INode) {
 const VarNode = struct(INode) {
   isConst: bool,
   name: Token,
-  datatype: DataType,
+  INode: INode,
   body: Node
 }
 

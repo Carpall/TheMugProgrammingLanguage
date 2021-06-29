@@ -2,7 +2,6 @@
 using Mug.Grammar;
 using Mug.Syntax;
 using Mug.Syntax.AST;
-using Mug.TypeSystem;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -16,13 +15,11 @@ namespace Mug.Compilation
         public Diagnostic Diagnostic { get; } = new();
         public ImmutableArray<Source> Sources { get; }
         public string OutputFilename { get; }
-        public List<DataType> Types { get; }
         
         public CompilationInstance(string outputFilename, ImmutableArray<Source> filepaths)
         {
             Sources = filepaths;
             OutputFilename = outputFilename;
-            Types = new();
         }
 
         public CompilerResult<ImmutableArray<ImmutableArray<Token>>> GenerateTokens()
@@ -30,11 +27,10 @@ namespace Mug.Compilation
             var lexer = new Lexer(this);
             var result = ImmutableArray.CreateBuilder<ImmutableArray<Token>>(Sources.Length);
 
-            for (int i = 0; i < Sources.Length; i++)
+            foreach (var source in Sources)
             {
-                var source = Sources[i];
                 lexer.SetSource(source);
-                result[i] = lexer.Tokenize();
+                result.Add(lexer.Tokenize());
             }
 
             return new(result.ToImmutable(), Diagnostic.GetException());
@@ -68,9 +64,9 @@ namespace Mug.Compilation
         }
 
         [DoesNotReturn()]
-        public void Throw(Grammar.Lexer lexer, int pos, string error)
+        public void Throw(Source source, int pos, string error)
         {
-            Throw(new ModulePosition(lexer, pos..(pos + 1)), error);
+            Throw(new ModulePosition(source, pos..(pos + 1)), error);
         }
 
         [DoesNotReturn()]
@@ -96,9 +92,9 @@ namespace Mug.Compilation
             Diagnostic.Report(position, error);
         }
 
-        public void Report(Grammar.Lexer lexer, int position, string error)
+        public void Report(Source source, int position, string error)
         {
-            Report(new(lexer, position..(position + 1)), error);
+            Report(new(source, position..(position + 1)), error);
         }
 
         public void CheckDiagnostic()

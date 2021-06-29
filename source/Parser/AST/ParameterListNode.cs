@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-using Mug.TypeSystem;
+
 using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
@@ -8,13 +8,13 @@ namespace Mug.Syntax.AST
     public struct ParameterNode : INode
     {
         public string NodeName => "Parameter";
-        public DataType Type { get; set; }
+        public INode Type { get; set; }
         public string Name { get; }
         public Token DefaultConstantValue { get; }
         public bool IsPassedAsReference { get; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(DataType type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
+        public ParameterNode(INode type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
         {
             Type = type;
             Name = name;

@@ -1,10 +1,11 @@
 ﻿using Mug.Compilation;
 using System;
 using System.Collections.Immutable;
+using System.IO;
 
 #if DEBUG
 
-const string path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
+var path = "../tests/mainTest.mug";
 
 var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.ReadFromPath(path)));
 
@@ -13,22 +14,24 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
 
-string output;
-CompilationException e;
-
-Console.Write("(C | IR | LLVMIR): ");
+Console.Write("( ast ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
 
-switch (r)
+printResult(
+    r switch {
+        'a' => compiler.GenerateAST(),
+        _ => new()
+    }
+);
+
+void printResult<T>(CompilerResult<T> result)
 {
-    case 'a': compiler.GenerateAST(); break;
+    if (result.IsGood())
+        Console.WriteLine(result.Value.ToString());
+    else
+        PrettyPrinter.PrintAlerts(result.Exception);
 }
-
-PrettyPrinter.PrintAlerts(e);
-
-if (!compiler.HasErrors())
-    Console.WriteLine(output);
 
 #else
 

@@ -21,8 +21,6 @@ namespace Mug.Grammar
         ConstantChar = -5,
         [Description("fn")]
         KeyFunc = -6,
-        [Description("var")]
-        KeyVar = -7,
         [Description("const")]
         KeyConst = -8,
         [Description("(")]
@@ -136,6 +134,10 @@ namespace Mug.Grammar
         [Description("switch")]
         KeySwitch = -41,
         [Description("try")]
-        KeyTry = -42
+        KeyTry = -43,
+        [Description("let")]
+        KeyLet = -44,
+        [Description("mut")]
+        KeyMut = -45
     }
 }

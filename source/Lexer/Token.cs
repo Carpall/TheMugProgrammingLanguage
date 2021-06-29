@@ -27,6 +27,11 @@ namespace Mug.Grammar
             return new Token(kind, value, default, default);
         }
 
+        public static Token NewInfo(TokenKind kind, string value, ModulePosition position)
+        {
+            return new Token(kind, value, position, default);
+        }
+
         public override string ToString()
         {
             return $"{Kind}('{Value}'), OnNewLine: {IsOnNewLine}";

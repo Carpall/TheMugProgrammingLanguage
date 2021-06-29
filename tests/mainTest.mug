@@ -1,11 +1,3 @@
-enum Err(u8) {
-  a
-  b
-}
-
-fn a(): option[u32] {
-  none!()
-}
-
-fn main() {
+const main: fn(): i32 = fn {
+  
 }

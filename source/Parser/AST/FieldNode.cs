@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-using Mug.TypeSystem;
+
 
 namespace Mug.Syntax.AST
 {
@@ -10,7 +10,7 @@ namespace Mug.Syntax.AST
         public Pragmas Pragmas { get; set; }
         public TokenKind Modifier { get; set; }
         public string Name { get; set; }
-        public DataType Type { get; set; }
+        public INode Type { get; set; }
         public ModulePosition Position { get; set; }
     }
 }

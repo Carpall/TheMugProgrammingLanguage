@@ -21,7 +21,7 @@ namespace Mug.Compilation
 
         public static Source ReadFromPath(string path)
         {
-            return new(Path.GetFullPath(path), File.ReadAllText(path));
+            return new(path, File.ReadAllText(path));
         }
     }
 }

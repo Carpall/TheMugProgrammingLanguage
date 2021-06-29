@@ -11,8 +11,6 @@ namespace Mug.Compilation
         public T Value { get; }
 
         public CompilationException Exception { get; }
-
-        public bool IsGood => Exception is null;
         
         public CompilerResult(T value)
         {
@@ -31,5 +29,7 @@ namespace Mug.Compilation
             Value = value;
             Exception = exception;
         }
+
+        public bool IsGood() => Exception is null;
     }
 }

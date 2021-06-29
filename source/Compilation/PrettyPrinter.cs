@@ -46,9 +46,6 @@ namespace Mug.Compilation
             return result;
         }
 
-        /// <summary>
-        /// pretty module info printing
-        /// </summary
         public static void WriteModule(string moduleName, int lineAt)
         {
             Console.ForegroundColor = ConsoleColor.DarkMagenta;
@@ -80,21 +77,21 @@ namespace Mug.Compilation
                 {
                     var alert = alerts[i];
 
-                    if (alert.Bad.Lexer is null)
+                    if (!alert.Bad.Source.HasValue)
                         WriteFail("", alert.Message);
                     else
                         WriteSourceLineStyle(
                             alert.Kind,
-                            alert.Bad.Lexer.ModuleName,
+                            alert.Bad.Source?.Filename,
                             alert.Bad.Position,
                             alert.Bad.LineAt(),
-                            alert.Bad.Lexer.Source,
+                            alert.Bad.Source?.Code,
                             alert.Message);
                 }
             }
             catch
             {
-                WriteFail(alerts[i].Bad.Lexer.ModuleName, "Internal error: unable to print error message");
+                WriteFail(alerts[i].Bad.Source?.Filename, "Internal error: unable to print error message");
             }
         }
 
