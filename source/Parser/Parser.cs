@@ -161,8 +161,11 @@ namespace Mug.Syntax
             return new();
         }
 
-        private ParameterNode ExpectParameter()
+        private ParameterNode ExpectParameter(int count)
         {
+            if (count > 0)
+                Expect(TokenKind.Comma);
+
             var isStatic = MatchAdvance(TokenKind.KeyStatic);
             var name = Expect(TokenKind.Identifier);
             var result = new ParameterNode(null, name.Value, CreateBadNode(), isStatic, name.Position);
@@ -280,11 +283,10 @@ namespace Mug.Syntax
         {
             e = CreateBadNode();
 
-            var builtin = CollectBuiltInSymbol();
-
-            if (!Match(TokenKind.OpenPar, true))
+            if (!Match(TokenKind.OpenPar, true) && !Match(TokenKind.Negation, true))
                 return false;
 
+            var builtin = CollectBuiltInSymbol();
             var parameters = CollectParameters();
 
             e = new CallNode
@@ -375,7 +377,8 @@ namespace Mug.Syntax
                     e = CollectNodeNew(token.Position);
                 else if (ConditionDefinition(out e)
                     || FunctionDefinition(out e)
-                    || StructDefinition(out e))
+                    || StructDefinition(out e)
+                    || EnumDefinition(out e))
                     return true;
             }
 
@@ -746,11 +749,6 @@ namespace Mug.Syntax
             return true;
         }
 
-        private bool NextIsOnSameLine()
-        {
-            return CurrentIndex < Tokens.Length && !Tokens[CurrentIndex].IsOnNewLine;
-        }
-
         private bool ReturnDeclaration(out INode statement)
         {
             statement = CreateBadNode();
@@ -763,10 +761,27 @@ namespace Mug.Syntax
             statement = new ReturnNode
             {
                 Position = pos,
-                Body = !NextIsOnSameLine() ? CreateBadNode() : ExpectExpression()
+                Body = MatchExpression(out var e) ? e : CreateBadNode()
             };
 
             return true;
+        }
+
+        private bool MatchExpression(out INode e)
+        {
+            var pos = CurrentIndex;
+            e = ExpectExpression(
+                allowBoolOP: true,
+                allowLogicOP: true,
+                allowNullExpression: true,
+                allowAssignment: false);
+
+            var eisnull = e is null;
+
+            if (eisnull)
+                CurrentIndex = pos;
+
+            return eisnull;
         }
 
         private bool MatchAssigmentOperators(out Token op)
@@ -930,15 +945,16 @@ namespace Mug.Syntax
             Expect(TokenKind.OpenPar);
 
             var parameters = new List<ParameterNode>();
+            var count = 0;
 
             while (!MatchAdvance(TokenKind.ClosePar))
-                parameters.Add(ExpectParameter());
+                parameters.Add(ExpectParameter(count++));
 
             if (MatchAdvance(TokenKind.Colon))
                 type = ExpectType();
 
             var result = parameters.ToArray();
-            // FixImplicitlyTypedParameters(ref result);
+            FixImplicitlyTypedParameters(ref result);
 
             return result;
         }
@@ -1115,25 +1131,6 @@ namespace Mug.Syntax
             }
         }
 
-        /*private EnumMemberNode ExpectMemberDefinition(int lastvalue)
-        {
-            var name = Expect(TokenKind.Identifier, UnexpectedToken);
-            var isnegative = false;
-            var value =
-                MatchAdvance(TokenKind.Colon) ?
-                    ExpectEnumConstant(out isnegative) :
-                    new Token(TokenKind.ConstantDigit, (lastvalue + 1).ToString(), name.Position, false);
-
-            EatComma();
-            return new EnumMemberNode
-            {
-                Name = name.Value,
-                Value = value,
-                Position = name.Position,
-                IsNegative = isnegative
-            };
-        }*/
-
         private void EatComma()
         {
             MatchAdvance(TokenKind.Comma);
@@ -1149,47 +1146,63 @@ namespace Mug.Syntax
             Tower.Report(position, error);
         }
 
-        /*private bool EnumDefinition(out INode node)
+        private bool EnumDefinition(out INode node)
         {
             node = CreateBadNode();
 
-            if (!MatchAdvance(TokenKind.KeyEnum))
+            if (!MatchAdvance(TokenKind.KeyEnum, out var key))
                 return false;
 
-            var name = Expect(TokenKind.Identifier);
+            var basetype = GetEnumBaseType();
             var statement = new EnumNode
             {
-                Modifier = GetModifier(),
-                Pragmas = GetPramas(),
-                Name = name.Value.ToString(),
-                Position = name.Position
+                BaseType = basetype,
+                Position = key.Position
             };
 
             // enum body
-            CollectEnumBody(statement);
+            CollectEnumBody(ref statement);
 
             node = statement;
 
             return true;
-        }*/
+        }
 
-        /*private void CollectEnumBody(EnumNode statement)
+        private void CollectEnumBody(ref EnumNode statement)
         {
-            Expect(TokenKind.OpenBrace, UnexpectedToken);
-            
-            while (Match(TokenKind.Identifier))
+            Expect(TokenKind.OpenBrace);
+
+            do
             {
-                var value = -1;
-                if (statement.Body.Count > 0)
-                    _ = int.TryParse(statement.Body.Last().Value.Value, out value);
+                if (Match(TokenKind.CloseBrace))
+                    break;
 
-                var member = ExpectMemberDefinition(value);
+                statement.Body.Add(ExpectEnumMemberNode());
+            } while (MatchAdvance(TokenKind.Comma));
 
-                statement.Body.Add(member);
-            }
+            Expect(TokenKind.CloseBrace);
+        }
 
-            Expect(TokenKind.CloseBrace, UnexpectedToken); // expected close body
-        }*/
+        private EnumMemberNode ExpectEnumMemberNode()
+        {
+            var name = Expect(TokenKind.Identifier);
+            var value =
+                MatchAdvance(TokenKind.Colon) ?
+                    ExpectExpression() :
+                    CreateBadNode();
+
+            return new EnumMemberNode
+            {
+                Name = name.Value,
+                Value = value,
+                Position = name.Position
+            };
+        }
+
+        private INode GetEnumBaseType()
+        {
+            return Match(TokenKind.OpenBrace) ? CreateBadNode() : ExpectType();
+        }
 
         private void CollectPragmas()
         {

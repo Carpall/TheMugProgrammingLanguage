@@ -19,7 +19,7 @@ namespace Mug.Syntax.AST
             block.Statements.AddRange(BodyFields);
             block.Statements.AddRange(BodyMembers);
 
-            return $"struct {block}";
+            return $"(struct {block})";
         }
     }
 }

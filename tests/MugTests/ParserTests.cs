@@ -85,7 +85,12 @@ const Array = struct {
 const test = fn {
   let mut x = Array.create()
 }
-"
+",
+            @"const _= { return }",
+            @"const _= { return 1 }",
+            @"const _ = (fn(a, b: i32): i32 { a + b })(1, 2)",
+            @"const _ = (struct { }).field",
+            @"const _ = (enum { }).member",
         };
 
         private readonly string[] _invalidTests =
@@ -103,6 +108,20 @@ const test = fn {
             @"const _={.}",
             @"const _=@",
             @"return",
+            @"o",
+            @"1",
+            @"var",
+            @"let",
+            @"const _=struct fn .",
+            @"const _=()",
+            @"const _=x/",
+            @"const _=/x",
+            @"const _=(((())))",
+            @"const _=!",
+            @"const _=a!",
+            @"const _ = fn(a, b: i32): i32 { a + b }(1, 2)",
+            @"const _ = struct { }.field",
+            @"const _ = enum { }.member"
         };
 
         [Test]

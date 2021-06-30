@@ -21,7 +21,7 @@ namespace Mug.Syntax.AST
         {
             var parameters = ParameterList is not null ? $"({string.Join(", ", ParameterList)})" : null;
             var type = Type is BadNode ? null : $": {Type}";
-            return $"fn{parameters}{type}{(IsPrototype() ? null : $" {Body}")}";
+            return $"(fn{parameters}{type}{(IsPrototype() ? null : $" {Body}")})";
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Mug.Tests
 
         private const string SINGLE_TOKENS = "( ) [ ] { } < > = ! & | + - * / ,   : .  ";
         private const string DOUBLE_TOKENS = "== != ++ += -- -= *= /= <= >= ..";
-        private const string FULL_TOKENS = "return continue break while pub use import new for      as in to if elif else fn   let const str chr       i32 i64 u8 u32 u64 unknown when declare void bool";
+        private const string FULL_TOKENS = "return continue break while pub            new for      as in to if elif else fn   let const str chr       i32 i64 u8 u32 u64 unknown when declare void bool";
         private const string RANDOM_TOKENS = "return == ( ) += continue pub ! *= ..";
 
 
@@ -482,8 +482,6 @@ namespace Mug.Tests
                 Token.NewInfo(TokenKind.KeyBreak, "break", new(lexer.Source, 16..21)),
                 Token.NewInfo(TokenKind.KeyWhile, "while", new(lexer.Source, 22..27)),
                 Token.NewInfo(TokenKind.KeyPub, "pub", new(lexer.Source, 28..31)),
-                Token.NewInfo(TokenKind.KeyUse, "use", new(lexer.Source, 32..35)),
-                Token.NewInfo(TokenKind.KeyImport, "import", new(lexer.Source, 36..42)),
                 Token.NewInfo(TokenKind.KeyNew, "new", new(lexer.Source, 43..46)),
                 Token.NewInfo(TokenKind.KeyFor, "for", new(lexer.Source, 47..50)),
                 Token.NewInfo(TokenKind.KeyAs, "as", new(lexer.Source, 56..58)),

@@ -109,10 +109,6 @@ namespace Mug.Grammar
         KeyPub = -30,
         [Description("new")]
         KeyNew = -31,
-        [Description("use")]
-        KeyUse = -32,
-        [Description("import")]
-        KeyImport = -90,
         [Description("*=")]
         MulAssignment = -33,
         [Description("/=")]

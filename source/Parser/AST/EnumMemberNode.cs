@@ -1,4 +1,4 @@
-﻿/*using Mug.Compilation;
+﻿using Mug.Compilation;
 using Mug.Grammar;
 
 namespace Mug.Syntax.AST
@@ -7,14 +7,14 @@ namespace Mug.Syntax.AST
     {
         public string NodeName => "EnumMember";
         public string Name { get; set; }
-        public Token Value { get; set; }
+        public INode Value { get; set; }
         public ModulePosition Position { get; set; }
-        public bool IsNegative { get; set; }
+
+        public bool IsImplicitelyEnumerated() => Value is BadNode;
 
         public override string ToString()
         {
-            return $"{}";
+            return $"{Name}{(!IsImplicitelyEnumerated() ? $": {Value}" : null)},";
         }
     }
 }
-*/

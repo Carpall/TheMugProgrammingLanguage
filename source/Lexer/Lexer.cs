@@ -96,8 +96,6 @@ namespace Mug.Grammar
                 "while" => TokenKind.KeyWhile,
                 "pub" => TokenKind.KeyPub,
                 "priv" => TokenKind.KeyPriv,
-                "use" => TokenKind.KeyUse,
-                "import" => TokenKind.KeyImport,
                 "new" => TokenKind.KeyNew,
                 "for" => TokenKind.KeyFor,
                 "enum" => TokenKind.KeyEnum,
