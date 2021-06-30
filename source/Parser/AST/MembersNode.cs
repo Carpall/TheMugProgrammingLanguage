@@ -9,5 +9,10 @@ namespace Mug.Syntax.AST
         public INode Base { get; set; }
         public Token Member { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Base}.{Member}";
+        }
     }
 }

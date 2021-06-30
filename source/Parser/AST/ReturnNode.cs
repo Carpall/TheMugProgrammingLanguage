@@ -11,5 +11,10 @@ namespace Mug.Syntax.AST
         {
             return Body is BadNode;
         }
+
+        public override string ToString()
+        {
+            return $"return{(IsVoid() ? null : Body)}";
+        }
     }
 }

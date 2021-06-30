@@ -30,7 +30,8 @@ namespace Mug.Compilation
             foreach (var source in Sources)
             {
                 lexer.SetSource(source);
-                result.Add(lexer.Tokenize());
+                try { result.Add(lexer.Tokenize()); }
+                catch (CompilationException) { break; }
             }
 
             return new(result.ToImmutable(), Diagnostic.GetException());
@@ -42,11 +43,11 @@ namespace Mug.Compilation
             var parser = new Parser(this);
             var result = new NamespaceNode();
 
-            for (int i = 0; i < tokens.Length; i++)
+            foreach (var subtokens in tokens)
             {
-                var tokensChunck = tokens[i];
-                parser.SetTokens(tokensChunck);
-                result.Members.AddRange(parser.Parse().Members);
+                parser.SetTokens(subtokens);
+                try { result.Members.AddRange(parser.Parse().Members); }
+                catch (CompilationException) { break; }
             }
 
             return new(result, Diagnostic.GetException());

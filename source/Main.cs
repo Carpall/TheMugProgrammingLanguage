@@ -25,7 +25,7 @@ printResult(
     }
 );
 
-void printResult<T>(CompilerResult<T> result)
+static void printResult<T>(CompilerResult<T> result)
 {
     if (result.IsGood())
         Console.WriteLine(result.Value.ToString());

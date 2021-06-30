@@ -1,4 +1,4 @@
-﻿using Mug.Compilation;
+﻿/*using Mug.Compilation;
 
 using System.Collections.Generic;
 
@@ -14,3 +14,4 @@ namespace Mug.Syntax.AST
         public ModulePosition Position { get; set; }
     }
 }
+*/

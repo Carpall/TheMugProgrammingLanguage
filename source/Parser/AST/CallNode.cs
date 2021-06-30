@@ -10,5 +10,10 @@ namespace Mug.Syntax.AST
         public INode Name { get; set; }
         public bool IsBuiltIn { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Name}{(IsBuiltIn ? "!" : null)}({string.Join(", ", Parameters)})";
+        }
     }
 }

@@ -105,8 +105,6 @@ namespace Mug.Grammar
         KeyContinue = -27,
         [Description("break")]
         KeyBreak = -28,
-        [Description("type")]
-        KeyType = -29,
         [Description("pub")]
         KeyPub = -30,
         [Description("new")]
@@ -138,6 +136,10 @@ namespace Mug.Grammar
         [Description("let")]
         KeyLet = -44,
         [Description("mut")]
-        KeyMut = -45
+        KeyMut = -45,
+        [Description("struct")]
+        KeyStruct = -46,
+        [Description("static")]
+        KeyStatic = -47
     }
 }

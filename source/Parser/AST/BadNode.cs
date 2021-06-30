@@ -12,5 +12,10 @@ namespace Mug.Syntax.AST
         {
             Position = position;
         }
+
+        public override string ToString()
+        {
+            return "BadNode";
+        }
     }
 }

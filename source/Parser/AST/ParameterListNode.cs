@@ -10,22 +10,22 @@ namespace Mug.Syntax.AST
         public string NodeName => "Parameter";
         public INode Type { get; set; }
         public string Name { get; }
-        public Token DefaultConstantValue { get; }
-        public bool IsPassedAsReference { get; }
+        public INode DefaultConstantValue { get; }
+        public bool IsStatic { get; set; }
         public ModulePosition Position { get; set; }
 
-        public ParameterNode(INode type, string name, Token defaultConstValue, bool isPassedAsReference, ModulePosition position)
+        public ParameterNode(INode type, string name, INode defaultConstValue, bool isStatic, ModulePosition position)
         {
             Type = type;
             Name = name;
             Position = position;
             DefaultConstantValue = defaultConstValue;
-            IsPassedAsReference = isPassedAsReference;
+            IsStatic = isStatic;
         }
 
         public override string ToString()
         {
-            return Type.ToString();
+            return $"{(IsStatic ? "static " : null)}{Name}: {Type}";
         }
     }
 }

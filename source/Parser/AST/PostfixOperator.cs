@@ -11,5 +11,10 @@ namespace Mug.Syntax.AST
         public INode Expression { get; set; }
         public Token Postfix { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Expression}{Postfix.Kind.GetDescription()}";
+        }
     }
 }

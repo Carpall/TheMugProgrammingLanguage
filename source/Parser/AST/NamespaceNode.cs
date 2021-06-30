@@ -19,7 +19,7 @@ namespace Mug.Syntax.AST
 
         public override string ToString()
         {
-            return (this as INode).Dump();
+            return string.Join('\n', Members)/*(this as INode).Dump()*/;
         }
     }
 }

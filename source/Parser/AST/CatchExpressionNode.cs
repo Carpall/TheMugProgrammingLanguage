@@ -3,12 +3,17 @@ using Mug.Grammar;
 
 namespace Mug.Syntax.AST
 {
-  public struct CatchExpressionNode : INode
+    public struct CatchExpressionNode : INode
     {
         public string NodeName => "Catch";
         public INode Expression { get; set; }
         public BlockNode Body { get; set; }
         public Token? OutError { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Expression} catch {(OutError.HasValue ? $"{OutError} " : null)}{Body}";
+        }
     }
 }

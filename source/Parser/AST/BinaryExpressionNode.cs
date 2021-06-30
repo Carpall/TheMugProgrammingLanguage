@@ -12,5 +12,10 @@ namespace Mug.Syntax.AST
         public INode Right { get; set; }
         public Token Operator { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"({Left} {Operator.Kind.GetDescription()} {Right})";
+        }
     }
 }

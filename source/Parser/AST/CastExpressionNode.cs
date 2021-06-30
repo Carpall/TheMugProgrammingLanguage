@@ -9,5 +9,10 @@ namespace Mug.Syntax.AST
         public INode Expression { get; set; }
         public INode Type { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Expression} as {Type}";
+        }
     }
 }

@@ -8,9 +8,9 @@ namespace Mug.Compilation
 {
     public struct CompilerResult<T>
     {
-        public T Value { get; }
+        public readonly T Value;
 
-        public CompilationException Exception { get; }
+        public CompilationException Exception;
         
         public CompilerResult(T value)
         {

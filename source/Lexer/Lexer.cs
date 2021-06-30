@@ -52,7 +52,7 @@ namespace Mug.Grammar
         {
         }
 
-        internal void SetSource(Source source)
+        public void SetSource(Source source)
         {
             Source = source;
         }
@@ -100,7 +100,6 @@ namespace Mug.Grammar
                 "import" => TokenKind.KeyImport,
                 "new" => TokenKind.KeyNew,
                 "for" => TokenKind.KeyFor,
-                "type" => TokenKind.KeyType,
                 "enum" => TokenKind.KeyEnum,
                 "as" => TokenKind.KeyAs,
                 "is" => TokenKind.KeyIs,
@@ -112,7 +111,9 @@ namespace Mug.Grammar
                 "else" => TokenKind.KeyElse,
                 "fn" => TokenKind.KeyFunc,
                 "let" => TokenKind.KeyLet,
-                "nut" => TokenKind.KeyMut,
+                "mut" => TokenKind.KeyMut,
+                "struct" => TokenKind.KeyStruct,
+                "static" => TokenKind.KeyStatic,
                 "const" => TokenKind.KeyConst,
                 "catch" => TokenKind.KeyCatch,
                 "switch" => TokenKind.KeySwitch,
@@ -550,7 +551,8 @@ namespace Mug.Grammar
                 Tower.Report(Source, CurrentIndex, "Invalid dot here");
 
             isfloat = true;
-            CurrentSymbol.Append(',');
+            CurrentSymbol.Append('.');
+            CurrentIndex++;
 
             return false;
         }

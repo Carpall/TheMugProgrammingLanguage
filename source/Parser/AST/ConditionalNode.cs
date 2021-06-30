@@ -2,6 +2,7 @@
 using Mug.Grammar;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System.Text;
 
 namespace Mug.Syntax.AST
 {
@@ -13,5 +14,16 @@ namespace Mug.Syntax.AST
         public BlockNode Body { get; set; }
         public ModulePosition Position { get; set; }
         public ConditionalNode ElseNode { get; set; }
+
+        public override string ToString()
+        {
+            var result = new StringBuilder();
+            var node = this;
+
+            while (node is not null)
+                result.Append($"{Kind.GetDescription()} {Expression} {Body}");
+
+            return result.ToString();
+        }
     }
 }

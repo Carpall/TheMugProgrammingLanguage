@@ -8,5 +8,10 @@ namespace Mug.Syntax.AST
         public INode Left { get; set; }
         public INode IndexExpression { get; set; }
         public ModulePosition Position { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Left}[{IndexExpression}]";
+        }
     }
 }

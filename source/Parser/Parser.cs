@@ -20,9 +20,9 @@ namespace Mug.Syntax
 
         private Pragmas _pragmas = null;
 
-        private TokenKind _modifier = TokenKind.Bad;
+        private ImmutableArray<TokenKind>.Builder _modifiers = ImmutableArray.CreateBuilder<TokenKind>(2);
 
-        internal void SetTokens(ImmutableArray<Token> tokens)
+        public void SetTokens(ImmutableArray<Token> tokens)
         {
             Tokens = tokens;
         }
@@ -161,27 +161,16 @@ namespace Mug.Syntax
             return new();
         }
 
-        private ParameterNode ExpectParameter(bool isFirst)
+        private ParameterNode ExpectParameter()
         {
-            if (!isFirst)
-                Expect(TokenKind.Comma);
-
-            var isPassedAsReference = MatchAdvance(TokenKind.Apersand);
+            var isStatic = MatchAdvance(TokenKind.KeyStatic);
             var name = Expect(TokenKind.Identifier);
+            var result = new ParameterNode(null, name.Value, CreateBadNode(), isStatic, name.Position);
 
-            if (!MatchAdvance(TokenKind.Colon))
-                return new(null, name.Value, default, isPassedAsReference, name.Position);
+            if (MatchAdvance(TokenKind.Colon))
+                result.Type = ExpectType();
 
-            var type = ExpectType();
-            var defaultvalue = new Token();
-
-            if (MatchAdvance(TokenKind.Equal))
-                defaultvalue = ExpectConstant("Expected constant expression as default parameter value");
-
-            ExpectMultiple("", TokenKind.Comma, TokenKind.ClosePar);
-            CurrentIndex--;
-
-            return new(type, name.Value, defaultvalue, isPassedAsReference, name.Position);
+            return result;
         }
 
         private bool MatchValue()
@@ -275,9 +264,8 @@ namespace Mug.Syntax
             var start = Expect(TokenKind.OpenPar).Position;
 
             if (!MatchAdvance(TokenKind.ClosePar))
-                do
+                while (Back.Kind is not TokenKind.ClosePar)
                     parameters.Add(ExpectExpression(TokenKind.Comma, TokenKind.ClosePar));
-                while (MatchAdvance(TokenKind.Comma));
 
             parameters.Position = GetModulePositionRange(start, Back.Position);
             return parameters;
@@ -387,7 +375,7 @@ namespace Mug.Syntax
                     e = CollectNodeNew(token.Position);
                 else if (ConditionDefinition(out e)
                     || FunctionDefinition(out e)
-                    || TypeDefinition(out e))
+                    || StructDefinition(out e))
                     return true;
             }
 
@@ -481,7 +469,7 @@ namespace Mug.Syntax
 
         private INode ExpectExpression(params TokenKind[] end)
         {
-            return ExpectExpression(true, true, false, true, end: end);
+            return ExpectExpression(true, true, false, true, end);
         }
 
         private FieldAssignmentNode ExpectFieldAssign()
@@ -561,16 +549,20 @@ namespace Mug.Syntax
             // could be type inferred
             var name = ExpectTypeOr(TokenKind.OpenBrace);
 
-            var allocation = new TypeAllocationNode() { Name = name, Position = newposition };
+            var allocation = new TypeAllocationNode { Name = name, Position = newposition };
 
             Expect(TokenKind.OpenBrace, UnexpectedToken);
 
-            if (Match(TokenKind.Identifier))
-                do
-                    allocation.Body.Add(ExpectFieldAssign());
-                while (MatchAdvance(TokenKind.Comma));
+            do
+            {
+                if (Match(TokenKind.CloseBrace))
+                    break;
 
-            Expect(TokenKind.CloseBrace);
+                var assignment = ExpectFieldAssign();
+                allocation.Body.Add(assignment);
+            } while (MatchAdvance(TokenKind.Comma));
+
+            Expect(TokenKind.CloseBrace, UnexpectedToken);
 
             return allocation;
         }
@@ -664,7 +656,7 @@ namespace Mug.Syntax
                     allowNullExpression: false,
                     end: end);
                     
-                e = new BooleanBinaryExpressionNode()
+                e = new BinaryExpressionNode
                 {
                     Operator = op,
                     Left = e,
@@ -677,7 +669,7 @@ namespace Mug.Syntax
         private void CollectBooleanBinaryExpressions(bool allowBoolOP, TokenKind[] end, ref INode e)
         {
             while (allowBoolOP && MatchBooleanOperator(out var boolOP))
-                e = new BooleanBinaryExpressionNode
+                e = new BinaryExpressionNode
                 {
                     Operator = boolOP,
                     Left = e,
@@ -733,12 +725,16 @@ namespace Mug.Syntax
             else if (!MatchAdvance(TokenKind.KeyConst))
                 return false;
 
+            var modifiers = GetModifiers();
+            var pragmas = GetPramas();
             var name = Expect(TokenKind.Identifier);
             var type = ExpectVariableType();
             var body = MatchAdvance(TokenKind.Equal) ? ExpectExpression() : CreateBadNode();
 
             statement = new VariableNode
             {
+                Modifiers = modifiers,
+                Pragmas = pragmas,
                 IsMutable = isMutable,
                 Body = body,
                 Name = name.Value.ToString(),
@@ -856,19 +852,15 @@ namespace Mug.Syntax
             if (!MatchAdvance(TokenKind.KeyFor, out var key))
                 return false;
 
-            var leftexpr = ExpectStatement(true, true);
-            Expect(TokenKind.Comma);
-            var conditionexpr = ExpectExpression(true, true, allowNullExpression: true, end: TokenKind.Comma);
-            var rightexpr = ExpectStatement(true, true);
-
-            // CurrentIndex--; // returning on '{' token
+            var iterator = Expect(TokenKind.Identifier);
+            Expect(TokenKind.KeyIn);
+            var expression = ExpectExpression();
 
             statement = new ForLoopNode()
             {
                 Body = ExpectBlock(),
-                LeftExpression = leftexpr,
-                ConditionExpression = conditionexpr,
-                RightExpression = rightexpr,
+                Iterator = iterator,
+                Expression = expression,
                 Position = key.Position
             };
 
@@ -928,24 +920,25 @@ namespace Mug.Syntax
             return block;
         }
 
-        private ParameterNode[] ExpectParameterListDeclaration()
+        private ParameterNode[] ExpectParameterListDeclaration(ModulePosition position, out INode type)
         {
+            type = Token.NewInfo(TokenKind.Identifier, "void", position);
+
             if (Match(TokenKind.OpenBrace))
                 return Array.Empty<ParameterNode>();
             
             Expect(TokenKind.OpenPar);
 
             var parameters = new List<ParameterNode>();
-            var count = 0;
 
             while (!MatchAdvance(TokenKind.ClosePar))
-            {
-                parameters.Add(ExpectParameter(count == 0));
-                count++;
-            }
+                parameters.Add(ExpectParameter());
+
+            if (MatchAdvance(TokenKind.Colon))
+                type = ExpectType();
 
             var result = parameters.ToArray();
-            FixImplicitlyTypedParameters(ref result);
+            // FixImplicitlyTypedParameters(ref result);
 
             return result;
         }
@@ -981,26 +974,28 @@ namespace Mug.Syntax
 
         private static void InferTypeInImplicitlyTypedParameters(ParameterNode[] parameters, int index, ref int i)
         {
+            var isStatic = parameters[index].IsStatic;
             var type = parameters[index].Type;
             var parametersCount = index - i;
 
             while (parametersCount-- >= 0)
             {
+                parameters[i].IsStatic = isStatic;
                 parameters[i].Type = type;
                 i++;
             }
         }
 
-        private TokenKind GetModifier()
+        private ImmutableArray<TokenKind> GetModifiers()
         {
-            if (_modifier is TokenKind.Bad)
-                return TokenKind.KeyPriv;
+            if (_modifiers.Count == 0)
+                return ImmutableArray.Create<TokenKind>();
 
-            var old = _modifier;
+            var old = _modifiers.ToImmutable();
 
-            _modifier = TokenKind.Bad;
+            _modifiers.Clear();
 
-            return old; // pub only currently
+            return old;
         }
 
         private Pragmas GetPramas()
@@ -1017,23 +1012,12 @@ namespace Mug.Syntax
             if (!MatchAdvance(TokenKind.KeyFunc, out var key)) // <func>
                 return false;
 
-            var modifier = GetModifier();
-            var pragmas = GetPramas();
-            var generics = new List<Token>();
-
-            var parameters = ExpectParameterListDeclaration(); // func name<(..)>
-
-            INode type =
-                MatchAdvance(TokenKind.Colon) ?
-                    ExpectType() :
-                    Token.NewInfo(TokenKind.Identifier, "void", key.Position);
+            var parameters = ExpectParameterListDeclaration(key.Position, out var type); // func name<(..)>
 
             var prototype = new FunctionNode
             {
-                Modifier = modifier,
-                Pragmas = pragmas,
                 ParameterList = parameters,
-                ReturnType = type,
+                Type = type,
                 Position = key.Position
             };
 
@@ -1046,6 +1030,8 @@ namespace Mug.Syntax
 
         private FieldNode ExpectFieldDefinition()
         {
+            var modifiers = GetModifiers();
+            var pragmas = GetPramas();
             var name = Expect(TokenKind.Identifier); // <field>
 
             if (!MatchAdvance(TokenKind.Colon))
@@ -1057,26 +1043,14 @@ namespace Mug.Syntax
             var type = ExpectType(); // field: <error>
             EatComma();
 
-            return new FieldNode()
+            return new FieldNode
             {
-                Pragmas = GetPramas(),
-                Modifier = GetModifier(),
+                Pragmas = pragmas,
+                Modifiers = modifiers,
                 Name = name.Value.ToString(),
                 Type = type,
                 Position = name.Position
             };
-        }
-
-        private void CollectGenericParameterDefinitions(List<Token> generics)
-        {
-            if (!MatchAdvance(TokenKind.OpenBracket))
-                return;
-
-            do
-                generics.Add(Expect(TokenKind.Identifier));
-            while (MatchAdvance(TokenKind.Comma));
-
-            Expect(TokenKind.CloseBracket, UnexpectedToken);
         }
 
         /* private void ExpectVariantDefinition(out INode node, Token name, Pragmas pragmas, TokenKind modifier)
@@ -1107,55 +1081,41 @@ namespace Mug.Syntax
         /// <summary>
         /// search for a struct definition
         /// </summary>
-        private bool TypeDefinition(out INode node)
+        private bool StructDefinition(out INode node)
         {
             node = CreateBadNode();
 
             // returns if does not match a type keyword
-            if (!MatchAdvance(TokenKind.KeyType, out var key))
+            if (!MatchAdvance(TokenKind.KeyStruct, out var key))
                 return false;
 
-            // required an identifier
-            var modifier = GetModifier();
-            var pragmas = GetPramas();
-            node = new StructureNode()
+            node = new StructureNode
             {
-                Modifier = modifier,
-                Pragmas = pragmas,
                 Position = key.Position
             };
 
-            // struct generics
-            CollectGenericParameterDefinitions((node as StructureNode).Generics);
-
-            // variant definition
-            /* if (MatchAdvance(TokenKind.Equal))
-                ExpectVariantDefinition(out node, pragmas, modifier);
-            else
-            { */
-            // struct body
-            Expect(TokenKind.OpenBrace, UnexpectedToken);
-            CollectTypeBody(node as StructureNode);
-            // }
+            CollectStructBody(node as StructureNode);
 
             return true;
         }
 
-        private void CollectTypeBody(StructureNode statement)
+        private void CollectStructBody(StructureNode statement)
         {
+            Expect(TokenKind.OpenBrace, UnexpectedToken);
+
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
-                CollectModifier();
+                CollectModifiers();
                 CollectPragmas();
 
-                if (FunctionDefinition(out var node))
-                    statement.BodyMethods.Add(node as FunctionNode);
+                if (VariableDefinition(out var node))
+                    statement.BodyMembers.Add(node as VariableNode);
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
             }
         }
 
-        private EnumMemberNode ExpectMemberDefinition(int lastvalue)
+        /*private EnumMemberNode ExpectMemberDefinition(int lastvalue)
         {
             var name = Expect(TokenKind.Identifier, UnexpectedToken);
             var isnegative = false;
@@ -1172,22 +1132,7 @@ namespace Mug.Syntax
                 Position = name.Position,
                 IsNegative = isnegative
             };
-        }
-
-        private Token ExpectEnumConstant(out bool isnegative)
-        {
-            isnegative = MatchAdvance(TokenKind.Minus);
-            var result = ExpectConstant("Expected constant");
-            if (result.Kind is TokenKind.ConstantChar)
-                result = new(TokenKind.ConstantDigit, ((int)result.Value.First()).ToString(), result.Position, result.IsOnNewLine);
-            else if (result.Kind is not TokenKind.ConstantDigit)
-            {
-                Report(result.Position, "Expected constant int or char value");
-                result.Value = "0";
-            }
-
-            return result;
-        }
+        }*/
 
         private void EatComma()
         {
@@ -1204,7 +1149,7 @@ namespace Mug.Syntax
             Tower.Report(position, error);
         }
 
-        private bool EnumDefinition(out INode node)
+        /*private bool EnumDefinition(out INode node)
         {
             node = CreateBadNode();
 
@@ -1226,9 +1171,9 @@ namespace Mug.Syntax
             node = statement;
 
             return true;
-        }
+        }*/
 
-        private void CollectEnumBody(EnumNode statement)
+        /*private void CollectEnumBody(EnumNode statement)
         {
             Expect(TokenKind.OpenBrace, UnexpectedToken);
             
@@ -1244,7 +1189,7 @@ namespace Mug.Syntax
             }
 
             Expect(TokenKind.CloseBrace, UnexpectedToken); // expected close body
-        }
+        }*/
 
         private void CollectPragmas()
         {
@@ -1265,10 +1210,27 @@ namespace Mug.Syntax
             Expect(TokenKind.CloseBracket);
         }
 
-        private void CollectModifier()
+        private void CollectModifiers()
         {
-            if (MatchAdvance(TokenKind.KeyPub) || MatchAdvance(TokenKind.KeyPriv))
-                _modifier = Back.Kind;
+            while (
+                MatchAdvance(TokenKind.KeyPub)
+                || MatchAdvance(TokenKind.KeyPriv)
+                || MatchAdvance(TokenKind.KeyStatic))
+            {
+                if (ModifierAlreadyCollected(Back.Kind))
+                    Report(Back.Position, $"Modifier '{Back.Kind.GetDescription()}' is declared multiple times");
+                else
+                    _modifiers.Add(Back.Kind);
+            }
+        }
+
+        private bool ModifierAlreadyCollected(TokenKind kind)
+        {
+            for (int i = 0; i < _modifiers.Count; i++)
+                if (_modifiers[i] == kind)
+                    return true;
+
+            return false;
         }
 
         /// <summary>
@@ -1282,9 +1244,9 @@ namespace Mug.Syntax
             while (!Match(end))
             {
                 // collecting pragmas for first two statements (function and type)
+                CollectModifiers();
                 CollectPragmas();
-                CollectModifier();
-                
+
                 var statement = ExpectGlobalVariableDefinition();
 
                 // adds the statement to the members
@@ -1297,7 +1259,10 @@ namespace Mug.Syntax
         private VariableNode ExpectGlobalVariableDefinition()
         {
             if (!VariableDefinition(out var globalStatement))
+            {
                 Report("Expected variable definition");
+                CurrentIndex++;
+            }
             
             return globalStatement as VariableNode;
         }

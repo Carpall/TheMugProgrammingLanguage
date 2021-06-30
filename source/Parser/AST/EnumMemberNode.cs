@@ -1,4 +1,4 @@
-﻿using Mug.Compilation;
+﻿/*using Mug.Compilation;
 using Mug.Grammar;
 
 namespace Mug.Syntax.AST
@@ -10,5 +10,11 @@ namespace Mug.Syntax.AST
         public Token Value { get; set; }
         public ModulePosition Position { get; set; }
         public bool IsNegative { get; set; }
+
+        public override string ToString()
+        {
+            return $"{}";
+        }
     }
 }
+*/

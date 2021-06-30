@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Mug.Grammar;
+using System;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -79,6 +81,16 @@ namespace Mug.Compilation
             }
 
             return "";
+        }
+
+        public static string Format(this ImmutableArray<TokenKind> instance)
+        {
+            var result = new StringBuilder();
+
+            foreach (var modifier in instance)
+                result.Append($"{modifier.GetDescription()} ");
+
+            return result.ToString();
         }
     }
 }

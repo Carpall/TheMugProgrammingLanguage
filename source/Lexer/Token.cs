@@ -12,6 +12,7 @@ namespace Mug.Grammar
         public TokenKind Kind { get; }
         public string Value { get; set; }
         public ModulePosition Position { get; set; }
+        [JsonIgnore]
         public bool IsOnNewLine { get; }
 
         public Token(TokenKind kind, string value, ModulePosition position, bool isonnewline)
@@ -32,11 +33,6 @@ namespace Mug.Grammar
             return new Token(kind, value, position, default);
         }
 
-        public override string ToString()
-        {
-            return $"{Kind}('{Value}'), OnNewLine: {IsOnNewLine}";
-        }
-
         /// <summary>
         /// tests
         /// </summary>
@@ -46,6 +42,18 @@ namespace Mug.Grammar
                    token.Kind.Equals(this.Kind) &&
                    token.Value.Equals(this.Value) &&
                    token.Position.Equals(this.Position);
+        }
+
+        public override string ToString()
+        {
+            return
+                Kind is TokenKind.ConstantString ?
+                    $"\"{Value}\"" :
+                    Kind is TokenKind.ConstantChar ?
+                        $"'{Value}'" :
+                        Kind is TokenKind.ConstantFloatDigit && !Value.Contains('.') ?
+                            $"{Value}f" :
+                            Value;
         }
     }
 }
