@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Immutable;
 using System.Buffers;
+using Mug.Semantic;
 
 namespace Mug.Compilation
 {
@@ -20,6 +21,18 @@ namespace Mug.Compilation
         {
             Sources = filepaths;
             OutputFilename = outputFilename;
+        }
+
+        public CompilerResult<NamespaceNode> CheckAST()
+        {
+            var ast = GenerateAST();
+            if (!ast.IsGood())
+                return ast;
+            
+            var evaluator = new Evaluator(this);
+            evaluator.SetAST(ast.Value);
+
+            return new(evaluator.Check(), Diagnostic.GetException());
         }
 
         public CompilerResult<ImmutableArray<ImmutableArray<Token>>> GenerateTokens()

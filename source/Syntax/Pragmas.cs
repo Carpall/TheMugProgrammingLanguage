@@ -21,6 +21,13 @@ namespace Mug.Syntax
             ["ext"       ] = Token.NewInfo(TokenKind.ConstantString, ""      ),
         };
 
+        public int Count => _table.Count;
+
+        public void Clear()
+        {
+            _table.Clear();
+        }
+
         public bool PragmaIsTrue(string pragma)
         {
             return GetPragma(pragma) == "true";
@@ -50,15 +57,16 @@ namespace Mug.Syntax
         internal void SetPragma(string pragma, Token value, CompilationInstance tower, ModulePosition position)
         {
             if (!_table.ContainsKey(pragma))
-                tower.Report(position, "Unknown pragma");
-            else
             {
-                var index = _table[pragma];
-                if (value.Kind != index.Kind)
-                    tower.Report(position, $"Pragma '{pragma}' expects a '{index.Kind.GetDescription()}'");
-
-                _table[pragma] = value;
+                tower.Report(position, "Unknown pragma");
+                return;
             }
+            
+            var index = _table[pragma];
+            if (value.Kind != index.Kind)
+                tower.Report(position, $"Pragma '{pragma}' expects a '{index.Kind.GetDescription()}'");
+
+            _table[pragma] = value;
         }
     }
 }

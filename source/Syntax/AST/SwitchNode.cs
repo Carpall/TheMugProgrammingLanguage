@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
 {
-    public struct SwitchNode : INode
+    public struct CaseNode : INode
     {
         public string NodeName => "SwitchNode";
         public INode Expression { get; set; }
@@ -18,11 +18,11 @@ namespace Mug.Syntax.AST
         public ModulePosition Position { get; set; }
     }
 
-    public class SwitchExpression : INode
+    public class SwitchCaseNode : INode
     {
         public string NodeName => "Switch";
         public INode Expression { get; set; }
-        public List<SwitchNode> Body { get; set; } = new();
+        public List<CaseNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
     }
 }

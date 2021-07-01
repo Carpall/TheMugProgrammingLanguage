@@ -13,7 +13,7 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
-
+    
 Console.Write("( ast ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
@@ -21,6 +21,7 @@ Console.WriteLine();
 printResult(
     r switch {
         'a' => compiler.GenerateAST(),
+        'g' => compiler.CheckAST(),
         _ => new()
     }
 );

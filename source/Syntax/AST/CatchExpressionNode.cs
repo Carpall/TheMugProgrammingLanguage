@@ -3,7 +3,7 @@ using Mug.Grammar;
 
 namespace Mug.Syntax.AST
 {
-    public struct CatchExpressionNode : INode
+    public class CatchExpressionNode : INode
     {
         public string NodeName => "Catch";
         public INode Expression { get; set; }

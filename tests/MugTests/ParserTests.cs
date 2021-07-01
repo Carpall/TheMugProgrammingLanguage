@@ -102,6 +102,8 @@ const test = fn {
               return // return void
               x // this won't be returned, it's just an expression to evaluate as statement
             }",
+            @"",
+            @"const _ = { for x in y { } }"
         };
 
         private readonly string[] _invalidTests =
@@ -149,7 +151,7 @@ const test = fn {
 
         private void RunInvalidTests()
         {
-            Console.WriteLine("RUNNING INVALID TESTS");
+            Console.WriteLine("RUNNING INVALID TESTS ({0})", _invalidTests.Length);
             for (int i = 0; i < _invalidTests.Length; i++)
             {
                 var test = _invalidTests[i];
@@ -168,7 +170,7 @@ const test = fn {
 
         private void RunValidTests()
         {
-            Console.WriteLine("RUNNING VALID TESTS");
+            Console.WriteLine("RUNNING VALID TESTS ({0})", _validTests.Length);
             for (int i = 0; i < _validTests.Length; i++)
             {
                 var test = _validTests[i];

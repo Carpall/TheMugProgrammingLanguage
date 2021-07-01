@@ -12,7 +12,7 @@ namespace Mug.Syntax
 {
     public class Parser : CompilerComponent
     {
-        public NamespaceNode Head { get; } = new();
+        public NamespaceNode Head { get; set; }
 
         private int CurrentIndex { get; set; }
 
@@ -795,7 +795,7 @@ namespace Mug.Syntax
 
         private bool CollectMatchExpression(out INode statement, ModulePosition position)
         {
-            var matchexpr = new SwitchExpression() { Position = position, Expression = ExpectExpression(TokenKind.OpenBrace) };
+            var matchexpr = new SwitchCaseNode() { Position = position, Expression = ExpectExpression(TokenKind.OpenBrace) };
 
             while (!MatchAdvance(TokenKind.CloseBrace))
             {
@@ -809,7 +809,7 @@ namespace Mug.Syntax
                     CurrentIndex--;
                 }
 
-                matchexpr.Body.Add(new SwitchNode()
+                matchexpr.Body.Add(new CaseNode()
                 {
                     Expression = expression,
                     Body = ExpectBlock(),
@@ -1284,6 +1284,8 @@ namespace Mug.Syntax
         /// </summary>
         public NamespaceNode Parse()
         {
+            Reset();
+
             // to avoid bugs
             if (Match(TokenKind.EOF))
                 return Head;
@@ -1291,10 +1293,22 @@ namespace Mug.Syntax
             // search for members
             Head.Members = ExpectNamespaceMembers();
             
+            if (_modifiers.Count > 0
+                || _pragmas is not null)
+                Report("Expected variable declaration");
+
             // breaking the compiler workflow if diagnostic is bad
             // Tower.CheckDiagnostic();
 
             return Head;
+        }
+
+        private void Reset()
+        {
+            _modifiers.Clear();
+            _pragmas = null;
+            CurrentIndex = 0;
+            Head = new NamespaceNode();
         }
     }
 }
