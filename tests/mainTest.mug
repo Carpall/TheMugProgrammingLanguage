@@ -1,1 +1,1 @@
-const add = (fn(a, b: i32) { })()
+const x = 1

@@ -14,7 +14,7 @@ namespace Mug.Syntax.AST
 
         public override string ToString()
         {
-            return $"return{(IsVoid() ? null : Body)}";
+            return $"return{(IsVoid() ? null : $" {Body}")}";
         }
     }
 }

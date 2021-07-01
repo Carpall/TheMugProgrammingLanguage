@@ -97,7 +97,7 @@ namespace Mug.Syntax
                 for (var i = 0; i < kinds.Length; i++)
                     if (Match(kinds[i]))
                     {
-                        CurrentIndex++;
+                        Advance();
                         return Back;
                     }
 
@@ -120,7 +120,7 @@ namespace Mug.Syntax
                     Report(error);
             }
 
-            CurrentIndex++;
+            Advance();
             return Back;
         }
 
@@ -137,7 +137,7 @@ namespace Mug.Syntax
             var match = Match(kind, linesensitive);
 
             if (match)
-                CurrentIndex++;
+                Advance();
 
             return match;
         }
@@ -620,7 +620,7 @@ namespace Mug.Syntax
             if (IsInvalidNode(e) && !allowNullExpression)
             {
                 Report($"Expected expression, found '{Current.Value}'");
-                CurrentIndex++; // skipping bad token
+                Advance(); // skipping bad token
             }
 
             CollectBooleanBinaryExpressions(allowBoolOP, end, ref e);
@@ -634,6 +634,11 @@ namespace Mug.Syntax
                 ExpectMultiple($"Invalid token here, missing one of '{TokenKindsToString(end)}'?", end);
 
             return e;
+        }
+
+        private void Advance()
+        {
+            CurrentIndex++;
         }
 
         private void CollectAssignmentNode(ref INode e)
@@ -692,7 +697,7 @@ namespace Mug.Syntax
 
             do
             {
-                e = new BinaryExpressionNode()
+                e = new BinaryExpressionNode
                 {
                     Operator = op,
                     Left = e,
@@ -710,7 +715,12 @@ namespace Mug.Syntax
         private void CollectAsExpression(ref INode e)
         {
             if (MatchAdvance(TokenKind.KeyAs, out var token))
-                e = new CastExpressionNode() { Expression = e, Type = ExpectType(), Position = token.Position };
+                e = new CastExpressionNode
+                {
+                    Expression = e,
+                    Type = ExpectType(),
+                    Position = token.Position
+                };
         }
 
         private INode ExpectVariableType()
@@ -753,35 +763,24 @@ namespace Mug.Syntax
         {
             statement = CreateBadNode();
 
-            if (!MatchAdvance(TokenKind.KeyReturn))
+            if (!MatchAdvance(TokenKind.KeyReturn, out var key))
                 return false;
-
-            var pos = Back.Position;
 
             statement = new ReturnNode
             {
-                Position = pos,
-                Body = MatchExpression(out var e) ? e : CreateBadNode()
+                Position = key.Position,
+                Body =
+                    !Match(TokenKind.CloseBrace) && CurrentIsOnTheSameLine() ?
+                        ExpectExpression() :
+                        CreateBadNode()
             };
 
             return true;
         }
 
-        private bool MatchExpression(out INode e)
+        private bool CurrentIsOnTheSameLine()
         {
-            var pos = CurrentIndex;
-            e = ExpectExpression(
-                allowBoolOP: true,
-                allowLogicOP: true,
-                allowNullExpression: true,
-                allowAssignment: false);
-
-            var eisnull = e is null;
-
-            if (eisnull)
-                CurrentIndex = pos;
-
-            return eisnull;
+            return !Current.IsOnNewLine;
         }
 
         private bool MatchAssigmentOperators(out Token op)
@@ -1274,7 +1273,7 @@ namespace Mug.Syntax
             if (!VariableDefinition(out var globalStatement))
             {
                 Report("Expected variable definition");
-                CurrentIndex++;
+                Advance();
             }
             
             return globalStatement as VariableNode;

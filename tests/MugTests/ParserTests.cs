@@ -91,6 +91,17 @@ const test = fn {
             @"const _ = (fn(a, b: i32): i32 { a + b })(1, 2)",
             @"const _ = (struct { }).field",
             @"const _ = (enum { }).member",
+            @"const _ = enum u8 { }",
+            @"const _ = enum module.submodule.submodule.Struct { a, b, c }",
+            @"const _ = enum { a, b: 1, c: 2, }",
+            @"const _ = enum { a, }",
+            @"const _= {
+              return
+            }",
+            @"const _= {
+              return // return void
+              x // this won't be returned, it's just an expression to evaluate as statement
+            }",
         };
 
         private readonly string[] _invalidTests =
@@ -116,12 +127,17 @@ const test = fn {
             @"const _=()",
             @"const _=x/",
             @"const _=/x",
+            @"const _= { return /x }",
+            @"const _= { return x/ }",
             @"const _=(((())))",
             @"const _=!",
             @"const _=a!",
             @"const _ = fn(a, b: i32): i32 { a + b }(1, 2)",
             @"const _ = struct { }.field",
-            @"const _ = enum { }.member"
+            @"const _ = enum { }.member",
+            @"const _ = enum T { a b c }",
+            @"const _ = enum { a, b: 1 c }",
+            @"const _ = enum { a, , }",
         };
 
         [Test]
@@ -133,7 +149,7 @@ const test = fn {
 
         private void RunInvalidTests()
         {
-            Console.WriteLine("INVALID TESTS:");
+            Console.WriteLine("RUNNING INVALID TESTS");
             for (int i = 0; i < _invalidTests.Length; i++)
             {
                 var test = _invalidTests[i];
@@ -152,7 +168,7 @@ const test = fn {
 
         private void RunValidTests()
         {
-            Console.WriteLine("VALID TESTS:");
+            Console.WriteLine("RUNNING VALID TESTS");
             for (int i = 0; i < _validTests.Length; i++)
             {
                 var test = _validTests[i];
