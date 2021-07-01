@@ -5,7 +5,8 @@ using System.IO;
 
 #if DEBUG
 
-var path = @"../tests/mainTest.mug";
+// const string path = @"../tests/mainTest.mug";
+const string path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
 
 var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.ReadFromPath(path)));
 
@@ -14,20 +15,23 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
     
-Console.Write("( ast ): ");
+Console.Write("( ast | ir ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
 
 printResult(
     r switch {
         'a' => compiler.GenerateAST(),
-        'g' => compiler.CheckAST(),
-        _ => new()
+        'i' => compiler.GenerateIR(),
+        _ => null
     }
 );
 
-static void printResult<T>(CompilerResult<T> result)
+static void printResult(dynamic result)
 {
+    if (result is null)
+        return;
+
     if (result.IsGood())
         Console.WriteLine(result.Value.ToString());
     else

@@ -7,7 +7,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Immutable;
 using System.Buffers;
-using Mug.Semantic;
+using Mug.AstGeneration;
+using Mug.AstGeneration.IR;
 
 namespace Mug.Compilation
 {
@@ -23,16 +24,13 @@ namespace Mug.Compilation
             OutputFilename = outputFilename;
         }
 
-        public CompilerResult<NamespaceNode> CheckAST()
+        public CompilerResult<LiquorIR> GenerateIR()
         {
-            var ast = GenerateAST();
-            if (!ast.IsGood())
-                return ast;
-            
-            var evaluator = new Evaluator(this);
-            evaluator.SetAST(ast.Value);
+            var ast = GenerateAST().Value;
+            var evaluator = new AstGenerator(this);
+            evaluator.SetAST(ast);
 
-            return new(evaluator.Check(), Diagnostic.GetException());
+            return new(evaluator.Generate(), Diagnostic.GetException());
         }
 
         public CompilerResult<ImmutableArray<ImmutableArray<Token>>> GenerateTokens()

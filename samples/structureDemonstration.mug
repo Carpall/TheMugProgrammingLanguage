@@ -1,0 +1,93 @@
+// simple without-compiletime evaluable code
+const main = fn {
+  const add = fn(a, b: i32): i32 { a + b }
+
+  println!("{}", add(1, 2))
+}
+
+/*
+AstGenerator:
+  private %'main' = fn(pos: ... proto: fn(): void) {
+    %'add' = fn(pos: ... proto: fn(i32, i32): i32) {
+      %a = p(0)
+      %b = p(1)
+      %0 = ldloc(%a)
+      %1 = ldloc(%b)
+      %2 = add(%0, %1)
+      ret %2
+    }
+    
+    %0 = ldc("{}")
+    %1 = ldc(1)
+    %2 = ldc(2)
+    %3 = cll(add, %1, %2)
+    %4 = cll_bltn(println, %0, %3)
+    ret void
+  }
+*/
+
+/*
+MilEvaluator:
+  private strct 'internal::mug::string' {
+    private u8* ! // no name
+    public readonly u64 len
+  }
+
+  extern fn 'internal::mug::builtin::println' ......
+
+  private fn 'main::add' pos: ... params: (i32, i32) type: i32 {
+    %a = i32 p(0)
+    %b = i32 p(1)
+    %0 = i32 ldloc(%a)
+    %1 = i32 ldloc(%b)
+    %2 = i32 add(%0, %1)
+    ret %2
+  }
+
+  private fn 'main' pos: ... params: () type: void {
+    %0 = i32 ldc(1)
+    %1 = i32 ldc(2)
+    %2 = i32 cll('main::add', %1, %2) // now 'main::add' is not a string anymore, but a reference to the symbol
+    %3 = 'internal::mug::string' ldc("{}")
+    %4 = void cll('internal::mug::builtin::println', %3, %2)
+    ret void
+  }
+*/
+
+// simple with-compiletime evaluable code
+const main = fn {
+  const add = fn(a, b: i32): i32 { a + b }
+  
+  static println!("{}", add(1, 2))
+}
+
+/*
+AstGenerator:
+  private %'main' = fn(pos: ... proto: fn(): void) {
+    %'add' = fn(pos: ... proto: fn(i32, i32): i32) {
+      %a = p(0)
+      %b = p(1)
+      %0 = ldloc(%a)
+      %1 = ldloc(%b)
+      %2 = add(%0, %1)
+      ret %2
+    }
+    
+    static {
+      %0 = ldc("{}")
+      %1 = ldc(1)
+      %2 = ldc(2)
+      %3 = cll(add, %1, %2)
+      %4 = cll_bltn(println, %0, %3)
+    }
+    ret void
+  }
+*/
+
+/*
+MilEvaluator:
+  private fn 'main' pos: ... params: () type: void {
+    // static block evaluated
+    ret void
+  }
+*/
