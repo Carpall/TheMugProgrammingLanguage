@@ -6,6 +6,7 @@ using Mug.Grammar;
 using Mug.Syntax;
 using Mug.Syntax.AST;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Mug.AstGeneration
@@ -54,24 +55,55 @@ namespace Mug.AstGeneration
             Token token => EvaluateToken(token),
             FunctionNode func => EvaluateFunction(func),
             CallNode call => EvaluateCall(call),
-            BinaryExpressionNode bin => EvaluateBinary(bin)
+            BinaryExpressionNode bin => EvaluateBinary(bin),
+            BlockNode block => GenerateBlock(block) ,
+            BadNode => null
         };
 
         private void EmitVariable(VariableNode var)
         {
             if (var.IsConst)
-                EmitInst(new LiquorVariable(var.Name, EvaluateNode(var.Body), var.Position, var.Type));
-            else
             {
-                EmitInst(new AllocaInst(var.Name, var.IsMutable, var.Position, var.Type));
+                EmitInst(new LiquorComptimeVariable(var.Name, EvaluateNode(var.Body), var.Position, var.Type));
+                return;
+            }
+
+            MaybeReportUninitializedInmutableVariable(var);
+            MaybeReportUninitializedUntypedVariable(var);
+
+            EmitInst(new AllocaInst(var.Name, var.IsAssigned(), var.IsMutable, var.Position, var.Type));
+            EmitVariableAssign(var);
+        }
+
+        private void MaybeReportUninitializedUntypedVariable(VariableNode var)
+        {
+            if (TypeIsAuto(var.Type) && !var.IsAssigned())
+                Tower.Report(var.Position, "Type notation needed");
+        }
+
+        private static bool TypeIsAuto(INode type)
+        {
+            return type is BadNode;
+        }
+
+        private void EmitVariableAssign(VariableNode var)
+        {
+            if (var.IsAssigned())
+            {
                 EmitNode(var.Body);
                 EmitInst(new StoreLocalInst(var.Name, var.Body.Position));
             }
         }
 
+        private void MaybeReportUninitializedInmutableVariable(VariableNode var)
+        {
+            if (!var.IsMutable && !var.IsAssigned())
+                Tower.Report(var.Position, $"Inmutable variable needs to be initialized");
+        }
+
         private void EmitInst(ILiquorValue inst)
         {
-            CurrentBlock.Instructions.Add(inst);
+            CurrentBlock.CurrentBranch.Add(inst);
         }
 
         private BinaryInst EvaluateBinary(BinaryExpressionNode bin)
@@ -153,15 +185,33 @@ namespace Mug.AstGeneration
 
         private LiquorBlock GenerateBlock(BlockNode body)
         {
-            var oldBlock = CurrentBlock;
-            CurrentBlock = new LiquorBlock(new(body.Statements.Count));
+            var oldBlock = SetupBlock(new(new(body.Statements.Count), body.Position));
 
             foreach (var node in body.Statements)
                 EmitNode(node);
 
+            return RestoreBlock(oldBlock);
+        }
+
+        private LiquorBlock RestoreBlock(LiquorBlock oldBlock)
+        {
             var result = CurrentBlock;
             CurrentBlock = oldBlock;
             return result;
+        }
+
+        private LiquorBlock SetupBlock(LiquorBlock block)
+        {
+            var oldBlock = CurrentBlock;
+            CurrentBlock = block;
+            SwitchNewBranch();
+
+            return oldBlock;
+        }
+
+        private void SwitchNewBranch()
+        {
+            CurrentBlock.Branches.Add(new());
         }
 
         private static ILiquorValue EvaluateToken(Token e)
@@ -216,7 +266,7 @@ namespace Mug.AstGeneration
         private void MaybeReportNonConstDeclaration(VariableNode declaration)
         {
             if (!declaration.IsConst)
-                Tower.Report(declaration.Position, "Non constant allocations not allowed in global scope");
+                Tower.Report(declaration.Position, "'let' not allowed at top level");
         }
 
         private void Reset()

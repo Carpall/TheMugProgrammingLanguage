@@ -1,0 +1,5 @@
+// std
+
+pub const mem = import!("std/internals/mem")
+
+pub const math = import!("std/internals/math")

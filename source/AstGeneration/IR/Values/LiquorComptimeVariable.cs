@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Mug.AstGeneration.IR.Values
 {
-    public struct LiquorVariable : ILiquorValue
+    public struct LiquorComptimeVariable : ILiquorValue
     {
         // public LiquorAccessModifier[]
 
@@ -23,7 +23,7 @@ namespace Mug.AstGeneration.IR.Values
 
         public ModulePosition Position { get; }
 
-        public LiquorVariable(string name, ILiquorValue body, ModulePosition position, INode type)
+        public LiquorComptimeVariable(string name, ILiquorValue body, ModulePosition position, INode type)
         {
             Name = name;
             Body = body;

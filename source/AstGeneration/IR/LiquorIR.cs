@@ -12,7 +12,7 @@ namespace Mug.AstGeneration.IR
 {
     public class LiquorIR
     {
-        public List<LiquorVariable> Declarations { get; } = new();
+        public List<LiquorComptimeVariable> Declarations { get; } = new();
 
         public override string ToString()
         {

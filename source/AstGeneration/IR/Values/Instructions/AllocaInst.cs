@@ -18,13 +18,16 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
         public bool IsMutable { get; }
 
+        public bool IsAssigned { get; }
+
         public string Name { get; }
 
         public ModulePosition Position { get; }
 
-        public AllocaInst(string name, bool isMutable, ModulePosition position, INode type)
+        public AllocaInst(string name, bool isAssigned, bool isMutable, ModulePosition position, INode type)
         {
             Name = name;
+            IsAssigned = isAssigned;
             IsMutable = isMutable;
             Position = position;
             AllocationType = type;
@@ -32,7 +35,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
         public override string ToString()
         {
-            return $"allc(ismut: {IsMutable}, type: {AllocationType}, name: {Name})";
+            return $"allc(isasgn: {IsAssigned}, ismut: {IsMutable}, type: {AllocationType}, name: {Name})";
         }
     }
 }
