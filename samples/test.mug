@@ -1,0 +1,56 @@
+const std = import!("std")
+
+const Indexable = std.coll.Indexable
+const Allocator = std.mem.Allocator
+
+const concat = std.str.Concatenator.concat
+
+// immutable array
+const Array = fn (T: type) {
+  struct (Indexable) {
+    cache: *T
+    len: usize
+
+    const ptr_at = fn (idx: usize): *T {
+      ptr_add!(self.cache, idx * Tsize)
+    }
+
+    pub static const Tsize = size!(T)
+
+    static const initialize_cache = fn (len: usize, cache: *T) {
+      const Tdefault = default!(T)
+      while len > 0 {
+        len -= 1
+
+        *ptr_add!(cache, len * Tsize) = Tdefault
+      }
+    }
+
+    pub const len = fn (): usize {
+      self.len
+    }
+
+    pub const at = fn (idx: usize): T {
+      *ptr_at(idx)
+    }
+
+    pub const set_at = fn(idx: usize, value: T) {
+      *ptr_at(idx) = value
+    }
+
+    pub static const create = fn(size: usize): Array(T) {
+      let cache = Allocator.alloc_bytes(size * Tsize) as *T
+      initialize_cache(size, cache)
+      
+      new Array { cache: cache, len: size }
+    }
+  }
+}
+
+const main = fn {
+  let arr = Array(str).create(10)
+  arr[0] = "2"
+  arr[1] = "1"
+  arr[2] = "0"
+  arr[3] = concat(concat(arr[2], arr[1]), arr[0])
+}

@@ -14,7 +14,13 @@ namespace Mug.AstGeneration.IR.Values.Instructions
         Add,
         Sub,
         Mul,
-        Div
+        Div,
+        Eq,
+        Ne,
+        Gt,
+        Lt,
+        Ge,
+        Le
     }
 
     public struct BinaryInst : ILiquorValue

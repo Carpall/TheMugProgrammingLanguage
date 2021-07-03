@@ -1,5 +1,2 @@
 const main = fn {
-  const add = fn(a, b: i32): i32 { a + b }
-
-  println!("{}", add(1, 2))
 }

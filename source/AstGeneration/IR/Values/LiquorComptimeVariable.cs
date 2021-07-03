@@ -33,7 +33,7 @@ namespace Mug.AstGeneration.IR.Values
 
         public override string ToString()
         {
-            return $"@'{Name}': {Type} = {Body}";
+            return $"@'{Name}': {VariableType} = {Body}";
         }
     }
 }

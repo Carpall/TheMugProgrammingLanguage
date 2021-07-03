@@ -2,6 +2,7 @@
 using Mug.Grammar;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System;
 using System.Text;
 
 namespace Mug.Syntax.AST
@@ -24,6 +25,11 @@ namespace Mug.Syntax.AST
                 result.Append($"{Kind.GetDescription()} {Expression} {Body}");
 
             return result.ToString();
+        }
+
+        public bool IsElse()
+        {
+            return Expression is BadNode;
         }
     }
 }

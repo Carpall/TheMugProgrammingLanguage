@@ -7,6 +7,7 @@ using Mug.Syntax;
 using Mug.Syntax.AST;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Mug.AstGeneration
@@ -56,9 +57,69 @@ namespace Mug.AstGeneration
             FunctionNode func => EvaluateFunction(func),
             CallNode call => EvaluateCall(call),
             BinaryExpressionNode bin => EvaluateBinary(bin),
-            BlockNode block => GenerateBlock(block) ,
+            BlockNode block => EvaluateBlock(block),
             BadNode => null
         };
+
+        private void GenerateCondition(ConditionalNode cond)
+        {
+            var currentNode = cond;
+            var end = new LabelInst();
+            var nextLabel = GetNextLabel(currentNode, end);
+
+            for (var count = 0; currentNode is not null; count++)
+            {
+                if (count > 0)
+                {
+                    LocateLabel(nextLabel);
+                    nextLabel = GetNextLabel(currentNode, end);
+                }
+
+                if (!currentNode.IsElse())
+                    GenerateConditionsExpression(currentNode.Expression, nextLabel);
+
+                EmitBlock(currentNode.Body);
+                EmitJump(end);
+
+                currentNode = currentNode.ElseNode;
+            }
+
+            LocateLabel(end);
+        }
+
+        private static LabelInst GetNextLabel(ConditionalNode currentNode, LabelInst end)
+        {
+            return currentNode.ElseNode is not null ? new LabelInst() : end;
+        }
+
+        private void LocateLabel(LabelInst label)
+        {
+            label.Index = CurrentBlock.Instructions.Count;
+            EmitInst(label);
+        }
+
+        private void EmitJump(LabelInst label)
+        {
+            EmitInst(new JumpInst(label));
+        }
+
+        private void GenerateConditionsExpression(INode expression, LabelInst nextLabel)
+        {
+            EmitNode(expression);
+
+            EmitJumpCondition(false, nextLabel);
+        }
+
+        private void EmitJumpCondition(bool condition, LabelInst nextLabel)
+        {
+            EmitInst(new JumpConditionInst(nextLabel, condition));
+        }
+
+        private void EmitBlock(BlockNode block)
+        {
+            foreach (var node in block.Statements)
+                EmitNode(node);
+        }
 
         private void EmitVariable(VariableNode var)
         {
@@ -103,7 +164,8 @@ namespace Mug.AstGeneration
 
         private void EmitInst(ILiquorValue inst)
         {
-            CurrentBlock.CurrentBranch.Add(inst);
+            Debug.Assert(inst is not null);
+            CurrentBlock.Instructions.Add(inst);
         }
 
         private BinaryInst EvaluateBinary(BinaryExpressionNode bin)
@@ -118,7 +180,13 @@ namespace Mug.AstGeneration
             TokenKind.Plus => LiquorBinaryInstKind.Add,
             TokenKind.Minus => LiquorBinaryInstKind.Sub,
             TokenKind.Star => LiquorBinaryInstKind.Mul,
-            TokenKind.Slash => LiquorBinaryInstKind.Div
+            TokenKind.Slash => LiquorBinaryInstKind.Div,
+            TokenKind.BooleanEQ => LiquorBinaryInstKind.Eq,
+            TokenKind.BooleanNEQ => LiquorBinaryInstKind.Ne,
+            TokenKind.BooleanGreater => LiquorBinaryInstKind.Gt,
+            TokenKind.BooleanLess => LiquorBinaryInstKind.Lt,
+            TokenKind.BooleanGEQ => LiquorBinaryInstKind.Ge,
+            TokenKind.BooleanLEQ => LiquorBinaryInstKind.Le,
         };
 
 
@@ -128,6 +196,9 @@ namespace Mug.AstGeneration
             {
                 case VariableNode var:
                     EmitVariable(var);
+                    break;
+                case ConditionalNode cond:
+                    GenerateCondition(cond);
                     break;
                 default:
                     EmitInst(EvaluateNode(node));
@@ -168,7 +239,7 @@ namespace Mug.AstGeneration
 
         private LiquorFunction EvaluateFunction(FunctionNode e)
         {
-            var body = GenerateBlock(e.Body);
+            var body = EvaluateBlock(e.Body);
 
             return new(null, body, GetParameterListTypes(e.ParameterList), e.Type, e.Position);
         }
@@ -183,12 +254,11 @@ namespace Mug.AstGeneration
             return result;
         }
 
-        private LiquorBlock GenerateBlock(BlockNode body)
+        private LiquorBlock EvaluateBlock(BlockNode body)
         {
-            var oldBlock = SetupBlock(new(new(body.Statements.Count), body.Position));
+            var oldBlock = SetupBlock(new());
 
-            foreach (var node in body.Statements)
-                EmitNode(node);
+            EmitBlock(body);
 
             return RestoreBlock(oldBlock);
         }
@@ -204,14 +274,7 @@ namespace Mug.AstGeneration
         {
             var oldBlock = CurrentBlock;
             CurrentBlock = block;
-            SwitchNewBranch();
-
             return oldBlock;
-        }
-
-        private void SwitchNewBranch()
-        {
-            CurrentBlock.Branches.Add(new());
         }
 
         private static ILiquorValue EvaluateToken(Token e)
