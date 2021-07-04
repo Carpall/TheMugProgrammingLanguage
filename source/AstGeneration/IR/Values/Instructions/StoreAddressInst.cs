@@ -11,7 +11,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 {
     public struct StoreAddressInst : ILiquorValue
     {
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public ModulePosition Position { get; }
 

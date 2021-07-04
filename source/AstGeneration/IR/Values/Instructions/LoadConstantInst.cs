@@ -21,7 +21,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
     public struct LoadConstantInst : ILiquorValue
     {
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public LiquorConstantKind Kind { get; }
 

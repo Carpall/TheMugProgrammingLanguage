@@ -12,7 +12,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
     public class LabelInst : ILiquorValue
     {
-        public ILiquorType Type => ILiquorType.Untyped;
+        public ILiquorType Type { get => ILiquorType.Untyped; set => throw new(); }
 
         public int Index { get; set; } = -1;
 

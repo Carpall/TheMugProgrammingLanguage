@@ -11,7 +11,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 {
     public struct JumpConditionInst : ILiquorValue
     {
-        public ILiquorType Type => ILiquorType.Untyped;
+        public ILiquorType Type { get => ILiquorType.Untyped; set => throw new(); }
 
         public bool Condition { get; }
 

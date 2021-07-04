@@ -64,11 +64,46 @@ namespace Mug.IRChecking
         {
             switch (instruction)
             {
-                case AllocaInst:
+                case AllocaInst inst:
+                    DeclareAllocation(inst);
+                    break;
+                case LoadLocalInst inst:
+                    MaybeReportIFNotDeclared(inst.Name, inst.Position);
+                    break;
+                case LoadLocalAddressInst inst:
+                    MaybeReportIFNotDeclared(inst.Name, inst.Position);
+                    break;
+                case StoreLocalInst inst:
+                    MaybeReportIFNotDeclared(inst.Name, inst.Position);
                     break;
                 default:
                     break;
             }
+        }
+
+        private void DeclareAllocation(AllocaInst alloca)
+        {
+            if (Memory.IsDeclared(alloca.Name, out _))
+                Tower.Report(alloca.Position, $"Declared multiple times variable '{alloca.Name}'");
+            
+            if (alloca.IsAssigned)
+            {
+                var body = CollectBodyUntil<StoreLocalInst>();
+                var type = GetType(body);
+
+                Memory.Declare(alloca.Name, alloca);
+            }
+        }
+
+        private  CollectBodyUntil<T>()
+        {
+
+        }
+
+        private void MaybeReportIFNotDeclared(string name, ModulePosition position)
+        {
+            if (!Memory.IsDeclared(name, out _))
+                Tower.Report(position, $"Undeclared variable '{name}'");
         }
 
         private void RestoreBlock(LiquorBlock oldBlock)

@@ -25,7 +25,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
     public struct BinaryInst : ILiquorValue
     {
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public LiquorBinaryInstKind Kind { get; }
 

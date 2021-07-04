@@ -12,7 +12,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 
     public struct JumpInst : ILiquorValue
     {
-        public ILiquorType Type => ILiquorType.Untyped;
+        public ILiquorType Type { get => ILiquorType.Untyped; set => throw new(); }
 
         public LabelInst Label { get; }
 

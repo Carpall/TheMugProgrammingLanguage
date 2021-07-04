@@ -11,7 +11,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 {
     public struct LoadFieldAddressInst : ILiquorValue
     {
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public string Name { get; }
 

@@ -17,7 +17,7 @@ namespace Mug.AstGeneration.IR.Values
 
         public LiquorBlock Body { get; }
 
-        public ILiquorType Type => ILiquorType.Untyped;
+        public ILiquorType Type { get; set; }
 
         public INode VariableType { get; }
 
@@ -29,6 +29,7 @@ namespace Mug.AstGeneration.IR.Values
             Body = body;
             VariableType = type;
             Position = position;
+            Type = ILiquorType.Untyped;
         }
 
         public override string ToString()

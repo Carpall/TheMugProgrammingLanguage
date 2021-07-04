@@ -21,7 +21,7 @@ namespace Mug.AstGeneration.IR
             Type = type ?? ILiquorType.Untyped;
         }
 
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public ModulePosition Position { get; }
 

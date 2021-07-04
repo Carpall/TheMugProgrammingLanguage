@@ -12,7 +12,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
 {
     public struct AllocaInst : ILiquorValue
     {
-        public ILiquorType Type => ILiquorType.Untyped;
+        public ILiquorType Type { get; set; }
 
         public INode AllocationType { get; }
 
@@ -31,6 +31,7 @@ namespace Mug.AstGeneration.IR.Values.Instructions
             IsMutable = isMutable;
             Position = position;
             AllocationType = type;
+            Type = ILiquorType.Untyped;
         }
 
         public override string ToString()

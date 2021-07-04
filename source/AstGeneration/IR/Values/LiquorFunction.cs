@@ -13,7 +13,7 @@ namespace Mug.AstGeneration.IR.Values
     {
         public string Name { get; }
 
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
 
         public ModulePosition Position { get; }
 
