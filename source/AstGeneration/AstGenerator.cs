@@ -48,7 +48,7 @@ namespace Mug.AstGeneration
         {
             MaybeReportNonConstDeclaration(declaration);
 
-            IR.EmitGlobalDeclaration(declaration.Name, EvaluateNode(declaration.Body), declaration.Position, declaration.Type);
+            IR.EmitGlobalDeclaration(declaration.Name, (LiquorBlock)EvaluateNode(BlockizeNode(declaration.Body)), declaration.Position, declaration.Type);
         }
 
         private ILiquorValue EvaluateNode(INode node) => node switch
@@ -61,30 +61,70 @@ namespace Mug.AstGeneration
             BadNode => null
         };
 
+        private void GenerateMember(MemberNode member)
+        {
+            EmitNode(member.Base);
+            EmitInst(new LoadFieldInst(member.Member.Value, member.Member.Position));
+        }
+
         private void GenerateCondition(ConditionalNode cond)
         {
-            var currentNode = cond;
-            var end = new LabelInst();
-            var nextLabel = GetNextLabel(currentNode, end);
+            if (cond.Kind is TokenKind.KeyWhile)
+                GenerateWhileNode(cond);
+            else
+                GenerateIFNode(cond);
+        }
 
+        private void GenerateWhileNode(ConditionalNode cond)
+        {
+            var endLabel = new LabelInst();
+            var conditionLabel = new LabelInst();
+
+            LocateLabel(conditionLabel);
+            GenerateConditionsExpression(cond.Expression, endLabel);
+
+            EmitBlock(cond.Body);
+            EmitJump(conditionLabel);
+            
+            LocateLabel(endLabel);
+        }
+
+        private void GenerateIFNode(ConditionalNode cond)
+        {
+            /*
+             * currentNode: this node is used to walk through else nodes
+             * endLabel: this label points to the end of the stastement, used to jump away from condition's blocks
+             * nextLabel: the elsenode's label
+             */
+            var currentNode = cond;
+            var endLabel = new LabelInst();
+            var nextLabel = GetNextLabel(currentNode, endLabel);
+
+            // while elsenode exists
             for (var count = 0; currentNode is not null; count++)
             {
+                // if it's not the first node of the if node
                 if (count > 0)
                 {
                     LocateLabel(nextLabel);
-                    nextLabel = GetNextLabel(currentNode, end);
+                    nextLabel = GetNextLabel(currentNode, endLabel);
                 }
 
+                // emitting the if expression
                 if (!currentNode.IsElse())
                     GenerateConditionsExpression(currentNode.Expression, nextLabel);
 
+                // emitting current node's block
                 EmitBlock(currentNode.Body);
-                EmitJump(end);
+                // emitting a jmp to jump away from if block
+                EmitJump(endLabel);
 
+                // swapping to next elsenode
                 currentNode = currentNode.ElseNode;
             }
 
-            LocateLabel(end);
+            // locating the end label at the end of all the statement
+            LocateLabel(endLabel);
         }
 
         private static LabelInst GetNextLabel(ConditionalNode currentNode, LabelInst end)
@@ -125,7 +165,7 @@ namespace Mug.AstGeneration
         {
             if (var.IsConst)
             {
-                EmitInst(new LiquorComptimeVariable(var.Name, EvaluateNode(var.Body), var.Position, var.Type));
+                EmitInst(new LiquorComptimeVariable(var.Name, (LiquorBlock)EvaluateNode(BlockizeNode(var.Body)), var.Position, var.Type));
                 return;
             }
 
@@ -134,6 +174,13 @@ namespace Mug.AstGeneration
 
             EmitInst(new AllocaInst(var.Name, var.IsAssigned(), var.IsMutable, var.Position, var.Type));
             EmitVariableAssign(var);
+        }
+
+        private static INode BlockizeNode(INode node)
+        {
+            var result = new BlockNode { Position = node.Position };
+            result.Statements.Add(node);
+            return result;
         }
 
         private void MaybeReportUninitializedUntypedVariable(VariableNode var)
@@ -200,41 +247,82 @@ namespace Mug.AstGeneration
                 case ConditionalNode cond:
                     GenerateCondition(cond);
                     break;
+                case MemberNode member:
+                    GenerateMember(member);
+                    break;
+                case AssignmentNode assign:
+                    GenerateAssign(assign);
+                    break;
                 default:
                     EmitInst(EvaluateNode(node));
                     break;
             }
         }
 
+        private void GenerateAssign(AssignmentNode assign)
+        {
+            LowerAssignmentNode(ref assign);
+
+            EmitLeftValue(assign.Name);
+            EmitNode(assign.Body);
+            EmitInst(new StoreAddressInst(assign.Operator.Position));
+        }
+
+        private void LowerAssignmentNode(ref AssignmentNode assign)
+        {
+            if (assign.Operator.Kind is TokenKind.Equal)
+                return;
+
+            assign.Body = new BinaryExpressionNode
+            {
+                Left = assign.Body,
+                Right = assign.Name,
+                Operator = GetOperatorFromKindAssignment(assign.Operator),
+                Position = assign.Body.Position
+            };
+        }
+
+        private static Token GetOperatorFromKindAssignment(Token op)
+        {
+            return Token.NewInfo(op.Kind switch
+            {
+                TokenKind.AddAssignment => TokenKind.Plus,
+                TokenKind.SubAssignment => TokenKind.Minus,
+                TokenKind.MulAssignment => TokenKind.Star,
+                TokenKind.DivAssignment => TokenKind.Slash,
+            }, null, op.Position);
+        }
+
+        private void EmitLeftValue(INode name)
+        {
+            switch (name)
+            {
+                case MemberNode member:
+                    EmitLeftValue(member.Base);
+                    EmitInst(new LoadFieldAddressInst(member.Member.Value, member.Position));
+                    break;
+                case Token token when token.Kind is TokenKind.Identifier:
+                    EmitInst(new LoadLocalAddressInst(token.Value, token.Position));
+                    break;
+                default:
+                    Tower.Report(name.Position, $"Expected left value");
+                    break;
+            }
+        }
+
         private CallInst EvaluateCall(CallNode e)
         {
-            var name = GetCallNameHead(e.Name, out var toevaluate);
-            if (toevaluate is not null)
-                EmitNode(toevaluate);
+            EmitNode(e.Name);
 
             GenerateParameterInCall(e.Parameters);
 
-            return new(name, toevaluate is not null & name is not null, e.IsBuiltIn, e.Position);
+            return new(e.IsBuiltIn, e.Position);
         }
 
         private void GenerateParameterInCall(NodeBuilder parameters)
         {
             foreach (var parameter in parameters)
                 EmitNode(parameter);
-        }
-
-        private static string GetCallNameHead(INode name, out INode toevaluate)
-        {
-            switch (name)
-            {
-                case Token token:
-                    toevaluate = null;
-                    return token.Value;
-                case MemberNode member:
-                    toevaluate = member.Base;
-                    return member.Member.Value;
-                default: toevaluate = name; return null;
-            };
         }
 
         private LiquorFunction EvaluateFunction(FunctionNode e)

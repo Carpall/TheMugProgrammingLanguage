@@ -9,6 +9,7 @@ using System.Collections.Immutable;
 using System.Buffers;
 using Mug.AstGeneration;
 using Mug.AstGeneration.IR;
+using Mug.IRChecking;
 
 namespace Mug.Compilation
 {
@@ -24,13 +25,29 @@ namespace Mug.Compilation
             OutputFilename = outputFilename;
         }
 
+        private CompilerResult<T> NewCompilerResult<T>(T value)
+        {
+            return new(value, Diagnostic.GetException());
+        }
+
+        public CompilerResult<LiquorIR> GenerateAndCheckIR()
+        {
+            var ir = GenerateIR().Value;
+            var checker = new IRChecker(this);
+            checker.SetIR(ir);
+
+            try { return NewCompilerResult(checker.Check()); }
+            catch (CompilationException e) { return new(e); }
+        }
+
         public CompilerResult<LiquorIR> GenerateIR()
         {
             var ast = GenerateAST().Value;
-            var evaluator = new AstGenerator(this);
-            evaluator.SetAST(ast);
+            var generator = new AstGenerator(this);
+            generator.SetAST(ast);
 
-            return new(evaluator.Generate(), Diagnostic.GetException());
+            try { return NewCompilerResult(generator.Generate()); }
+            catch (CompilationException e) { return new(e); }
         }
 
         public CompilerResult<ImmutableArray<ImmutableArray<Token>>> GenerateTokens()
@@ -45,7 +62,7 @@ namespace Mug.Compilation
                 catch (CompilationException) { break; }
             }
 
-            return new(result.ToImmutable(), Diagnostic.GetException());
+            return NewCompilerResult(result.ToImmutable());
         }
 
         public CompilerResult<NamespaceNode> GenerateAST()
@@ -61,7 +78,7 @@ namespace Mug.Compilation
                 catch (CompilationException) { break; }
             }
 
-            return new(result, Diagnostic.GetException());
+            return NewCompilerResult(result);
         }
 
         [DoesNotReturn()]

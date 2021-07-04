@@ -11,7 +11,7 @@ namespace Mug.AstGeneration.IR.Values
 {
     public interface ILiquorValue
     {
-        public ILiquorType Type { get; }
+        public ILiquorType Type { get; set; }
         public ModulePosition Position { get; }
 
         public string WriteToString()

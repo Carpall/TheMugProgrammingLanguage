@@ -9,24 +9,21 @@ using System.Threading.Tasks;
 
 namespace Mug.AstGeneration.IR.Values.Instructions
 {
-    public struct CallInst : ILiquorValue
+    public struct StoreAddressInst : ILiquorValue
     {
         public ILiquorType Type { get; }
 
-        public bool IsBuiltIn { get; }
-
         public ModulePosition Position { get; }
 
-        public CallInst(bool isBuiltIn, ModulePosition position, ILiquorType type = null)
+        public StoreAddressInst(ModulePosition position, ILiquorType type = null)
         {
-            IsBuiltIn = isBuiltIn;
             Position = position;
             Type = type ?? ILiquorType.Untyped;
         }
 
         public override string ToString()
         {
-            return $"cll(bltn: {IsBuiltIn})";
+            return $"staddr()";
         }
     }
 }

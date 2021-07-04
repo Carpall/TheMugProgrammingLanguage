@@ -19,7 +19,7 @@ namespace Mug.AstGeneration.IR
             return new LiquorIRWriter(this).WriteToString();
         }
 
-        internal void EmitGlobalDeclaration(string name, ILiquorValue body, ModulePosition position, INode type)
+        internal void EmitGlobalDeclaration(string name, LiquorBlock body, ModulePosition position, INode type)
         {
             Declarations.Add(new(name, body, position, type));
         }

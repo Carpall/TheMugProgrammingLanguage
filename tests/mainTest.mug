@@ -1,2 +1,2 @@
-const main = fn {
+const x = fn: i32 {
 }

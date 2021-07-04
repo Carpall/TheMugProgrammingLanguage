@@ -15,7 +15,7 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
     
-Console.Write("( ast | ir ): ");
+Console.Write("( ast | ir | checked_ir ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
 
@@ -23,6 +23,7 @@ printResult(
     r switch {
         'a' => compiler.GenerateAST(),
         'i' => compiler.GenerateIR(),
+        'c' => compiler.GenerateAndCheckIR(),
         _ => null
     }
 );

@@ -15,7 +15,7 @@ namespace Mug.AstGeneration.IR.Values
 
         public string Name { get; }
 
-        public ILiquorValue Body { get; }
+        public LiquorBlock Body { get; }
 
         public ILiquorType Type => ILiquorType.Untyped;
 
@@ -23,7 +23,7 @@ namespace Mug.AstGeneration.IR.Values
 
         public ModulePosition Position { get; }
 
-        public LiquorComptimeVariable(string name, ILiquorValue body, ModulePosition position, INode type)
+        public LiquorComptimeVariable(string name, LiquorBlock body, ModulePosition position, INode type)
         {
             Name = name;
             Body = body;

@@ -1,0 +1,18 @@
+const std = import!("std")
+
+const Vector = std.coll.Vector
+
+const rand = std.int.Randomizer.rand
+
+const main = fn {
+  let x = {
+    let mut y: i32
+    let mut r = Vector.create(100)
+    while y < 100 {
+      r.push(rand(i32, y))
+      y += 1
+    }
+
+    r
+  }
+}
