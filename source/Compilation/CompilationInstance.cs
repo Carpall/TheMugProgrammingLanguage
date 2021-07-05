@@ -7,9 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Immutable;
 using System.Buffers;
-using Mug.AstGeneration;
-using Mug.AstGeneration.IR;
-using Mug.IRChecking;
+using Mug.Semantic;
 
 namespace Mug.Compilation
 {
@@ -30,23 +28,13 @@ namespace Mug.Compilation
             return new(value, Diagnostic.GetException());
         }
 
-        public CompilerResult<LiquorIR> GenerateAndCheckIR()
-        {
-            var ir = GenerateIR().Value;
-            var checker = new IRChecker(this);
-            checker.SetIR(ir);
-
-            try { return NewCompilerResult(checker.Check()); }
-            catch (CompilationException e) { return new(e); }
-        }
-
-        public CompilerResult<LiquorIR> GenerateIR()
+        public CompilerResult<NamespaceNode> GenerateASTAndCheck()
         {
             var ast = GenerateAST().Value;
-            var generator = new AstGenerator(this);
+            var generator = new SemanticChecker(this);
             generator.SetAST(ast);
 
-            try { return NewCompilerResult(generator.Generate()); }
+            try { return NewCompilerResult(generator.Check()); }
             catch (CompilationException e) { return new(e); }
         }
 

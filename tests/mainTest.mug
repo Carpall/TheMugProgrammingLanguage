@@ -1,3 +1,4 @@
 const main = fn {
-  
+  x = 1
+  const y = x
 }

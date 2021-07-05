@@ -15,15 +15,14 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
     
-Console.Write("( ast | ir | checked_ir ): ");
+Console.Write("( [1] ast | [2] ast check ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
 
 printResult(
     r switch {
-        'a' => compiler.GenerateAST(),
-        'i' => compiler.GenerateIR(),
-        'c' => compiler.GenerateAndCheckIR(),
+        '1' => compiler.GenerateAST(),
+        '2' => compiler.GenerateASTAndCheck(),
         _ => null
     }
 );

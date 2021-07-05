@@ -23,7 +23,7 @@ namespace Mug.Syntax.AST
         public bool IsConst { get; set; }
         public bool IsMutable { get; set; }
 
-        public bool IsAssigned() => Body is not BadNode;
+        public bool IsAssigned() => !(Body is BadNode or null);
         public bool IsAuto() => Type is BadNode;
 
         public override string ToString()

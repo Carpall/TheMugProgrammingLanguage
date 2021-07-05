@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.AstGeneration.IR.Values.Typing
+namespace Mug.Typing
 {
-    public struct Untyped : ILiquorType
+    public class BadType : IType
     {
         public override string ToString()
         {
-            return "Untyped";
+            return "BadType";
         }
     }
 }
