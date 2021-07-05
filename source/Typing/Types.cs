@@ -6,6 +6,14 @@ using System.Threading.Tasks;
 
 namespace Mug.Typing
 {
+    public struct TypeType : IType
+    {
+        public override string ToString()
+        {
+            return $"type";
+        }
+    }
+
     public struct CharType : IType
     {
         public override string ToString()

@@ -1,0 +1,85 @@
+/*pub const FixedArray = fn(
+  static T: type,
+  static S: usize
+): type {struct {
+  data: T
+
+  pub static const size: usize = S
+}}
+*/
+
+const undefined = import!("std").unsafe.undefined
+
+pub const Option = fn(
+  static T: type
+): type {
+  |packed, readonly| struct {
+    value: T
+    ok: bool
+
+    pub const some = fn(value: T): Option {
+      new { value: value, ok: true }
+    }
+
+    pub const none = fn(): Option {
+      new { value: undefined(T), ok: false }
+    }
+
+    pub const is_some = fn(self: Option): bool { self.ok }
+    pub const is_none = fn(self: Option): bool { !self.ok }
+
+    pub const unwrap = fn(self: Option): T {
+      if !self.ok {
+        panic!("Unwrapped 'None'")
+      }
+      
+      self.value
+    }
+
+    pub const contains = fn(self: Option, value: T): bool {
+      self.ok and self.value == value
+    }
+
+    pub const expect = fn(self: Option, err: str): T {
+      if !self.ok {
+        panic!("{}", err)
+      }
+
+      self.unwrap()
+    }
+
+    pub const unwrap_or = fn(self: Option, or_value: T): T {
+      if self.ok { self.value } else { or_value }
+    }
+
+    pub const unsafe_unwrap = fn(self: Option): T {
+      self.value
+    }
+  }
+}
+
+pub const Some = fn(value: untyped): Option {
+  Option(typeof!(value)).some(value)
+}
+
+pub const None = fn(): Option {
+  const caller_cntx_type = caller!().context_type
+  
+  if caller_cntx_type == auto_type!() {
+    report!("Type notation needed")
+    Option(i32).none()
+  } else {
+    Option(caller_cntx_type).none()
+  }
+}
+
+test "some" {
+  let x = Some(10)
+  x = Some(1)
+  println!("x: ", x.unwrap())
+}
+
+test "none" {
+  let x = None()
+  println!("x.is_none(): ", x.is_none())
+}

@@ -37,13 +37,9 @@ namespace Mug.Semantic
 
         private Stack<IType> ContextTypes { get; } = new();
 
-        private Stack<bool> ContextKinds { get; } = new();
-
         private Stack<Dictionary<string, MemoryDetail>> Scopes { get; } = new();
 
         private IType ContextType => ContextTypes.Peek();
-
-        private bool ContextKindIsConst => ContextKinds.Peek();
 
         private Dictionary<string, MemoryDetail> ScopeMemory => Scopes.Peek();
 
@@ -86,8 +82,8 @@ namespace Mug.Semantic
 
         private void AnalyzeEntryPoint()
         {
-            if (MemoryContainsDefinitionFor(EntryPointName, out _))
-                AnalyzeGlobalVariable(EntryPointName);
+            if (MemoryContainsDefinitionFor(EntryPointName, out var definition))
+                AnalyzeVariable(definition.Variable, false, true);
             else
                 CompilationInstance.Throw("Missing entry point");
         }
@@ -99,33 +95,6 @@ namespace Mug.Semantic
                 MaybeReportLetAtTopLevel(global);
                 DeclareVariable(global, null);
             }
-        }
-
-        private MemoryDetail AnalyzeGlobalVariable(string name)
-        {
-            if (MemoryContainsDefinitionFor(name, out var definition) && definition.EvaluatedValue is not null)
-                return definition;
-
-            UndeclareDefinition(name);
-            AnalyzeVariable(definition.Variable);
-            return GetDefinition(name, definition.Variable.Position);
-        }
-
-        private void UndeclareDefinition(string name)
-        {
-            ScopeMemory.Remove(name);
-        }
-
-        private void MakeContext(bool isConst, IType type)
-        {
-            MakeContextKind(isConst);
-            MakeContextType(type);
-        }
-
-        private void RestoreContext()
-        {
-            RestoreContextKind();
-            RestoreContextType();
         }
 
         private void CheckTypes(IType type, MugValue value, ModulePosition position)
@@ -144,15 +113,6 @@ namespace Mug.Semantic
                 Tower.Report(variable.Position, $"Variable '{variable.Name}' is already declared");
         }
 
-        private void RestoreContextKind()
-        {
-            ContextKinds.Pop();
-        }
-
-        private void MakeContextKind(bool isConst)
-        {
-            ContextKinds.Push(isConst);
-        }
 
         private void MaybeReportNonConstantValueForConstantVariable(MugValue value, VariableNode variable)
         {
@@ -180,7 +140,7 @@ namespace Mug.Semantic
 
             "chr" => IType.Char,
 
-            "void" => IType.Void,
+            "void" => IType.Void
         };
 
         private IType ReportUnevaluableType(ModulePosition position)
@@ -198,18 +158,18 @@ namespace Mug.Semantic
 
         private MugValue EvaluateFunction(FunctionNode func)
         {
-            MakeScope();
+            SetupScope();
             var fnType = IType.Fn(EvaluateParameterTypes(func.ParameterList), EvaluateType(func.Type));
 
             MakeContextType(fnType.ReturnType);
-            AnalyzeFunction(func.Body);
+            AnalyzeFunctionBody(func.Body);
             RestoreContextType();
             RestoreScope();
 
             return new(fnType, func, true);
         }
 
-        private void AnalyzeFunction(BlockNode body)
+        private void AnalyzeFunctionBody(BlockNode body)
         {
             foreach (var statement in body.Statements)
                 AnalyzeStatement(statement);
@@ -223,23 +183,46 @@ namespace Mug.Semantic
                     AnalyzeVariable(var);
                     break;
                 default:
-                    throw new();
+                    // TODO: add hidden control flow to return or load onto the stack the value
+                    EvaluateExpression(statement);
+                    break;
             }
         }
 
-        private void AnalyzeVariable(VariableNode variable)
+        private void AnalyzeVariable(VariableNode variable, bool lazyEvaluation = true, bool redeclare = false)
         {
+            if (variable.IsConst && lazyEvaluation)
+            {
+                DeclareVariable(variable, null);
+                return;
+            }
+
             var type = EvaluateType(variable.Type);
 
-            MakeContext(true, type);
+            MakeContextType(type);
             var value = EvaluateExpression(variable.Body);
-            RestoreContext();
+            RestoreContextType();
 
             CheckTypes(type, value, variable.Body.Position);
 
             MaybeReportNonConstantValueForConstantVariable(value, variable);
+            MaybeReportSpecialValueForNonConstantVariable(value, variable);
 
-            DeclareVariable(variable, value);
+            if (redeclare)
+                RedeclareVariable(variable, value);
+            else
+                DeclareVariable(variable, value);
+        }
+
+        private void RedeclareVariable(VariableNode variable, MugValue value)
+        {
+            ScopeMemory[variable.Name] = new(variable, value);
+        }
+
+        private void MaybeReportSpecialValueForNonConstantVariable(MugValue value, VariableNode variable)
+        {
+            if (!variable.IsConst && value.IsSpecial)
+                Tower.Report(variable.Body.Position, $"Type '{value.Type}' requires a 'const' context");
         }
 
         private void MakeScope()
@@ -261,8 +244,6 @@ namespace Mug.Semantic
                 var variableFromParameter = GetVariableFromParameter(parameter);
 
                 DeclareVariable(variableFromParameter, null);
-                AnalyzeGlobalVariable(parameter.Name);
-
                 result[i] = EvaluateType(parameter.Type);
             }
 
@@ -302,7 +283,7 @@ namespace Mug.Semantic
                 return variable;
 
             Tower.Report(position, $"Variable '{value}' is not declared");
-            return new(null, null);
+            return new(new(), MugValue.BadValue);
         }
 
         private bool MemoryContainsDefinitionFor(string value, out MemoryDetail result)
@@ -321,17 +302,6 @@ namespace Mug.Semantic
         private IntType IntContextTypeOr(IntType ortype)
         {
             return ContextType is IntType type ? type : ortype;
-        }
-
-        private static void MaybeReportMissingEntryPoint(VariableNode result)
-        {
-            if (result is null && IsNeededEntryPoint())
-                CompilationInstance.Throw("Missing entry point");
-        }
-
-        private static bool IsNeededEntryPoint()
-        {
-            return true;
         }
 
         private void Reset()

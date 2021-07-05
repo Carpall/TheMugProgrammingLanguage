@@ -14,6 +14,8 @@ namespace Mug.Typing.Values
 
         public bool IsConst { get; }
 
+        public bool IsSpecial => Type is TypeType;
+
         public MugValue(IType type, object constantValue, bool isConst)
         {
             Type = type;
