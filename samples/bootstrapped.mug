@@ -1,19 +1,21 @@
 const Calculator = struct {
-  x, y, r: i64
+  let x: i64
+  let y: i64
+  let r: i64
 
-  static const Self = self!()
+  const Self = Calculator
 
-  pub static const PI = 3.14159
-  pub static const from = fn(x, y: i64): Self {
+  pub const PI = 3.14159
+  pub const from = fn(x, y: i64): Self {
     new { x: x, y: y }
   }
 
-  pub const sum = fn { self.r = self.x + self.y }
-  pub const sub = fn { self.r = self.x - self.y }
-  pub const mul = fn { self.r = self.x * self.y }
-  pub const div = fn { self.r = self.x / self.y as i64 }
+  pub const sum = fn(self: *Calculator) { self.r = self.x + self.y }
+  pub const sub = fn(self: *Calculator) { self.r = self.x - self.y }
+  pub const mul = fn(self: *Calculator) { self.r = self.x * self.y }
+  pub const div = fn(self: *Calculator) { self.r = i64!(self.x / self.y) }
 
-  pub const result = fn(): i64 { self.r }
+  pub const result = fn(self: Calculator): i64 { self.r }
 }
 
 const makeFastSum = fn {

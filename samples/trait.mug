@@ -1,28 +1,82 @@
-const Shape = struct(IGameObject) {
-  
+const Shape = struct(GameObjectImpl) {
+  pub const from = fn(pos: Position2D): Shape {
+    new { pos: pos }
+  }
+
+  pub const render(self: Shape) {
+  }
 }
 
-type Position2D {
-  x: f128,
-  y: f128
+const Position2D = struct {
+  x, y: f128
 
-  pub static const from = fn(x, y: f128): Position2D {
+  pub const from = fn(x, y: f128): Position2D {
     new { x: x, y: y }
   }
 
-  pub const x = fn(): f128 { self.x }
-  pub const y = fn(): f128 { self.y }
+  pub const x = fn(self: Position2D): f128 { self.x }
+  pub const y = fn(self: Position2D): f128 { self.y }
 }
 
-const GameObject = variant(IGameObject) = ( Shape )
+// accepted only structs which implement GameObjectImpl
+const GameObject = union(GameObjectImpl) {
+  Shape: Shape
+}
 
-const IGameObject = trait {
+// interface
+const GameObjectImpl = trait {
   pos: Position2D
 
-  pub const pos = fn(): Position2D { self.pos }
+  pub const get_pos = fn(self: GameObject): Position2D { self.pos }
+  
+  pub const render: fn(self)
 }
 
 const main = fn {
-  const object: GameObject = Shape.from(pos)
-  const p = object.pos() // called directly
+  let start_pos = Position2D.from(0, 0)
+  let object: GameObject = GameObject.Shape(Shape.from(start_pos))
+  let got_pos = object.get_pos() // called directly
+  object.render() // called via pointer
 }
+
+//===--------------------------------------------------------===//
+//                                                              //
+//                        ALTERNATIVE                           //
+//                                                              //
+//===--------------------------------------------------------===//
+
+const Shape = struct(GameObject) {
+  pub const from = fn(pos: Position2D): Shape {
+    new { pos: pos }
+  }
+
+  pub const render(self: Shape) {
+  }
+}
+
+const Position2D = struct {
+  let x: f128
+  let y: f128
+
+  pub const from = fn(x, y: f128): Position2D {
+    new { x: x, y: y }
+  }
+
+  pub const x = fn(self: Position2D): f128 { self.x }
+  pub const y = fn(self: Position2D): f128 { self.y }
+}
+
+const GameObject = trait {
+  pos: Position2D
+
+  pub const get_pos = fn(self: GameObject): Position2D { self.pos }
+  
+  pub const render: fn(self)
+}
+
+const main = fn {
+  let start_pos = Position2D.from(0, 0)
+  let object: GameObject = Shape.from(start_pos)
+}
+
+// ^ Probably adopted

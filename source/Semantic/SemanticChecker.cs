@@ -83,7 +83,7 @@ namespace Mug.Semantic
         private void AnalyzeEntryPoint()
         {
             if (MemoryContainsDefinitionFor(EntryPointName, out var definition))
-                AnalyzeVariable(definition.Variable, false, true);
+                AnalyzeVariable(definition.Variable, true);
             else
                 CompilationInstance.Throw("Missing entry point");
         }
@@ -152,7 +152,7 @@ namespace Mug.Semantic
         private MugValue EvaluateExpression(INode node) => node switch
         {
             Token expr => EvaluateToken(expr),
-            FunctionNode func => EvaluateFunction(func),
+            FunctionNode func => DeclareFunction(func),
             _ => throw new NotImplementedException(),
         };
 
@@ -189,14 +189,8 @@ namespace Mug.Semantic
             }
         }
 
-        private void AnalyzeVariable(VariableNode variable, bool lazyEvaluation = true, bool redeclare = false)
+        private void AnalyzeVariable(VariableNode variable, bool redeclare = false)
         {
-            if (variable.IsConst && lazyEvaluation)
-            {
-                DeclareVariable(variable, null);
-                return;
-            }
-
             var type = EvaluateType(variable.Type);
 
             MakeContextType(type);
