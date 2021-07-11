@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-
+using Mug.Typing;
 using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
@@ -11,6 +11,8 @@ namespace Mug.Syntax.AST
         public INode BaseType { get; set; }
         public List<EnumMemberNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public bool IsAuto() => BaseType is BadNode;
 

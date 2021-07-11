@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
+using Mug.Typing;
 using System;
 using System.Collections.Immutable;
 
@@ -22,6 +23,8 @@ namespace Mug.Syntax.AST
 
         public bool IsConst { get; set; }
         public bool IsMutable { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public bool IsAssigned() => !(Body is BadNode or null);
         public bool IsAuto() => Type is BadNode;

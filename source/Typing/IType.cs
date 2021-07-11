@@ -20,6 +20,8 @@ namespace Mug.Typing
 
         internal static CharType Char => new();
 
+        internal static TypeType Type => new();
+
         abstract public string ToString();
     }
 }

@@ -1,5 +1,5 @@
 ﻿using Mug.Compilation;
-
+using Mug.Typing;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +11,8 @@ namespace Mug.Syntax.AST
         public INode Name { get; set; }
         public List<FieldAssignmentNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public bool IsAuto() => Name is BadNode;
 

@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using Mug.Compilation;
 using Mug.Grammar;
+using Mug.Typing;
 using Newtonsoft.Json;
 
 namespace Mug.Syntax.AST
@@ -11,6 +12,8 @@ namespace Mug.Syntax.AST
         public string NodeName => "Namespace";
         public List<VariableNode> Members { get; set; }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public NamespaceNode()
         {

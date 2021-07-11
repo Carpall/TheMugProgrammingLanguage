@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
+using Mug.Typing;
 
 namespace Mug.Syntax.AST
 {
@@ -9,6 +10,8 @@ namespace Mug.Syntax.AST
         public string Name { get; set; }
         public INode Value { get; set; }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public bool IsImplicitelyEnumerated() => Value is BadNode;
 

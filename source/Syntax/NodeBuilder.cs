@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System;
 using Newtonsoft.Json;
 using Mug.Syntax.AST;
+using Mug.Typing;
 
 namespace Mug.Syntax
 {
@@ -12,6 +13,9 @@ namespace Mug.Syntax
         public string NodeName => "NodeBuilder";
         private readonly List<INode> _nodes = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
+
         public int Count => _nodes.Count;
         public bool IsReadOnly => false;
         public INode this[int index] => _nodes[index];

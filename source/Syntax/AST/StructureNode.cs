@@ -1,5 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
+using Mug.Typing;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
@@ -12,6 +13,8 @@ namespace Mug.Syntax.AST
         public List<FieldNode> BodyFields { get; set; } = new();
         public List<VariableNode> BodyMembers { get; set; } = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public override string ToString()
         {

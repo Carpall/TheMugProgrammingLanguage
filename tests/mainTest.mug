@@ -1,3 +1,5 @@
+const T = chr
+
 const main = fn {
-  const x = i32
+  let x: T = 1
 }

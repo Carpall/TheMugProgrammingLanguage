@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Typing;
 using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
@@ -16,6 +17,8 @@ namespace Mug.Syntax.AST
             }
         }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; }
     }
 
     public class SwitchCaseNode : INode
@@ -24,5 +27,7 @@ namespace Mug.Syntax.AST
         public INode Expression { get; set; }
         public List<CaseNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; }
     }
 }

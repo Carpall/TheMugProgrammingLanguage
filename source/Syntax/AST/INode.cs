@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Typing;
 using Newtonsoft.Json;
 
 namespace Mug.Syntax.AST
@@ -6,8 +7,11 @@ namespace Mug.Syntax.AST
     public interface INode
     {
         public string NodeName { get; }
+
         [JsonIgnore]
-        public abstract ModulePosition Position { get; set; }
+        public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; }
 
         public string Dump()
         {
@@ -15,5 +19,10 @@ namespace Mug.Syntax.AST
         }
 
         public abstract string ToString();
+        
+        public void TypeNode(IType type)
+        {
+            NodeType = type;
+        }
     }
 }

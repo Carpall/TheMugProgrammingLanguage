@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-
+using Mug.Typing;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -14,6 +14,8 @@ namespace Mug.Syntax.AST
         public ParameterNode[] ParameterList { get; set; } = null;
         public BlockNode Body { get; set; }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public bool IsPrototype() => Body is null;
 

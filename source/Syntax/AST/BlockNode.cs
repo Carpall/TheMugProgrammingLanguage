@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Typing;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +12,8 @@ namespace Mug.Syntax.AST
         public string NodeName => "Block";
         public readonly List<INode> Statements = new();
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public override string ToString()
         {

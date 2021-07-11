@@ -1,4 +1,5 @@
 ﻿using Mug.Compilation;
+using Mug.Typing;
 using System;
 
 namespace Mug.Syntax.AST
@@ -9,6 +10,8 @@ namespace Mug.Syntax.AST
         public string Name { get; set; }
         public INode Body { get; set; }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
 
         public override string ToString()
         {

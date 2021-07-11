@@ -1,12 +1,16 @@
 ﻿using Mug.Compilation;
+using Mug.Typing;
 
 namespace Mug.Syntax.AST
 {
-  public class ReturnNode : INode
+    public class ReturnNode : INode
     {
         public string NodeName => "Return";
         public INode Body { get; set; }
         public ModulePosition Position { get; set; }
+
+        public IType NodeType { get; set; } = null;
+
         public bool IsVoid()
         {
             return Body is BadNode;

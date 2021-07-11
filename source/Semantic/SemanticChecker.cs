@@ -18,14 +18,25 @@ namespace Mug.Semantic
 
         public readonly MugValue EvaluatedValue;
 
+        public readonly bool IsGlobal;
+
         public bool IsMutable => Variable.IsMutable;
 
-        public IType Type => EvaluatedValue.Type;
+        public IType Type => EvaluatedValue?.Type ?? IType.BadType;
 
-        public MemoryDetail(VariableNode variable, MugValue evaluatedValue)
+        public bool IsBuiltin { get; }
+
+        public bool IsAlreadyEvaluated()
+        {
+            return EvaluatedValue is not null;
+        }
+
+        public MemoryDetail(VariableNode variable, MugValue evaluatedValue, bool isGlobal, bool isBuiltin = false)
         {
             Variable = variable;
             EvaluatedValue = evaluatedValue;
+            IsGlobal = isGlobal;
+            IsBuiltin = isBuiltin;
         }
     }
 
@@ -69,15 +80,58 @@ namespace Mug.Semantic
             // TODO: generate all functions exported
             SetupScope();
             DeclareGlobals();
+            SetupBuiltins();
             AnalyzeEntryPoint();
             RestoreScope();
 
             return AST;
         }
 
+        private void SetupBuiltins()
+        {
+            DeclareBuiltinInt("u8");
+            DeclareBuiltinInt("u16");
+            DeclareBuiltinInt("u32");
+            DeclareBuiltinInt("u64");
+            DeclareBuiltinInt("i8");
+            DeclareBuiltinInt("i16");
+            DeclareBuiltinInt("i32");
+            DeclareBuiltinInt("i64");
+
+            DeclareBuiltin("chr", IType.Char);
+            DeclareBuiltin("void", IType.Void);
+
+            void DeclareBuiltinInt(string name)
+            {
+                DeclareBuiltin(name, IntType(name));
+            }
+
+            static IntType IntType(string name)
+            {
+                return IType.Int(int.Parse(name[1..]), name[0] == 'i');
+            }
+        }
+
+        private void DeclareBuiltin(string name, IType type)
+        {
+            ScopeMemory.Add(name, new(null, new(IType.Type, type, true), true, true));
+        }
+
         private void SetupScope()
         {
-            Scopes.Push(new());
+            Scopes.Push(GetGlobalMemoryDetailsInScopeMemory());
+        }
+
+        private Dictionary<string, MemoryDetail> GetGlobalMemoryDetailsInScopeMemory()
+        {
+            var scopeMemory = Scopes.Count > 0 ? ScopeMemory : new();
+            var result = new Dictionary<string, MemoryDetail>();
+
+            foreach (var memoryDetail in scopeMemory)
+                if (memoryDetail.Value.IsGlobal)
+                    result.Add(memoryDetail.Key, memoryDetail.Value);
+
+            return result;
         }
 
         private void AnalyzeEntryPoint()
@@ -93,23 +147,26 @@ namespace Mug.Semantic
             foreach (var global in AST.Members)
             {
                 MaybeReportLetAtTopLevel(global);
-                DeclareVariable(global, null);
+                DeclareVariable(global, null, true);
             }
         }
 
-        private void CheckTypes(IType type, MugValue value, ModulePosition position)
+        private void FixAndCheckTypes(ref IType type, MugValue value, ModulePosition position)
         {
-            if (type is AutoType or BadType)
+            if (type is BadType)
                 return;
+
+            if (type is AutoType)
+                type = value.Type;
 
             if (value.Type.GetType() != type.GetType()
                 && value.Type != type)
                 Tower.Report(position, $"Types mismatch: expected '{type}', got '{value.Type}'");
         }
 
-        private void DeclareVariable(VariableNode variable, MugValue value)
+        private void DeclareVariable(VariableNode variable, MugValue value, bool isGlobal)
         {
-            if (!ScopeMemory.TryAdd(variable.Name, new(variable, value)))
+            if (!ScopeMemory.TryAdd(variable.Name, new(variable, value, isGlobal)))
                 Tower.Report(variable.Position, $"Variable '{variable.Name}' is already declared");
         }
 
@@ -126,22 +183,30 @@ namespace Mug.Semantic
                 Tower.Report(variable.Position, $"'let' not allowed at top level");
         }
 
-        private IType EvaluateType(INode type) => type switch
+        private IType EvaluateType(INode type)
         {
-            Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(token),
-            BadNode => IType.Auto,
-            _ => ReportUnevaluableType(type.Position)
-        };
+            var result = type switch
+            {
+                Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(token),
+                BadNode => IType.Auto,
+                _ => ReportUnevaluableType(type.Position)
+            };
 
-        private IType EvaluateTokenType(Token token) => token.Value switch
+            TypeNode(type, result);
+            return result;
+        }
+
+        private IType EvaluateTokenType(Token token)
         {
-            "u8" or "u16" or "u32" or "u64" or
-            "i8" or "i16" or "i32" or "i64" => IType.Int(int.Parse(token.Value[1..]), token.Value[0] == 'i'),
+            var result = EvaluateLocalToken(token);
+            if (result.Type is not TypeType)
+            {
+                Tower.Report(token.Position, $"Expected expression of type 'type'");
+                return IType.BadType;
+            }
 
-            "chr" => IType.Char,
-
-            "void" => IType.Void
-        };
+            return (result.ConstantValue as MugValue).ConstantValue as IType;
+        }
 
         private IType ReportUnevaluableType(ModulePosition position)
         {
@@ -152,7 +217,7 @@ namespace Mug.Semantic
         private MugValue EvaluateExpression(INode node) => node switch
         {
             Token expr => EvaluateToken(expr),
-            FunctionNode func => DeclareFunction(func),
+            FunctionNode func => EvaluateFunction(func),
             _ => throw new NotImplementedException(),
         };
 
@@ -166,7 +231,13 @@ namespace Mug.Semantic
             RestoreContextType();
             RestoreScope();
 
+            TypeNode(func, fnType);
             return new(fnType, func, true);
+        }
+
+        private static void TypeNode(INode node, IType type)
+        {
+            node.TypeNode(type);
         }
 
         private void AnalyzeFunctionBody(BlockNode body)
@@ -191,31 +262,36 @@ namespace Mug.Semantic
 
         private void AnalyzeVariable(VariableNode variable, bool redeclare = false)
         {
+            if (!redeclare & variable.IsConst)
+                CompilationInstance.Todo("const is not allowed in local yet");
+
             var type = EvaluateType(variable.Type);
 
             MakeContextType(type);
             var value = EvaluateExpression(variable.Body);
             RestoreContextType();
 
-            CheckTypes(type, value, variable.Body.Position);
+            FixAndCheckTypes(ref type, value, variable.Body.Position);
 
             MaybeReportNonConstantValueForConstantVariable(value, variable);
             MaybeReportSpecialValueForNonConstantVariable(value, variable);
 
             if (redeclare)
-                RedeclareVariable(variable, value);
+                RedeclareVariable(variable, value, redeclare);
             else
-                DeclareVariable(variable, value);
+                DeclareVariable(variable, value, redeclare);
+
+            TypeNode(variable, type);
         }
 
-        private void RedeclareVariable(VariableNode variable, MugValue value)
+        private void RedeclareVariable(VariableNode variable, MugValue value, bool isGlobal)
         {
-            ScopeMemory[variable.Name] = new(variable, value);
+            ScopeMemory[variable.Name] = new(variable, value, isGlobal);
         }
 
         private void MaybeReportSpecialValueForNonConstantVariable(MugValue value, VariableNode variable)
         {
-            if (!variable.IsConst && value.IsSpecial)
+            if (!variable.IsConst & value.IsSpecial)
                 Tower.Report(variable.Body.Position, $"Type '{value.Type}' requires a 'const' context");
         }
 
@@ -237,7 +313,7 @@ namespace Mug.Semantic
                 var parameter = parameters[i];
                 var variableFromParameter = GetVariableFromParameter(parameter);
 
-                DeclareVariable(variableFromParameter, null);
+                DeclareVariable(variableFromParameter, null, false);
                 result[i] = EvaluateType(parameter.Type);
             }
 
@@ -262,13 +338,24 @@ namespace Mug.Semantic
                 return EvaluateLocalToken(token);
 
             var type = GetTypeFromConstantTokenKind(token.Kind);
+            TypeNode(token, type);
             return new(type, token.Value, true);
         }
 
         private MugValue EvaluateLocalToken(Token token)
         {
             var definition = GetDefinition(token.Value, token.Position);
-            return new(definition.Type, definition.EvaluatedValue, definition.Variable.IsConst);
+            if (!definition.IsAlreadyEvaluated() & !definition.IsBuiltin)
+                EvaluateDefinition(ref definition);
+
+            return new(definition.Type, definition.EvaluatedValue, definition.Variable?.IsConst ?? true);
+        }
+
+        private void EvaluateDefinition(ref MemoryDetail definition)
+        {
+            AnalyzeVariable(definition.Variable, true);
+            var definitionValue = GetDefinition(definition.Variable.Name, definition.Variable.Position).EvaluatedValue.ConstantValue as MugValue;
+            definition = new(null, definitionValue, true);
         }
 
         private MemoryDetail GetDefinition(string value, ModulePosition position)
@@ -277,7 +364,7 @@ namespace Mug.Semantic
                 return variable;
 
             Tower.Report(position, $"Variable '{value}' is not declared");
-            return new(new(), MugValue.BadValue);
+            return new(new(), MugValue.BadValue, false);
         }
 
         private bool MemoryContainsDefinitionFor(string value, out MemoryDetail result)

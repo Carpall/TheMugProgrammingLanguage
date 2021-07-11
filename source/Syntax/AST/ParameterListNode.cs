@@ -1,6 +1,6 @@
 ﻿using Mug.Compilation;
 using Mug.Grammar;
-
+using Mug.Typing;
 using System.Collections.Generic;
 
 namespace Mug.Syntax.AST
@@ -14,6 +14,8 @@ namespace Mug.Syntax.AST
         public bool IsStatic { get; set; }
         public ModulePosition Position { get; set; }
 
+        public IType NodeType { get; set; }
+
         public ParameterNode(INode type, string name, INode defaultConstValue, bool isStatic, ModulePosition position)
         {
             Type = type;
@@ -21,6 +23,7 @@ namespace Mug.Syntax.AST
             Position = position;
             DefaultConstantValue = defaultConstValue;
             IsStatic = isStatic;
+            NodeType = null;
         }
 
         public override string ToString()
