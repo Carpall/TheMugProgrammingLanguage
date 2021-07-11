@@ -22,7 +22,7 @@ namespace Mug.Semantic
 
         public bool IsMutable => Variable.IsMutable;
 
-        public IType Type => EvaluatedValue?.Type ?? IType.BadType;
+        public IType Type => EvaluatedValue.Type ?? IType.BadType;
 
         public bool IsBuiltin { get; }
 
@@ -100,6 +100,8 @@ namespace Mug.Semantic
 
             DeclareBuiltin("chr", IType.Char);
             DeclareBuiltin("void", IType.Void);
+
+            DeclareBuiltin("type", IType.Type);
 
             void DeclareBuiltinInt(string name)
             {
@@ -185,6 +187,9 @@ namespace Mug.Semantic
 
         private IType EvaluateType(INode type)
         {
+            if (type is null)
+                return IType.BadType;
+
             var result = type switch
             {
                 Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(token),
@@ -205,7 +210,7 @@ namespace Mug.Semantic
                 return IType.BadType;
             }
 
-            return (result.ConstantValue as MugValue).ConstantValue as IType;
+            return ((MugValue)result.ConstantValue).ConstantValue as IType;
         }
 
         private IType ReportUnevaluableType(ModulePosition position)
@@ -216,6 +221,7 @@ namespace Mug.Semantic
 
         private MugValue EvaluateExpression(INode node) => node switch
         {
+            null or BadNode => null,
             Token expr => EvaluateToken(expr),
             FunctionNode func => EvaluateFunction(func),
             _ => throw new NotImplementedException(),
@@ -354,7 +360,12 @@ namespace Mug.Semantic
         private void EvaluateDefinition(ref MemoryDetail definition)
         {
             AnalyzeVariable(definition.Variable, true);
-            var definitionValue = GetDefinition(definition.Variable.Name, definition.Variable.Position).EvaluatedValue.ConstantValue as MugValue;
+
+            var newDefinition = GetDefinition(definition.Variable.Name, definition.Variable.Position);
+            var definitionValue = (
+                newDefinition.EvaluatedValue.ConstantValue as MugValue) ??
+                new(newDefinition.Type, null, true);
+
             definition = new(null, definitionValue, true);
         }
 
@@ -364,7 +375,7 @@ namespace Mug.Semantic
                 return variable;
 
             Tower.Report(position, $"Variable '{value}' is not declared");
-            return new(new(), MugValue.BadValue, false);
+            return new(new(), null, false);
         }
 
         private bool MemoryContainsDefinitionFor(string value, out MemoryDetail result)

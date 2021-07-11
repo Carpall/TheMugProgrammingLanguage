@@ -11,9 +11,9 @@ namespace Mug.Typing.Values
         public IType Type { get; }
 
         public object ConstantValue { get; }
-
+               
         public bool IsConst { get; }
-
+               
         public bool IsSpecial => Type is TypeType;
 
         public MugValue(IType type, object constantValue, bool isConst)
@@ -22,7 +22,5 @@ namespace Mug.Typing.Values
             ConstantValue = constantValue;
             IsConst = isConst;
         }
-
-        internal static MugValue BadValue => new(IType.BadType, null, false);
     }
 }
