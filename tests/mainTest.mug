@@ -1,5 +1,8 @@
-const T: i32 = 1
+const get = fn(a, b: i32): i32 {
+  a
+}
 
-const main = fn {
-  let x: u8 = T
+const main = fn() {
+  let x: chr = 1
+  get(x, 1)
 }

@@ -8,6 +8,11 @@ namespace Mug.Typing
 {
     public struct TypeType : IType
     {
+        public override bool Equals(object obj)
+        {
+            return obj is TypeType;
+        }
+
         public override string ToString()
         {
             return $"type";
@@ -16,6 +21,11 @@ namespace Mug.Typing
 
     public struct CharType : IType
     {
+        public override bool Equals(object obj)
+        {
+            return obj is CharType;
+        }
+
         public override string ToString()
         {
             return $"chr";
@@ -24,6 +34,11 @@ namespace Mug.Typing
 
     public struct AutoType : IType
     {
+        public override bool Equals(object obj)
+        {
+            return obj is AutoType;
+        }
+
         public override string ToString()
         {
             return $"auto";
@@ -32,9 +47,27 @@ namespace Mug.Typing
 
     public struct VoidType : IType
     {
+        public override bool Equals(object obj)
+        {
+            return obj is VoidType;
+        }
+
         public override string ToString()
         {
             return "void";
+        }
+    }
+
+    public struct BadType : IType
+    {
+        public override bool Equals(object obj)
+        {
+            return obj is BadType;
+        }
+
+        public override string ToString()
+        {
+            return "BadType";
         }
     }
 
@@ -47,6 +80,11 @@ namespace Mug.Typing
         {
             ParameterTypes = parameterTypes;
             ReturnType = returnType;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is FunctionType fn && ParameterTypes.SequenceEqual(fn.ParameterTypes) && ReturnType.Equals(fn.ReturnType);
         }
 
         public override string ToString()
@@ -64,6 +102,11 @@ namespace Mug.Typing
         {
             Size = size;
             IsSigned = isSigned;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is IntType intType && Size == intType.Size & IsSigned == intType.IsSigned;
         }
 
         public override string ToString()

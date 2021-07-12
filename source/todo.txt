@@ -18,3 +18,4 @@ NEW TODOS
 - ideas about debugger 'breakPoint!()'
 - implement arc
 - add runtime checks
+- fix 'const x: i32 = 1 ... let y: u8 = x

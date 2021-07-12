@@ -8,7 +8,8 @@ namespace Mug.Syntax.AST
     {
         public string NodeName => "Call";
         public NodeBuilder Parameters { get; set; } = new();
-        public INode Name { get; set; }
+
+        public INode Name;
         public bool IsBuiltIn { get; set; }
         public ModulePosition Position { get; set; }
 

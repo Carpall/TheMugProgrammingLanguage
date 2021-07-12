@@ -20,21 +20,22 @@ namespace Mug.Semantic
 
         public readonly bool IsGlobal;
 
+        public readonly IType Type;
+
         public bool IsMutable => Variable.IsMutable;
 
-        public IType Type => EvaluatedValue.Type ?? IType.BadType;
-
-        public bool IsBuiltin { get; }
+        public readonly bool IsBuiltin;
 
         public bool IsAlreadyEvaluated()
         {
-            return EvaluatedValue is not null;
+            return EvaluatedValue.IsValid;
         }
 
-        public MemoryDetail(VariableNode variable, MugValue evaluatedValue, bool isGlobal, bool isBuiltin = false)
+        public MemoryDetail(VariableNode variable, MugValue evaluatedValue, IType type, bool isGlobal, bool isBuiltin = false)
         {
             Variable = variable;
             EvaluatedValue = evaluatedValue;
+            Type = type;
             IsGlobal = isGlobal;
             IsBuiltin = isBuiltin;
         }
@@ -53,6 +54,10 @@ namespace Mug.Semantic
         private IType ContextType => ContextTypes.Peek();
 
         private Dictionary<string, MemoryDetail> ScopeMemory => Scopes.Peek();
+
+
+        // indicates whether the current ast's node is in a function's scope, it's false when the walker is located in a sub scope, ['.' indicates the ast walker's position] example: 'fn { . }' -> true, 'fn { const x = { . } }' -> false
+        private bool _isInFirstFunctionBlockScope;
 
         public SemanticChecker(CompilationInstance tower) : base(tower)
         {
@@ -82,7 +87,7 @@ namespace Mug.Semantic
             DeclareGlobals();
             SetupBuiltins();
             AnalyzeEntryPoint();
-            RestoreScope();
+            RestoreScope(true);
 
             return AST;
         }
@@ -116,12 +121,18 @@ namespace Mug.Semantic
 
         private void DeclareBuiltin(string name, IType type)
         {
-            ScopeMemory.Add(name, new(null, new(IType.Type, type, true), true, true));
+            ScopeMemory.Add(name, new(
+                variable: null,
+                evaluatedValue: new(IType.Type, type, true),
+                type: IType.Type,
+                isGlobal: true,
+                isBuiltin: true));
         }
 
         private void SetupScope()
         {
             Scopes.Push(GetGlobalMemoryDetailsInScopeMemory());
+            _isInFirstFunctionBlockScope = true;
         }
 
         private Dictionary<string, MemoryDetail> GetGlobalMemoryDetailsInScopeMemory()
@@ -149,26 +160,22 @@ namespace Mug.Semantic
             foreach (var global in AST.Members)
             {
                 MaybeReportLetAtTopLevel(global);
-                DeclareVariable(global, null, true);
+                DeclareVariable(global, MugValue.Invalid, IType.Void, true);
             }
         }
 
-        private void FixAndCheckTypes(ref IType type, MugValue value, ModulePosition position)
+        private void FixAndCheckTypes(ref IType expectedType, IType gotType, ModulePosition position)
         {
-            if (type is BadType)
-                return;
+            // infer
+            if (expectedType is AutoType)
+                expectedType = gotType;
 
-            if (type is AutoType)
-                type = value.Type;
-
-            if (value.Type.GetType() != type.GetType()
-                && value.Type != type)
-                Tower.Report(position, $"Types mismatch: expected '{type}', got '{value.Type}'");
+            CheckTypes(expectedType, gotType, position);
         }
 
-        private void DeclareVariable(VariableNode variable, MugValue value, bool isGlobal)
+        private void DeclareVariable(VariableNode variable, MugValue value, IType type, bool isGlobal)
         {
-            if (!ScopeMemory.TryAdd(variable.Name, new(variable, value, isGlobal)))
+            if (!ScopeMemory.TryAdd(variable.Name, new(variable, value, type, isGlobal)))
                 Tower.Report(variable.Position, $"Variable '{variable.Name}' is already declared");
         }
 
@@ -219,13 +226,65 @@ namespace Mug.Semantic
             return ContextType;
         }
 
-        private MugValue EvaluateExpression(INode node) => node switch
+        private MugValue EvaluateExpression(ref INode node)
         {
-            null or BadNode => null,
-            Token expr => EvaluateToken(expr),
-            FunctionNode func => EvaluateFunction(func),
-            _ => throw new NotImplementedException(),
-        };
+            var result = node switch
+            {
+                null or BadNode => MugValue.Invalid,
+                Token expr => EvaluateToken(expr),
+                FunctionNode func => EvaluateFunction(func),
+                CallNode call => EvaluateCall(call),
+                _ => throw new NotImplementedException(),
+            };
+
+            ExpectNonVoidType(node.Position, result.Type);
+            return result;
+        }
+
+        private MugValue EvaluateCall(CallNode call)
+        {
+            var name = EvaluateExpression(ref call.Name);
+
+            if (!name.IsValid)
+                return MugValue.Invalid;
+
+            if (!name.IsConst)
+                CompilationInstance.Todo("Function pointer call is not implemented yet");
+
+            if (name.Type is not FunctionType)
+            {
+                Tower.Report(call.Name.Position, $"Unable to call object of type '{name.Type}'");
+                return MugValue.Invalid;
+            }
+
+            var function = (FunctionNode)((MugValue)name.ConstantValue).ConstantValue;
+
+            AnalyzeCall(function, call);
+
+            return new(EvaluateType(function.Type), null, false);
+        }
+
+        private void AnalyzeCall(FunctionNode function, CallNode call)
+        {
+            if (function.ParameterList.Length != call.Parameters.Count)
+            {
+                Tower.Report(call.Parameters.Position, $"Expected '{function.ParameterList.Length}' parameters, got '{call.Parameters.Count}'");
+                return;
+            }
+
+            for (int i = 0; i < function.ParameterList.Length; i++)
+            {
+                var functionParameter = function.ParameterList[i];
+                var inputParameter = call.Parameters[i];
+                var evalautedInputParameter = EvaluateExpression(ref inputParameter);
+                call.Parameters[i] = inputParameter;
+
+                if (functionParameter.IsStatic && !evalautedInputParameter.IsConst)
+                    Tower.Report(inputParameter.Position, $"Static parameters require constant values");
+
+                CheckTypes(EvaluateType(functionParameter.Type), evalautedInputParameter.Type, inputParameter.Position);
+            }
+        }
 
         private MugValue EvaluateFunction(FunctionNode func)
         {
@@ -235,7 +294,7 @@ namespace Mug.Semantic
             MakeContextType(fnType.ReturnType);
             AnalyzeFunctionBody(func.Body);
             RestoreContextType();
-            RestoreScope();
+            RestoreScope(true);
 
             TypeNode(func, fnType);
             return new(fnType, func, true);
@@ -248,22 +307,65 @@ namespace Mug.Semantic
 
         private void AnalyzeFunctionBody(BlockNode body)
         {
-            foreach (var statement in body.Statements)
-                AnalyzeStatement(statement);
+            for (int i = 0; i < body.Statements.Count; i++)
+            {
+                var statement = body.Statements[i];
+                AnalyzeStatement(ref statement, i == body.Statements.Count - 1);
+                body.Statements[i] = statement;
+            }
         }
 
-        private void AnalyzeStatement(INode statement)
+        private void AnalyzeStatement(ref INode statement, bool isLast)
         {
             switch (statement)
             {
                 case VariableNode var:
                     AnalyzeVariable(var);
                     break;
+                case CallNode call when !isLast || ContextType is VoidType:
+                    EvaluateCall(call);
+                    break;
                 default:
-                    // TODO: add hidden control flow to return or load onto the stack the value
-                    EvaluateExpression(statement);
+                    AnalyzeExpression(ref statement, isLast);
                     break;
             }
+        }
+
+        private void AnalyzeExpression(ref INode statement, bool isLast)
+        {
+            MaybeReportExpressionNotLastInBlock(isLast, statement.Position);
+            var value = EvaluateExpression(ref statement);
+            LowerImplicitReturn(ref statement);
+            CheckTypes(ContextType, value.Type, statement.Position);
+        }
+
+        private void MaybeReportExpressionNotLastInBlock(bool isLast, ModulePosition position)
+        {
+            if (!isLast)
+                Tower.Report(position, $"Expressions must be located at the end of the block");
+        }
+
+        private void CheckTypes(IType expectedType, IType gotType, ModulePosition position)
+        {
+            // bad type is automatically skipped because it doesn't need to be checked: badtypes are already reported when occurred and it's ugly to see 'types mismatch: type badtype'
+            if (expectedType is BadType || gotType is BadType)
+                return;
+
+            // checking the type's compatibility
+            if (!gotType.Equals(expectedType))
+                Tower.Report(position, $"Types mismatch: expected '{expectedType}', got '{gotType}'");
+        }
+
+        private void LowerImplicitReturn(ref INode statement)
+        {
+            if (!_isInFirstFunctionBlockScope)
+                return;
+
+            statement = new ReturnNode
+            {
+                Body = statement,
+                Position = statement.Position
+            };
         }
 
         private void AnalyzeVariable(VariableNode variable, bool redeclare = false)
@@ -272,43 +374,53 @@ namespace Mug.Semantic
                 CompilationInstance.Todo("const is not allowed in local yet");
 
             var type = EvaluateType(variable.Type);
+            ExpectNonVoidType(variable.Type.Position, type);
 
             MakeContextType(type);
-            var value = EvaluateExpression(variable.Body);
+            var value = EvaluateExpression(ref variable.Body);
             RestoreContextType();
 
-            FixAndCheckTypes(ref type, value, variable.Body.Position);
+            FixAndCheckTypes(ref type, value.Type, variable.Body.Position);
 
             MaybeReportNonConstantValueForConstantVariable(value, variable);
             MaybeReportSpecialValueForNonConstantVariable(value, variable);
 
             if (redeclare)
-                RedeclareVariable(variable, value, redeclare);
+                RedeclareVariable(variable, value, type , redeclare);
             else
-                DeclareVariable(variable, value, redeclare);
+                DeclareVariable(variable, value, type, redeclare);
 
             TypeNode(variable, type);
         }
 
-        private void RedeclareVariable(VariableNode variable, MugValue value, bool isGlobal)
+        private void ExpectNonVoidType(ModulePosition position, IType type)
         {
-            ScopeMemory[variable.Name] = new(variable, value, isGlobal);
+            if (type is VoidType)
+                Tower.Report(position, $"Expected non void type");
+        }
+
+        private void RedeclareVariable(VariableNode variable, MugValue value, IType type, bool isGlobal)
+        {
+            ScopeMemory[variable.Name] = new(variable, value, type, isGlobal);
         }
 
         private void MaybeReportSpecialValueForNonConstantVariable(MugValue value, VariableNode variable)
         {
-            if (!variable.IsConst & value.IsSpecial)
+            if (!variable.IsConst & value.IsSpecial())
                 Tower.Report(variable.Body.Position, $"Type '{value.Type}' requires a 'const' context");
         }
 
-        private void MakeScope()
+        private void MakeScope(out bool wasInFirstFunctionBlockScope)
         {
             Scopes.Push(new(ScopeMemory));
+            wasInFirstFunctionBlockScope = _isInFirstFunctionBlockScope;
+            _isInFirstFunctionBlockScope = false;
         }
 
-        private void RestoreScope()
+        private void RestoreScope(bool wasInFirstFunctionBlockScope)
         {
             Scopes.Pop();
+            _isInFirstFunctionBlockScope = wasInFirstFunctionBlockScope;
         }
 
         private IType[] EvaluateParameterTypes(ParameterNode[] parameters)
@@ -318,8 +430,9 @@ namespace Mug.Semantic
             {
                 var parameter = parameters[i];
                 var variableFromParameter = GetVariableFromParameter(parameter);
+                var parameterValue = new MugValue(EvaluateType(variableFromParameter.Type), null, false);
 
-                DeclareVariable(variableFromParameter, null, false);
+                DeclareVariable(variableFromParameter, parameterValue, parameterValue.Type, false);
                 result[i] = EvaluateType(parameter.Type);
             }
 
@@ -350,7 +463,11 @@ namespace Mug.Semantic
 
         private MugValue EvaluateLocalToken(Token token)
         {
-            var definition = GetDefinition(token.Value, token.Position);
+            var definitionNullable = GetDefinition(token.Value, token.Position);
+            if (!definitionNullable.HasValue)
+                return MugValue.Invalid;
+
+            var definition = definitionNullable.Value;
             if (!definition.IsAlreadyEvaluated() & !definition.IsBuiltin)
                 EvaluateDefinition(ref definition);
 
@@ -361,21 +478,18 @@ namespace Mug.Semantic
         {
             AnalyzeVariable(definition.Variable, true);
 
-            var newDefinition = GetDefinition(definition.Variable.Name, definition.Variable.Position);
-            var definitionValue = (
-                newDefinition.EvaluatedValue.ConstantValue as MugValue) ??
-                new(newDefinition.Type, null, true);
+            var newDefinition = GetDefinition(definition.Variable.Name, definition.Variable.Position).Value;
 
-            definition = new(null, definitionValue, true);
+            definition = new(null, newDefinition.EvaluatedValue, newDefinition.Type, true);
         }
 
-        private MemoryDetail GetDefinition(string value, ModulePosition position)
+        private MemoryDetail? GetDefinition(string value, ModulePosition position)
         {
             if (MemoryContainsDefinitionFor(value, out var variable))
                 return variable;
 
             Tower.Report(position, $"Variable '{value}' is not declared");
-            return new(new(), null, false);
+            return null;
         }
 
         private bool MemoryContainsDefinitionFor(string value, out MemoryDetail result)

@@ -18,7 +18,7 @@ namespace Mug.Syntax
 
         public int Count => _nodes.Count;
         public bool IsReadOnly => false;
-        public INode this[int index] => _nodes[index];
+        public INode this[int index] { get => _nodes[index]; set => _nodes[index] = value; }
 
         public void Add(INode item)
         {

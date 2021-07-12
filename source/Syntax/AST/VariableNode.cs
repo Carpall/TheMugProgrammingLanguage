@@ -17,7 +17,7 @@ namespace Mug.Syntax.AST
 
         public INode Type { get; set; }
 
-        public INode Body { get; set; }
+        public INode Body;
 
         public ModulePosition Position { get; set; }
 
