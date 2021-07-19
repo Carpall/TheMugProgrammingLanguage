@@ -1,0 +1,58 @@
+const Array = import!("std").coll.FixedArray
+
+fn advance(c, basis: u8): u8 {
+  (c - basis + 13) % 26 + basis
+}
+
+fn rotate(b: u8): u8 {
+  match true {
+    u8!('a') <= c and c <= u8!('z') { advance(c, u8!('a')) }
+    u8!('A') <= c and c <= u8!('Z') { advance(c, u8!('A')) }
+    else                            { c                    }
+  }
+}
+
+fn operate(text: str): str {
+  let result = Array(chr).with_size(text.len);
+  let mut i: usize = 0
+
+  while i < text.len {
+    let c = text[i]
+    
+    result[i] = chr!(rotate(u8!(c)))
+    i += 1
+  }
+
+  // FixedArray is { usize, u8* }, str is { usize, u8* }
+  bitcast!(str, result)
+}
+
+pub fn encrypt(text: str): str {
+  operate(text)
+}
+
+pub fn decrypt(text: str): str {
+  operate(text)
+}
+
+test "alpha" {
+  test_message("abc")
+}
+
+test "alphanum" {
+  test_message("abc123")
+}
+
+test "alphanumsym" {
+  test_message("abc123??#")
+}
+
+test "high case alpha" {
+  test_message("ABC")
+}
+
+fn test_message(msg: str) {
+  let encrypted = encrypt(msg)
+  let decrypted = decrypt(encrypted)
+  assert!(msg == decrypted)
+}

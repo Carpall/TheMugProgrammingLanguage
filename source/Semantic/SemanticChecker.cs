@@ -59,6 +59,10 @@ namespace Mug.Semantic
         // indicates whether the current ast's node is in a function's scope, it's false when the walker is located in a sub scope, ['.' indicates the ast walker's position] example: 'fn { . }' -> true, 'fn { const x = { . } }' -> false
         private bool _isInFirstFunctionBlockScope;
 
+        private string _contextName;
+
+        private readonly Stack<string> _inProgress = new();
+
         public SemanticChecker(CompilationInstance tower) : base(tower)
         {
         }
@@ -192,14 +196,14 @@ namespace Mug.Semantic
                 Tower.Report(variable.Position, $"'let' not allowed at top level");
         }
 
-        private IType EvaluateType(INode type)
+        private IType EvaluateType(ref INode type)
         {
             if (type is null)
                 return IType.BadType;
 
             var result = type switch
             {
-                Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(token),
+                Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(ref type, token),
                 BadNode => IType.Auto,
                 _ => ReportUnevaluableType(type.Position)
             };
@@ -208,9 +212,9 @@ namespace Mug.Semantic
             return result;
         }
 
-        private IType EvaluateTokenType(Token token)
+        private IType EvaluateTokenType(ref INode reference, Token token)
         {
-            var result = EvaluateLocalToken(token);
+            var result = EvaluateLocalToken(ref reference, token);
             if (result.Type is not TypeType)
             {
                 Tower.Report(token.Position, $"Expected expression of type 'type'");
@@ -231,7 +235,7 @@ namespace Mug.Semantic
             var result = node switch
             {
                 null or BadNode => MugValue.Invalid,
-                Token expr => EvaluateToken(expr),
+                Token token => EvaluateToken(ref node, token),
                 FunctionNode func => EvaluateFunction(func),
                 CallNode call => EvaluateCall(call),
                 _ => throw new NotImplementedException(),
@@ -257,11 +261,11 @@ namespace Mug.Semantic
                 return MugValue.Invalid;
             }
 
-            var function = (FunctionNode)((MugValue)name.ConstantValue).ConstantValue;
+            var function = (FunctionNode)name.ConstantValue;
 
             AnalyzeCall(function, call);
 
-            return new(EvaluateType(function.Type), null, false);
+            return new(EvaluateType(ref function.Type), null, false);
         }
 
         private void AnalyzeCall(FunctionNode function, CallNode call)
@@ -275,21 +279,27 @@ namespace Mug.Semantic
             for (int i = 0; i < function.ParameterList.Length; i++)
             {
                 var functionParameter = function.ParameterList[i];
+                var functionParameterType = EvaluateType(ref functionParameter.Type);
+
                 var inputParameter = call.Parameters[i];
+
+                MakeContextType(functionParameterType);
                 var evalautedInputParameter = EvaluateExpression(ref inputParameter);
+                RestoreContextType();
+
                 call.Parameters[i] = inputParameter;
 
                 if (functionParameter.IsStatic && !evalautedInputParameter.IsConst)
                     Tower.Report(inputParameter.Position, $"Static parameters require constant values");
 
-                CheckTypes(EvaluateType(functionParameter.Type), evalautedInputParameter.Type, inputParameter.Position);
+                CheckTypes(functionParameterType, evalautedInputParameter.Type, inputParameter.Position);
             }
         }
 
         private MugValue EvaluateFunction(FunctionNode func)
         {
             SetupScope();
-            var fnType = IType.Fn(EvaluateParameterTypes(func.ParameterList), EvaluateType(func.Type));
+            var fnType = IType.Fn(EvaluateParameterTypes(func.ParameterList), EvaluateType(ref func.Type));
 
             MakeContextType(fnType.ReturnType);
             AnalyzeFunctionBody(func.Body);
@@ -373,7 +383,9 @@ namespace Mug.Semantic
             if (!redeclare & variable.IsConst)
                 CompilationInstance.Todo("const is not allowed in local yet");
 
-            var type = EvaluateType(variable.Type);
+            SetupContextName(variable.Name);
+
+            var type = EvaluateType(ref variable.Type);
             ExpectNonVoidType(variable.Type.Position, type);
 
             MakeContextType(type);
@@ -391,6 +403,11 @@ namespace Mug.Semantic
                 DeclareVariable(variable, value, type, redeclare);
 
             TypeNode(variable, type);
+        }
+
+        private static void SetupContextName(string name)
+        {
+            _contextName = name;
         }
 
         private void ExpectNonVoidType(ModulePosition position, IType type)
@@ -430,10 +447,10 @@ namespace Mug.Semantic
             {
                 var parameter = parameters[i];
                 var variableFromParameter = GetVariableFromParameter(parameter);
-                var parameterValue = new MugValue(EvaluateType(variableFromParameter.Type), null, false);
+                var parameterValue = new MugValue(EvaluateType(ref variableFromParameter.Type), null, false);
 
                 DeclareVariable(variableFromParameter, parameterValue, parameterValue.Type, false);
-                result[i] = EvaluateType(parameter.Type);
+                result[i] = EvaluateType(ref parameter.Type);
             }
 
             return result;
@@ -451,25 +468,39 @@ namespace Mug.Semantic
             };
         }
 
-        private MugValue EvaluateToken(Token token)
+        private MugValue EvaluateToken(ref INode reference, Token token)
         {
             if (token.Kind is TokenKind.Identifier)
-                return EvaluateLocalToken(token);
+                return EvaluateLocalToken(ref reference, token);
 
             var type = GetTypeFromConstantTokenKind(token.Kind);
             TypeNode(token, type);
             return new(type, token.Value, true);
         }
 
-        private MugValue EvaluateLocalToken(Token token)
+        private MugValue EvaluateLocalToken(ref INode reference, Token token)
         {
             var definitionNullable = GetDefinition(token.Value, token.Position);
             if (!definitionNullable.HasValue)
                 return MugValue.Invalid;
 
             var definition = definitionNullable.Value;
+
+            if (definition.Variable?.IsConst ?? false)
+            {
+                reference = definition.Variable.Body;
+                return EvaluateExpression(ref definition.Variable.Body);
+            }
+
+            if (IsInProgress(token.Value))
+                return new(definition.Type, definition.EvaluatedValue, definition.Variable?.IsConst ?? true);
+
+            MakeInProgress(token.Value);
+
             if (!definition.IsAlreadyEvaluated() & !definition.IsBuiltin)
                 EvaluateDefinition(ref definition);
+
+            PopInProgress();
 
             return new(definition.Type, definition.EvaluatedValue, definition.Variable?.IsConst ?? true);
         }
@@ -481,6 +512,26 @@ namespace Mug.Semantic
             var newDefinition = GetDefinition(definition.Variable.Name, definition.Variable.Position).Value;
 
             definition = new(null, newDefinition.EvaluatedValue, newDefinition.Type, true);
+        }
+
+        private string GetContextName()
+        {
+            return _contextName;
+        }
+
+        private void PopInProgress()
+        {
+            _inProgress.Pop();
+        }
+
+        private void MakeInProgress(string name)
+        {
+            _inProgress.Push(name);
+        }
+
+        private bool IsInProgress(string name)
+        {
+            return _inProgress.TryPeek(out var inProgress) && inProgress == name;
         }
 
         private MemoryDetail? GetDefinition(string value, ModulePosition position)

@@ -1,5 +1,5 @@
-|exportc: "mug_add"|
-export const add = fn(a, b: i32): i32 { a + b }
+|extern: "mug_add"|
+fn add(a, b: i32): i32 { a + b }
 
 test "add(1, 2)" {
   assert!(add(1, 2) == 3)

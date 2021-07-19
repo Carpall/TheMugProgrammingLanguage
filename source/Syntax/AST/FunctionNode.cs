@@ -10,7 +10,8 @@ namespace Mug.Syntax.AST
     public class FunctionNode : INode
     {
         public string NodeName => "Function";
-        public INode Type { get; set; }
+
+        public INode Type;
         public ParameterNode[] ParameterList { get; set; } = null;
         public BlockNode Body { get; set; }
         public ModulePosition Position { get; set; }

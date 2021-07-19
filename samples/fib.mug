@@ -1,11 +1,10 @@
-const main = fn {
-	let n: u32 = 0 // unreachable from fib: fn(u32): u32
-	
-	const fib = fn(n: u32): u32 {
-		if n < 2 { n } else {
-			fib(n - 1) + fib(n - 2)
-		}
+fn fib(n: u32): u32 {
+	if n < 2 { n } else {
+		fib(n - 1) + fib(n - 2)
 	}
-	
+}
+
+fn main {
+	const n = 1
 	println!("fib({}): {}", n, fib(n))
 }

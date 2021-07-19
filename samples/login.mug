@@ -1,0 +1,78 @@
+// Program's Flow:
+//  
+//
+//
+//
+//
+
+const menu_message = "
+Choose Option:
+1| Manage accounts
+2| Login
+3| Exit
+$ "
+
+// the compiler will automatically download the package
+const sha256    = import!("sha256")
+const json      = import!("json")
+const std       = import!("std")
+
+const io        = std.io
+
+const parse_chr = std.num.parse_chr
+
+const Account = struct {
+  pub let username: str
+  pub let password: sha256.SHA
+
+  pub fn create(username: str, password: sha256.SHA): Self {
+    new { username: username, password: password }
+  }
+}
+
+const Login = struct {
+  let accounts: Vector(Account)
+  let mut current: *Account
+
+  pub fn login(self: Self, ) {
+    for account in self.accounts {
+
+    }
+  }
+}
+
+fn get_menu_option(): u8 {
+  io.write(menu_message)
+
+  while true {
+    let result = io.readkey()
+    if result.is_digit() {
+      io.clear_screen()
+      return parse_chr(u8, result)
+    }
+
+    io.increment_cursor_pos_x(-1)
+    io.write(' ')
+    io.increment_cursor_pos_x(-1)
+  }
+}
+
+|return: false| fn exit {
+  std.process.exit(0)
+}
+
+fn manage_option(option: u8): bool {
+  let mut login = Login.create()
+
+  match option {
+    1 { login.manage_accounts() }
+    2 { login.login()           }
+    3 { exit()                  }
+  }
+}
+
+fn main {
+  while true {
+    manage_option(get_menu_option())
+  }
+}

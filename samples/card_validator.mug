@@ -1,0 +1,75 @@
+const std = import!("std")
+const io = std.io
+
+const parse = std.num.parse
+const exit = std.process.exit
+
+const Result = std.result.Result
+const NoErr = std.result.NoErr
+const Err = std.result.Err
+
+fn check_number(num: str): Result(NoErr, void) {
+  let mut i: usize = 0
+
+  while i < num.len {
+    if !num[i].is_digit() {
+      return Err()
+    }
+  }
+}
+
+fn to_single(twodigit: u32): u32 {
+  let single: u32 = 0
+  while twodigit != 0 {
+    single += twodigit % 10
+    twodigit /= 10
+  }
+
+  single
+}
+
+fn identify(chunk: str): str {
+  let two = parse(u32, chunk[0..2])
+  let three = parse(u32, chunk[0..3])
+  let four = parse(u32, chunk)
+
+  match true {
+    chunk[0] == '4'                                          { "Visa"             }
+    two >= 51 and two <= 55 or four >= 2221 and four <= 2720 { "Mastercard"       }
+    two == 34 or two == 37                                   { "American Express" }
+    three >= 300 and three <= 305 or two == 36 or two == 38  { "Diners Club"      }
+    four == 6011 or two == 65                                { "Discover"         }
+    four == 2131 or four == 1800 or two == 35                { "JCB"              }
+    else                                                     { "Unknown"          }
+  }
+}
+
+|return: false| fn error(msg: str) {
+  println!("Error: {}", msg)
+  exit(1)
+}
+
+fn main {
+  let num = io.readln("↓ Enter the card number ↓")
+
+  check_number(num).catch!({ error("Invalid card") })
+
+  let mut sum: u32 = 0
+  let mut i: usize = 0
+  while i < num.len {
+    let cur = chr!(u8!(num[i]) - u8!('0'))
+
+    sum += if i % 2 == 0 {
+      let inc = cur * 2
+      
+      if inc > 9 { to_single(inc) } else { inc }
+    } else { cur }
+  }
+  
+  if sum % 10 == 0 {
+    println!("Type: {}", identify(num[0..4]))
+    return
+  }
+  
+  error("Invalid card")
+}

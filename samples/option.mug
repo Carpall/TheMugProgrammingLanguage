@@ -1,15 +1,15 @@
 const undefined = import!("std").unsafe.undefined
 
-pub const Option = fn(
+pub fn Option(
   static T: type
 ): type {
   union {
-    Some: T, None: void
+    Some: T, None: u8
 
-    pub const is_some = fn(self: Option(T)): bool { self is Some }
-    pub const is_none = fn(self: Option(T)): bool { self is None }
+    pub fn is_some(self: Option(T)): bool { self is Some }
+    pub fn is_none(self: Option(T)): bool { self is None }
 
-    pub const unwrap = fn(self: Option(T)): T {
+    pub fn unwrap(self: Option(T)): T {
       if self.is_none() {
         panic!("Unwrapped 'None'")
       }
@@ -17,11 +17,11 @@ pub const Option = fn(
       self.unsafe_unwrap()
     }
 
-    pub const contains = fn(self: Option(T), value: T): bool {
+    pub fn contains(self: Option(T), value: T): bool {
       self.is_some() and self.unsafe_unwrap() == value
     }
 
-    pub const expect = fn(self: Option(T), err: str): T {
+    pub fn expect(self: Option(T), err: str): T {
       if self.is_none() {
         panic!("{}", err)
       }
@@ -29,40 +29,60 @@ pub const Option = fn(
       self.unsafe_unwrap()
     }
 
-    pub const unwrap_or = fn(self: Option(T), or_value: T): T {
+    pub fn unwrap_or(self: Option(T), or_value: T): T {
       if self.is_some() { self.unsafe_unwrap() } else { or_value }
     }
 
-    pub const unsafe_unwrap = fn(self: Option(T)): T {
+    pub fn unsafe_unwrap(self: Option(T)): T {
       self as Some
     }
   }
 }
 
-pub const Some = fn(value: ?): Option(?) {
+pub fn Some(value: untyped): Option(typeof!(value)) {
   Option(typeof!(value)).Some(value)
 }
 
-pub const None = fn(): Option(?) {
-  const caller_cntx_type = caller!().context_type
-  
-  if caller_cntx_type == auto_type!() or
-     caller_cntx_type != typeinfo!(Option)
-  {
-    report!("Type notation needed")
-    Option(i32).None()
+fn get_option_base_type(): type {
+  const context_type = caller!().context_type
+
+  if context_type.get_element_type() == bad_type!() or
+    context_type != Option(context_type.get_element_type()) {
+    report!("Needed type notation: Option(T)")
+    i32
   } else {
-    Option(caller_cntx_type.get_base_element()).None()
+    context_type.get_element_type()
   }
+}
+
+pub fn None(
+  static optionType: type = static get_option_base_type()
+): Option(optionType) {
+  Option(optionType).None()
 }
 
 test "some" {
   let mut x = Some(10)
   x = Some(1)
-  println!("x: ", x.unwrap())
+  assert!(x.unwrap() == 1)
 }
 
 test "none" {
   let x: Option(i32) = None()
-  println!("x.is_none(): ", x.is_none())
+  assert!(x.is_none())
+}
+
+test "none explicit" {
+  let x = None(i32)
+  assert!(!x.is_some())
+}
+
+test "some contains" {
+  let x = Some(1)
+  assert!(x.contains(1))
+}
+
+test "some expect" {
+  let x = Some(1)
+  let y = x.expect("unwrapping 1")
 }

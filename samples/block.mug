@@ -1,15 +1,17 @@
 const std = import!("std")
 
-const Vector = std.coll.Vector
+const Vector = std.coll.FixedArray
 
-const rand = std.int.Randomizer.rand
+const Randomizer = std.int.Randomizer
 
-const main = fn {
+fn main {
   let x = {
-    let mut y: i32
-    let mut r = Vector.create(100)
+    let mut random = Randomizer(u32).create()
+
+    let mut y: u32
+    let mut r = Array(u32, 100).create()
     while y < 100 {
-      r.push(rand(i32, y))
+      r[y] = random.rand(0..y)
       y += 1
     }
 

@@ -1,4 +1,5 @@
-﻿using Mug.Compilation;
+﻿
+using Mug.Compilation;
 using System;
 using System.Collections.Immutable;
 using System.IO;

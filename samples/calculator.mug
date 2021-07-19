@@ -1,0 +1,39 @@
+const Calculator = struct {
+  let mut x: i64
+  let mut y: i64
+  let mut r: i64
+
+  const Self = Calculator
+
+  pub const PI = 3.14159
+  pub fn from(x, y: i64): Self {
+    new { x: x, y: y }
+  }
+
+  pub fn sum(self: *Self) { self.r = self.x + self.y }
+  pub fn sub(self: *Self) { self.r = self.x - self.y }
+  pub fn mul(self: *Self) { self.r = self.x * self.y }
+  pub fn div(self: *Self) { self.r = i64!(self.x / self.y) }
+
+  pub fn result(self: Self): i64 { self.r }
+}
+
+fn makeFastSum {
+  println!("PI: ", Calculator.PI)
+
+  let mut calc = Calculator.from(1, 2)
+  calc.sum()
+  let result = calc.result()
+
+  println!("Result: ", result)
+}
+
+fn main {
+  static {
+    println!("Compile-Time Executed:")
+    makeFastSum()
+  }
+
+  println!("Runtime Executed:")
+  makeFastSum()
+}

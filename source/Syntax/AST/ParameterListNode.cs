@@ -8,7 +8,7 @@ namespace Mug.Syntax.AST
     public struct ParameterNode : INode
     {
         public string NodeName => "Parameter";
-        public INode Type { get; set; }
+        public INode Type;
         public string Name { get; }
         public INode DefaultConstantValue { get; }
         public bool IsStatic { get; set; }

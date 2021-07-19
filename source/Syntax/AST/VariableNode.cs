@@ -15,7 +15,7 @@ namespace Mug.Syntax.AST
         
         public string Name { get; set; }
 
-        public INode Type { get; set; }
+        public INode Type;
 
         public INode Body;
 
