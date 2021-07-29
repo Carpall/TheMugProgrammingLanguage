@@ -18,13 +18,13 @@ namespace Mug.Syntax.AST
 
         public IType NodeType { get; set; } = null;
 
-        public bool IsPrototype() => Body is null;
+        public bool IsPrototype => Body is null;
 
         public override string ToString()
         {
             var parameters = ParameterList is not null ? $"({string.Join(", ", ParameterList)})" : null;
             var type = Type is BadNode ? null : $": {Type}";
-            return $"(fn{parameters}{type}{(IsPrototype() ? null : $" {Body}")})";
+            return $"(fn{parameters}{type}{(IsPrototype ? null : $" {Body}")})";
         }
     }
 }

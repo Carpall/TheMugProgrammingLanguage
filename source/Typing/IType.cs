@@ -12,7 +12,7 @@ namespace Mug.Typing
 
         internal static IntType Int(int size, bool isSigned) => new(size, isSigned);
 
-        internal static FunctionType Fn(IType[] parameterTypes, IType returnType) => new(parameterTypes, returnType);
+        internal static FunctionType Fn((IType, bool)[] parameterTypes, IType returnType) => new(parameterTypes, returnType);
 
         internal static VoidType Void => new();
 

@@ -11,57 +11,25 @@ using System.Threading.Tasks;
 
 namespace Mug.Semantic
 {
-    // TODO: move in another file with ScopeMemory
-    readonly struct MemoryDetail
-    {
-        public readonly VariableNode Variable;
-
-        public readonly MugValue EvaluatedValue;
-
-        public readonly bool IsGlobal;
-
-        public readonly IType Type;
-
-        public bool IsMutable => Variable.IsMutable;
-
-        public readonly bool IsBuiltin;
-
-        public bool IsAlreadyEvaluated()
-        {
-            return EvaluatedValue.IsValid;
-        }
-
-        public MemoryDetail(VariableNode variable, MugValue evaluatedValue, IType type, bool isGlobal, bool isBuiltin = false)
-        {
-            Variable = variable;
-            EvaluatedValue = evaluatedValue;
-            Type = type;
-            IsGlobal = isGlobal;
-            IsBuiltin = isBuiltin;
-        }
-    }
-
     public class SemanticChecker : CompilerComponent
     {
         private const string EntryPointName = "main";
 
         private NamespaceNode AST { get; set; }
 
-        private Stack<IType> ContextTypes { get; } = new();
+        public List<MemoryDetail> Memory;
 
-        private Stack<Dictionary<string, MemoryDetail>> Scopes { get; } = new();
+        private readonly Queue<Value> _staticParameters = new();
 
-        private IType ContextType => ContextTypes.Peek();
+        private readonly Stack<IType> _contextTypes = new();
 
-        private Dictionary<string, MemoryDetail> ScopeMemory => Scopes.Peek();
+        private readonly List<string> _inProgressMembers = new();
 
+        private IType ContextType => _contextTypes.Peek();
 
-        // indicates whether the current ast's node is in a function's scope, it's false when the walker is located in a sub scope, ['.' indicates the ast walker's position] example: 'fn { . }' -> true, 'fn { const x = { . } }' -> false
-        private bool _isInFirstFunctionBlockScope;
+        private bool SeekType { get; set; }
 
-        private string _contextName;
-
-        private readonly Stack<string> _inProgress = new();
+        private FunctionType CurrentFunctionType { get; set; }
 
         public SemanticChecker(CompilationInstance tower) : base(tower)
         {
@@ -70,499 +38,439 @@ namespace Mug.Semantic
         public void SetAST(NamespaceNode ast)
         {
             AST = ast;
+            Memory = new(ast.Members.Count);
         }
 
-        private void RestoreContextType()
+        private void PushContextType(IType type)
         {
-            ContextTypes.Pop();
+            _contextTypes.Push(type);
         }
 
-        private void MakeContextType(IType type)
+        private void PopContextType()
         {
-            ContextTypes.Push(type);
+            _contextTypes.Pop();
         }
 
         public NamespaceNode Check()
         {
             Reset();
 
-            // TODO: generate all functions exported
-            SetupScope();
-            DeclareGlobals();
-            SetupBuiltins();
-            AnalyzeEntryPoint();
-            RestoreScope(true);
+            DoWithContextType(IType.BadType, () =>
+            {
+                DeclareAllBuiltinMembers();
+                DeclareAllGlobalMembers();
+
+                if (!SearchForInMemory(EntryPointName, out var entryPoint))
+                    CompilationInstance.Throw("Expected entrypoint");
+
+                EvaluateVariable((VariableNode)entryPoint.Value);
+            });
 
             return AST;
         }
 
-        private void SetupBuiltins()
+        private void DoWithContextType(IType type, Action action)
         {
-            DeclareBuiltinInt("u8");
-            DeclareBuiltinInt("u16");
-            DeclareBuiltinInt("u32");
-            DeclareBuiltinInt("u64");
-            DeclareBuiltinInt("i8");
-            DeclareBuiltinInt("i16");
-            DeclareBuiltinInt("i32");
-            DeclareBuiltinInt("i64");
-
-            DeclareBuiltin("chr", IType.Char);
-            DeclareBuiltin("void", IType.Void);
-
-            DeclareBuiltin("type", IType.Type);
-
-            void DeclareBuiltinInt(string name)
-            {
-                DeclareBuiltin(name, IntType(name));
-            }
-
-            static IntType IntType(string name)
-            {
-                return IType.Int(int.Parse(name[1..]), name[0] == 'i');
-            }
+            PushContextType(type);
+            action();
+            PopContextType();
         }
 
-        private void DeclareBuiltin(string name, IType type)
+        private T DoWithContextType<T>(IType type, Func<T> action)
         {
-            ScopeMemory.Add(name, new(
-                variable: null,
-                evaluatedValue: new(IType.Type, type, true),
-                type: IType.Type,
-                isGlobal: true,
-                isBuiltin: true));
-        }
-
-        private void SetupScope()
-        {
-            Scopes.Push(GetGlobalMemoryDetailsInScopeMemory());
-            _isInFirstFunctionBlockScope = true;
-        }
-
-        private Dictionary<string, MemoryDetail> GetGlobalMemoryDetailsInScopeMemory()
-        {
-            var scopeMemory = Scopes.Count > 0 ? ScopeMemory : new();
-            var result = new Dictionary<string, MemoryDetail>();
-
-            foreach (var memoryDetail in scopeMemory)
-                if (memoryDetail.Value.IsGlobal)
-                    result.Add(memoryDetail.Key, memoryDetail.Value);
-
+            PushContextType(type);
+            var result = action();
+            PopContextType();
             return result;
         }
 
-        private void AnalyzeEntryPoint()
+        private void EvaluateVariable(VariableNode variable, bool isStatic = false)
         {
-            if (MemoryContainsDefinitionFor(EntryPointName, out var definition))
-                AnalyzeVariable(definition.Variable, true);
-            else
-                CompilationInstance.Throw("Missing entry point");
-        }
-
-        private void DeclareGlobals()
-        {
-            foreach (var global in AST.Members)
+            if (isStatic)
             {
-                MaybeReportLetAtTopLevel(global);
-                DeclareVariable(global, MugValue.Invalid, IType.Void, true);
-            }
-        }
-
-        private void FixAndCheckTypes(ref IType expectedType, IType gotType, ModulePosition position)
-        {
-            // infer
-            if (expectedType is AutoType)
-                expectedType = gotType;
-
-            CheckTypes(expectedType, gotType, position);
-        }
-
-        private void DeclareVariable(VariableNode variable, MugValue value, IType type, bool isGlobal)
-        {
-            if (!ScopeMemory.TryAdd(variable.Name, new(variable, value, type, isGlobal)))
-                Tower.Report(variable.Position, $"Variable '{variable.Name}' is already declared");
-        }
-
-
-        private void MaybeReportNonConstantValueForConstantVariable(MugValue value, VariableNode variable)
-        {
-            if (variable.IsConst && !value.IsConst)
-                Tower.Report(variable.Body.Position, $"Expected constant value");
-        }
-
-        private void MaybeReportLetAtTopLevel(VariableNode variable)
-        {
-            if (!variable.IsConst)
-                Tower.Report(variable.Position, $"'let' not allowed at top level");
-        }
-
-        private IType EvaluateType(ref INode type)
-        {
-            if (type is null)
-                return IType.BadType;
-
-            var result = type switch
-            {
-                Token token when token.Kind is TokenKind.Identifier => EvaluateTokenType(ref type, token),
-                BadNode => IType.Auto,
-                _ => ReportUnevaluableType(type.Position)
-            };
-
-            TypeNode(type, result);
-            return result;
-        }
-
-        private IType EvaluateTokenType(ref INode reference, Token token)
-        {
-            var result = EvaluateLocalToken(ref reference, token);
-            if (result.Type is not TypeType)
-            {
-                Tower.Report(token.Position, $"Expected expression of type 'type'");
-                return IType.BadType;
-            }
-
-            return ((MugValue)result.ConstantValue).ConstantValue as IType;
-        }
-
-        private IType ReportUnevaluableType(ModulePosition position)
-        {
-            Tower.Report(position, $"Expression is not a type");
-            return ContextType;
-        }
-
-        private MugValue EvaluateExpression(ref INode node)
-        {
-            var result = node switch
-            {
-                null or BadNode => MugValue.Invalid,
-                Token token => EvaluateToken(ref node, token),
-                FunctionNode func => EvaluateFunction(func),
-                CallNode call => EvaluateCall(call),
-                _ => throw new NotImplementedException(),
-            };
-
-            ExpectNonVoidType(node.Position, result.Type);
-            return result;
-        }
-
-        private MugValue EvaluateCall(CallNode call)
-        {
-            var name = EvaluateExpression(ref call.Name);
-
-            if (!name.IsValid)
-                return MugValue.Invalid;
-
-            if (!name.IsConst)
-                CompilationInstance.Todo("Function pointer call is not implemented yet");
-
-            if (name.Type is not FunctionType)
-            {
-                Tower.Report(call.Name.Position, $"Unable to call object of type '{name.Type}'");
-                return MugValue.Invalid;
-            }
-
-            var function = (FunctionNode)name.ConstantValue;
-
-            AnalyzeCall(function, call);
-
-            return new(EvaluateType(ref function.Type), null, false);
-        }
-
-        private void AnalyzeCall(FunctionNode function, CallNode call)
-        {
-            if (function.ParameterList.Length != call.Parameters.Count)
-            {
-                Tower.Report(call.Parameters.Position, $"Expected '{function.ParameterList.Length}' parameters, got '{call.Parameters.Count}'");
+                EvaluateVariableBody(variable);
                 return;
             }
 
-            for (int i = 0; i < function.ParameterList.Length; i++)
+            if (IsInProgress(variable.Name))
+                return;
+
+            PutInProgress(variable.Name);
+
+            EvaluateVariableBody(variable);
+
+            RemoveFromInProgress(variable.Name);
+        }
+
+        private void EvaluateVariableBody(VariableNode variable)
+        {
+            CheckExpression(variable.Body);
+        }
+
+        private void RemoveFromInProgress(string name) => _inProgressMembers.Remove(name);
+
+        private void PutInProgress(string name) => _inProgressMembers.Add(name);
+
+        private bool IsInProgress(string name) => _inProgressMembers.Contains(name);
+
+        private Value CheckExpression(INode body)
+        {
+            var result = body switch
             {
-                var functionParameter = function.ParameterList[i];
-                var functionParameterType = EvaluateType(ref functionParameter.Type);
+                FunctionNode function => CheckFunction(function),
+                Token token => CheckToken(token),
+                CallNode call => CheckCall(call),
+            };
 
-                var inputParameter = call.Parameters[i];
+            ExpectExpressionWithType(body, result);
 
-                MakeContextType(functionParameterType);
-                var evalautedInputParameter = EvaluateExpression(ref inputParameter);
-                RestoreContextType();
+            return result;
+        }
 
-                call.Parameters[i] = inputParameter;
+        private void ExpectExpressionWithType(INode body, Value result)
+        {
+            if (result.Type is VoidType)
+                Tower.Report(body.Position, $"Expression of type 'void'");
+        }
 
-                if (functionParameter.IsStatic && !evalautedInputParameter.IsConst)
-                    Tower.Report(inputParameter.Position, $"Static parameters require constant values");
+        private Value CheckToken(Token token) => token.Kind is TokenKind.Identifier ? CheckIdentifier(token) : CheckConstant(token);
 
-                CheckTypes(functionParameterType, evalautedInputParameter.Type, inputParameter.Position);
+        private Value CheckIdentifier(Token token)
+        {
+            var detail = GetFromMemory(token.Value, token.Position);
+            if (detail.Value is Value value)
+                return value;
+
+            return new(detail.Type, detail.Value, detail.Value is VariableNode variable && variable.IsConst);
+        }
+
+        private Value CheckConstant(Token token)
+        {
+            var type = TokenKindToType(token);
+            return new(type, ParseConstantFollowingType(token.Value, type), true);
+        }
+
+        private static object ParseConstantFollowingType(string value, IType type) => type switch
+        {
+            IntType => long.Parse(value)
+        };
+
+        private IType TokenKindToType(Token token) => token.Kind switch
+        {
+            TokenKind.ConstantDigit => ContextTypeIntOr(IType.Int(32, true))
+        };
+
+        private IntType ContextTypeIntOr(IntType intType) => ContextType is IntType t ? t : intType;
+
+        private Value CheckFunction(FunctionNode function)
+        {
+            TypeNode(function, MakeFunctionType(function, out var returnType));
+
+            if (!SeekType)
+                CheckFunctionBody(function, returnType);
+
+            return new(function.NodeType, function, true);
+        }
+
+        private void CheckFunctionBody(FunctionNode function, IType returnType)
+        {
+            CurrentFunctionType = (FunctionType)function.NodeType;
+            DeclareParameters(function.ParameterList);
+            CheckStatements(function.Body);
+        }
+
+        private void CheckStatements(BlockNode body)
+        {
+            foreach (var statement in body.Statements)
+                CheckStatement(statement);
+        }
+
+        private void CheckStatement(INode statement)
+        {
+            switch (statement)
+            {
+                case CallNode call:
+                    CheckCall(call);
+                    break;
+                case VariableNode variable:
+                    CheckVariable(variable);
+                    break;
+                case ReturnNode ret:
+                    CheckReturn(ret);
+                    break;
             }
         }
 
-        private MugValue EvaluateFunction(FunctionNode func)
+        private void CheckReturn(ReturnNode ret)
         {
-            SetupScope();
-            var fnType = IType.Fn(EvaluateParameterTypes(func.ParameterList), EvaluateType(ref func.Type));
-
-            MakeContextType(fnType.ReturnType);
-            AnalyzeFunctionBody(func.Body);
-            RestoreContextType();
-            RestoreScope(true);
-
-            TypeNode(func, fnType);
-            return new(fnType, func, true);
+            DoWithContextType(CurrentFunctionType.ReturnType, () =>
+            {
+                var value = !ret.IsVoid() ? CheckExpression(ret.Body) : new(IType.Void, null, true);
+                CheckTypes(CurrentFunctionType.ReturnType, value.Type, ret.Body.Position);
+            });
         }
+
+        private void CheckVariable(VariableNode variable)
+        {
+            if (variable.IsConst)
+                CompilationInstance.Todo("implement const in local scope");
+
+            var explicitType = EvaluateType(variable.Type);
+            var body = DoWithContextType(explicitType, () => CheckExpression(variable.Body));
+            var type = RealTypeOr(explicitType, body.Type);
+
+            CheckTypes(type, body.Type, variable.Body.Position);
+
+            TypeNode(variable, type);
+            DeclareLocalMember(variable.Name, variable.IsMutable, variable.NodeType, variable.Position);
+        }
+
+        private static IType RealTypeOr(IType type, IType or) => type is not AutoType ? type : or;
+
+        private void DeclareLocalMember(string name, bool isMutable, IType type, ModulePosition position) =>
+            DeclareMember(new(name, isMutable, null, type, false), position);
+
+        private Value CheckCall(CallNode call)
+        {
+            var variable = SearchForVariable(call.Name);
+            if (variable is null)
+                return Value.Invalid;
+
+            var type = GetTypeVariable(variable);
+            if (type is not FunctionType fnType)
+                return ReportNonFunctionType(call);
+
+            if (fnType.ParameterTypes.Length != call.Parameters.Count)
+                return ReportWrongNumberOfParameter(call, fnType);
+
+            var canCall = true;
+
+            for (int i = 0; i < call.Parameters.Count; i++)
+            {
+                var parameter = call.Parameters[i];
+                var parameterExpression = CheckExpressionWithContextType(call.Parameters[i], fnType.ParameterTypes[i].Type);
+
+                CheckTypes(fnType.ParameterTypes[i].Type, parameterExpression.Type, parameter.Position);
+                PushStaticParameter(ref canCall, fnType.ParameterTypes[i].IsStatic, parameter.Position, parameterExpression);
+            }
+
+            if (canCall)
+                EvaluateVariable(variable, IsStatic(fnType));
+
+            return new(fnType.ReturnType, null, false);
+        }
+
+        private Value ReportWrongNumberOfParameter(CallNode call, FunctionType fnType)
+        {
+            Tower.Report(call.Parameters.Position, $"Expected '{fnType.ParameterTypes.Length}' parameters, got '{call.Parameters.Count}'");
+            return Value.Invalid;
+        }
+
+        private Value ReportNonFunctionType(CallNode call)
+        {
+            Tower.Report(call.Name.Position, $"Expected expression of type 'fn'");
+            return Value.Invalid;
+        }
+
+        private static bool IsStatic(FunctionType fnType)
+        {
+            foreach (var parameter in fnType.ParameterTypes)
+                if (parameter.IsStatic)
+                    return true;
+
+            return false;
+        }
+
+        private void PushStaticParameter(ref bool canCall, bool isStatic, ModulePosition position, Value parameterExpression)
+        {
+            if (parameterExpression.IsConst)
+                PushStaticParameter(parameterExpression);
+            else if (isStatic)
+            {
+                Tower.Report(position, "'static' parameter requires constant value");
+                canCall = false;
+            }
+        }
+
+        private void PushStaticParameter(Value staticParameter)
+        {
+            _staticParameters.Enqueue(staticParameter);
+        }
+
+        private Value CheckExpressionWithContextType(INode node, IType type)
+        {
+            Value result = default;
+            DoWithContextType(type, () => { result = CheckExpression(node); });
+            return result;
+        }
+
+        private void CheckTypes(IType expected, IType got, ModulePosition position)
+        {
+            if (expected is AutoType or BadType
+                || got is AutoType or BadType
+                || expected.Equals(got))
+                return;
+
+            Tower.Report(position, $"Types mismatch: expected '{expected}', got '{got}'");
+        }
+
+        private IType GetTypeVariable(VariableNode variable)
+        {
+            var t = EvaluateType(variable.Type);
+            if (t is AutoType)
+                t = CheckTypeExpression(variable.Body);
+
+            return t;
+        }
+
+        private IType CheckTypeExpression(INode body)
+        {
+            var previous = SetSeekType(true);
+            var result = CheckExpression(body);
+            SetSeekType(previous);
+            return result.Type;
+        }
+
+        private bool SetSeekType(bool seekType)
+        {
+            var result = SeekType;
+            SeekType = seekType;
+            return result;
+        }
+
+        private VariableNode SearchForVariable(INode name) => (VariableNode)CheckExpression(name).ConstantValue;
 
         private static void TypeNode(INode node, IType type)
         {
             node.TypeNode(type);
         }
 
-        private void AnalyzeFunctionBody(BlockNode body)
+        private void DeclareParameters(ParameterNode[] parameterList)
         {
-            for (int i = 0; i < body.Statements.Count; i++)
+            foreach (var parameter in parameterList)
+                DeclareParameter(parameter.Name, EvaluateType(parameter.Type), parameter.IsStatic, parameter.Position);
+        }
+
+        private Value GetStaticParameter()
+        {
+            var tmp = _staticParameters.Dequeue();
+            return new(tmp.Type, tmp.ConstantValue, true);
+        }
+
+        private void DeclareParameter(string name, IType type, bool isStatic, ModulePosition position)
+        {
+            DeclareMember(new(name, false, isStatic ? GetStaticParameter() : null, type, false), position);
+        }
+
+        private bool SearchForInMemory(string name, out MemoryDetail detail)
+        {
+            foreach (var obj in Memory)
+                if (obj.Name == name)
+                {
+                    detail = obj;
+                    return true;
+                }
+
+            detail = default;
+            return false;
+        }
+
+        private void DeclareAllBuiltinMembers()
+        {
+            DeclareBuiltinMember("void", IType.Void);
+
+            DeclareBuiltinMember("u8", IType.Int(8, false));
+            DeclareBuiltinMember("u16", IType.Int(16, false));
+            DeclareBuiltinMember("u32", IType.Int(32, false));
+            DeclareBuiltinMember("u64", IType.Int(64, false));
+
+            DeclareBuiltinMember("i8", IType.Int(8, true));
+            DeclareBuiltinMember("i16", IType.Int(16, true));
+            DeclareBuiltinMember("i32", IType.Int(32, true));
+            DeclareBuiltinMember("i64", IType.Int(64, true));
+        }
+
+        private void DeclareBuiltinMember(string name, IType value) =>
+            DeclareMember(new(name, false, value, IType.Type, true), default);
+
+        private void DeclareAllGlobalMembers() => AST.Members.ForEach(member => DeclareGlobalMember(member));
+
+        private void DeclareGlobalMember(VariableNode member)
+        {
+            ExpectConstantVariable(member);
+
+            var type = EvaluateType(member.Type);
+            DeclareMember(new(member.Name, false, member, type is AutoType ? CheckTypeExpression(member.Body) : type, true), member.Position);
+        }
+
+        private void ExpectConstantVariable(VariableNode member)
+        {
+            if (!member.IsConst)
+                Tower.Report(member.Position, $"'let' at top level is not allowed");
+        }
+
+        private IType EvaluateType(INode type) => type switch
+        {
+            Token token => EvaluateTypeToken(token),
+            BadNode => IType.Auto
+        };
+
+        private IType EvaluateTypeToken(Token token) => token.Kind switch
+        {
+            TokenKind.Identifier => GetTypeFromMemoryObjectOrReport(GetFromMemory(token.Value, token.Position), token.Position)
+        };
+
+        private IType GetTypeFromMemoryObjectOrReport(MemoryDetail memoryObject, ModulePosition position)
+        {
+            if (memoryObject.Type is not TypeType)
             {
-                var statement = body.Statements[i];
-                AnalyzeStatement(ref statement, i == body.Statements.Count - 1);
-                body.Statements[i] = statement;
+                Tower.Report(position, $"Expected expression of type 'type'");
+                return memoryObject.Type;
             }
+
+            return (IType)memoryObject.Value;
         }
 
-        private void AnalyzeStatement(ref INode statement, bool isLast)
+        private MemoryDetail GetFromMemory(string value, ModulePosition position)
         {
-            switch (statement)
-            {
-                case VariableNode var:
-                    AnalyzeVariable(var);
-                    break;
-                case CallNode call when !isLast || ContextType is VoidType:
-                    EvaluateCall(call);
-                    break;
-                default:
-                    AnalyzeExpression(ref statement, isLast);
-                    break;
-            }
+            foreach (var obj in Memory)
+                if (obj.Name == value)
+                    return obj;
+
+            Tower.Report(position, $"'{value}' not declared");
+            return MemoryDetail.Undeclared;
         }
 
-        private void AnalyzeExpression(ref INode statement, bool isLast)
+        private FunctionType MakeFunctionType(FunctionNode func, out IType returnType) =>
+            new(ExtractTypesFromParameters(func.ParameterList), returnType = EvaluateType(func.Type));
+
+        private (IType, bool)[] ExtractTypesFromParameters(ParameterNode[] parameterList)
         {
-            MaybeReportExpressionNotLastInBlock(isLast, statement.Position);
-            var value = EvaluateExpression(ref statement);
-            LowerImplicitReturn(ref statement);
-            CheckTypes(ContextType, value.Type, statement.Position);
-        }
-
-        private void MaybeReportExpressionNotLastInBlock(bool isLast, ModulePosition position)
-        {
-            if (!isLast)
-                Tower.Report(position, $"Expressions must be located at the end of the block");
-        }
-
-        private void CheckTypes(IType expectedType, IType gotType, ModulePosition position)
-        {
-            // bad type is automatically skipped because it doesn't need to be checked: badtypes are already reported when occurred and it's ugly to see 'types mismatch: type badtype'
-            if (expectedType is BadType || gotType is BadType)
-                return;
-
-            // checking the type's compatibility
-            if (!gotType.Equals(expectedType))
-                Tower.Report(position, $"Types mismatch: expected '{expectedType}', got '{gotType}'");
-        }
-
-        private void LowerImplicitReturn(ref INode statement)
-        {
-            if (!_isInFirstFunctionBlockScope)
-                return;
-
-            statement = new ReturnNode
-            {
-                Body = statement,
-                Position = statement.Position
-            };
-        }
-
-        private void AnalyzeVariable(VariableNode variable, bool redeclare = false)
-        {
-            if (!redeclare & variable.IsConst)
-                CompilationInstance.Todo("const is not allowed in local yet");
-
-            SetupContextName(variable.Name);
-
-            var type = EvaluateType(ref variable.Type);
-            ExpectNonVoidType(variable.Type.Position, type);
-
-            MakeContextType(type);
-            var value = EvaluateExpression(ref variable.Body);
-            RestoreContextType();
-
-            FixAndCheckTypes(ref type, value.Type, variable.Body.Position);
-
-            MaybeReportNonConstantValueForConstantVariable(value, variable);
-            MaybeReportSpecialValueForNonConstantVariable(value, variable);
-
-            if (redeclare)
-                RedeclareVariable(variable, value, type , redeclare);
-            else
-                DeclareVariable(variable, value, type, redeclare);
-
-            TypeNode(variable, type);
-        }
-
-        private static void SetupContextName(string name)
-        {
-            _contextName = name;
-        }
-
-        private void ExpectNonVoidType(ModulePosition position, IType type)
-        {
-            if (type is VoidType)
-                Tower.Report(position, $"Expected non void type");
-        }
-
-        private void RedeclareVariable(VariableNode variable, MugValue value, IType type, bool isGlobal)
-        {
-            ScopeMemory[variable.Name] = new(variable, value, type, isGlobal);
-        }
-
-        private void MaybeReportSpecialValueForNonConstantVariable(MugValue value, VariableNode variable)
-        {
-            if (!variable.IsConst & value.IsSpecial())
-                Tower.Report(variable.Body.Position, $"Type '{value.Type}' requires a 'const' context");
-        }
-
-        private void MakeScope(out bool wasInFirstFunctionBlockScope)
-        {
-            Scopes.Push(new(ScopeMemory));
-            wasInFirstFunctionBlockScope = _isInFirstFunctionBlockScope;
-            _isInFirstFunctionBlockScope = false;
-        }
-
-        private void RestoreScope(bool wasInFirstFunctionBlockScope)
-        {
-            Scopes.Pop();
-            _isInFirstFunctionBlockScope = wasInFirstFunctionBlockScope;
-        }
-
-        private IType[] EvaluateParameterTypes(ParameterNode[] parameters)
-        {
-            var result = new IType[parameters.Length];
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                var parameter = parameters[i];
-                var variableFromParameter = GetVariableFromParameter(parameter);
-                var parameterValue = new MugValue(EvaluateType(ref variableFromParameter.Type), null, false);
-
-                DeclareVariable(variableFromParameter, parameterValue, parameterValue.Type, false);
-                result[i] = EvaluateType(ref parameter.Type);
-            }
+            var result = new (IType, bool)[parameterList.Length];
+            for (int i = 0; i < parameterList.Length; i++)
+                result[i] = (EvaluateType(parameterList[i].Type), parameterList[i].IsStatic);
 
             return result;
         }
 
-        private static VariableNode GetVariableFromParameter(ParameterNode parameter)
+        private void DeclareMember(MemoryDetail obj, ModulePosition position)
         {
-            return new VariableNode
+            Memory.ForEach(o =>
             {
-                IsMutable = false,
-                IsConst = false,
-                Name = parameter.Name,
-                Type = parameter.Type,
-                Position = parameter.Position
-            };
-        }
+                if (o.Name == obj.Name)
+                    Tower.Report(position, $"'{obj.Name}' declared multiple times");
+            });
 
-        private MugValue EvaluateToken(ref INode reference, Token token)
-        {
-            if (token.Kind is TokenKind.Identifier)
-                return EvaluateLocalToken(ref reference, token);
-
-            var type = GetTypeFromConstantTokenKind(token.Kind);
-            TypeNode(token, type);
-            return new(type, token.Value, true);
-        }
-
-        private MugValue EvaluateLocalToken(ref INode reference, Token token)
-        {
-            var definitionNullable = GetDefinition(token.Value, token.Position);
-            if (!definitionNullable.HasValue)
-                return MugValue.Invalid;
-
-            var definition = definitionNullable.Value;
-
-            if (definition.Variable?.IsConst ?? false)
-            {
-                reference = definition.Variable.Body;
-                return EvaluateExpression(ref definition.Variable.Body);
-            }
-
-            if (IsInProgress(token.Value))
-                return new(definition.Type, definition.EvaluatedValue, definition.Variable?.IsConst ?? true);
-
-            MakeInProgress(token.Value);
-
-            if (!definition.IsAlreadyEvaluated() & !definition.IsBuiltin)
-                EvaluateDefinition(ref definition);
-
-            PopInProgress();
-
-            return new(definition.Type, definition.EvaluatedValue, definition.Variable?.IsConst ?? true);
-        }
-
-        private void EvaluateDefinition(ref MemoryDetail definition)
-        {
-            AnalyzeVariable(definition.Variable, true);
-
-            var newDefinition = GetDefinition(definition.Variable.Name, definition.Variable.Position).Value;
-
-            definition = new(null, newDefinition.EvaluatedValue, newDefinition.Type, true);
-        }
-
-        private string GetContextName()
-        {
-            return _contextName;
-        }
-
-        private void PopInProgress()
-        {
-            _inProgress.Pop();
-        }
-
-        private void MakeInProgress(string name)
-        {
-            _inProgress.Push(name);
-        }
-
-        private bool IsInProgress(string name)
-        {
-            return _inProgress.TryPeek(out var inProgress) && inProgress == name;
-        }
-
-        private MemoryDetail? GetDefinition(string value, ModulePosition position)
-        {
-            if (MemoryContainsDefinitionFor(value, out var variable))
-                return variable;
-
-            Tower.Report(position, $"Variable '{value}' is not declared");
-            return null;
-        }
-
-        private bool MemoryContainsDefinitionFor(string value, out MemoryDetail result)
-        {
-            return ScopeMemory.TryGetValue(value, out result);
-        }
-
-        private IType GetTypeFromConstantTokenKind(TokenKind kind)
-        {
-            return kind switch
-            {
-                TokenKind.ConstantDigit => IntContextTypeOr(IType.Int(32, true))
-            };
-        }
-
-        private IntType IntContextTypeOr(IntType ortype)
-        {
-            return ContextType is IntType type ? type : ortype;
+            Memory.Add(obj);
         }
 
         private void Reset()
         {
+            _staticParameters.Clear();
+            _contextTypes.Clear();
+            _inProgressMembers.Clear();
+            SeekType = false;
+            CurrentFunctionType = default;
         }
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Mug.Typing.Values
 {
-    public readonly struct MugValue
+    public readonly struct Value
     {
         public readonly IType Type;
 
@@ -18,7 +18,7 @@ namespace Mug.Typing.Values
 
         public readonly bool IsSpecial() => Type is TypeType;
 
-        internal MugValue(IType type, object constantValue, bool isConst, bool isValid = true)
+        internal Value(IType type, object constantValue, bool isConst, bool isValid = true)
         {
             Type = type;
             ConstantValue = constantValue;
@@ -26,6 +26,6 @@ namespace Mug.Typing.Values
             IsValid = isValid;
         }
 
-        internal static MugValue Invalid => new(IType.BadType, null, false, false);
+        internal static Value Invalid => new(IType.BadType, null, false, false);
     }
 }

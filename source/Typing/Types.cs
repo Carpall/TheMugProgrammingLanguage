@@ -73,10 +73,10 @@ namespace Mug.Typing
 
     public struct FunctionType : IType
     {
-        public IType[] ParameterTypes { get; }
+        public (IType Type, bool IsStatic)[] ParameterTypes { get; }
         public IType ReturnType { get; }
 
-        public FunctionType(IType[] parameterTypes, IType returnType)
+        public FunctionType((IType, bool)[] parameterTypes, IType returnType)
         {
             ParameterTypes = parameterTypes;
             ReturnType = returnType;
@@ -89,7 +89,11 @@ namespace Mug.Typing
 
         public override string ToString()
         {
-            return $"fn({string.Join<IType>(", ", ParameterTypes)}): {ReturnType}";
+            var parameters = new StringBuilder();
+            foreach (var parameter in ParameterTypes)
+                parameters.Append((parameter.IsStatic ? "static " : "") + parameter.Type);
+
+            return $"fn({parameters}): {ReturnType}";
         }
     }
 

@@ -1,5 +1,7 @@
-const a = fn(static c: i32) { }
+const y = fn(): i32 {
+  return
+}
 
 const main = fn {
-  a(1)
+  let x = y()
 }
