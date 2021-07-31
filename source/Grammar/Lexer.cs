@@ -457,6 +457,8 @@ namespace Mug.Grammar
                 case "<=": add(TokenKind.BooleanLEQ); break;
                 case ">=": add(TokenKind.BooleanGEQ); break;
                 case "..": add(TokenKind.RangeDots); break;
+                case "(.": add(TokenKind.OpenPragmaList); break;
+                case ".)": add(TokenKind.ClosePragmaList); break;
                 default: AddSingle(GetSingle(current), current.ToString()); break;
             }
 

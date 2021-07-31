@@ -4,7 +4,7 @@ const Vector = std.coll.FixedArray
 
 const Randomizer = std.int.Randomizer
 
-fn main {
+const main = fn {
   let x = {
     let mut random = Randomizer(u32).create()
 

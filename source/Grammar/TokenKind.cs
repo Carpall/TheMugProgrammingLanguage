@@ -97,10 +97,6 @@ namespace Mug.Grammar
         RangeDots = -25,
         [Description("as")]
         KeyAs = -26,
-        [Description("or")]
-        BooleanOR = -46,
-        [Description("and")]
-        BooleanAND = -45,
         [Description("continue")]
         KeyContinue = -27,
         [Description("break")]
@@ -136,6 +132,14 @@ namespace Mug.Grammar
         [Description("struct")]
         KeyStruct = -46,
         [Description("static")]
-        KeyStatic = -47
+        KeyStatic = -47,
+        [Description("(.")]
+        OpenPragmaList = -48,
+        [Description(".)")]
+        ClosePragmaList = -49,
+        [Description("or")]
+        BooleanOR = -50,
+        [Description("and")]
+        BooleanAND = -51,
     }
 }

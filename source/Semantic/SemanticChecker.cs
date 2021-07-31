@@ -63,7 +63,15 @@ namespace Mug.Semantic
                 if (!SearchForInMemory(EntryPointName, out var entryPoint))
                     CompilationInstance.Throw("Expected entrypoint");
 
-                EvaluateVariable((VariableNode)entryPoint.Value);
+                var main = (VariableNode)entryPoint.Value;
+
+                EvaluateVariable(main);
+
+                if (
+                    main.NodeType is not FunctionType fnType
+                    || fnType.ParameterTypes.Length > 0
+                    || fnType.ReturnType is not VoidType)
+                    Tower.Report(main.Position, $"Entrypoint must be of type 'fn(): void'");
             });
 
             return AST;
@@ -104,7 +112,7 @@ namespace Mug.Semantic
 
         private void EvaluateVariableBody(VariableNode variable)
         {
-            CheckExpression(variable.Body);
+            DoWithMemoryConfiguration(() => TypeNode(variable, CheckExpression(variable.Body).Type));
         }
 
         private void RemoveFromInProgress(string name) => _inProgressMembers.Remove(name);
@@ -177,6 +185,30 @@ namespace Mug.Semantic
             CurrentFunctionType = (FunctionType)function.NodeType;
             DeclareParameters(function.ParameterList);
             CheckStatements(function.Body);
+        }
+
+        private void DoWithMemoryConfiguration(Action action)
+        {
+            var old = ConfigureMemory();
+            action();
+            RestoreMemory(old);
+        }
+
+        private void RestoreMemory(List<MemoryDetail> old)
+        {
+            Memory = old;
+        }
+
+        private List<MemoryDetail> ConfigureMemory()
+        {
+            var old = Memory;
+            Memory = new();
+
+            foreach (var detail in old)
+                if (detail.IsGlobal)
+                    Memory.Add(detail);
+
+            return old;
         }
 
         private void CheckStatements(BlockNode body)
@@ -397,6 +429,9 @@ namespace Mug.Semantic
 
         private void DeclareGlobalMember(VariableNode member)
         {
+            if (member is null)
+                return;
+
             ExpectConstantVariable(member);
 
             var type = EvaluateType(member.Type);
@@ -412,6 +447,7 @@ namespace Mug.Semantic
         private IType EvaluateType(INode type) => type switch
         {
             Token token => EvaluateTypeToken(token),
+            FunctionNode function => MakeFunctionType(function, out _),
             BadNode => IType.Auto
         };
 

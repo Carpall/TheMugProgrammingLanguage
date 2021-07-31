@@ -1,15 +1,15 @@
 const undefined = import!("std").unsafe.undefined
 
-pub fn Option(
+pub const Option = fn(
   static T: type
 ): type {
   union {
     Some: T, None: u8
 
-    pub fn is_some(self: Option(T)): bool { self is Some }
-    pub fn is_none(self: Option(T)): bool { self is None }
+    pub const is_some = fn(self: Option(T)): bool { self is Some }
+    pub const is_none = fn(self: Option(T)): bool { self is None }
 
-    pub fn unwrap(self: Option(T)): T {
+    pub const unwrap = fn(self: Option(T)): T {
       if self.is_none() {
         panic!("Unwrapped 'None'")
       }
@@ -17,11 +17,11 @@ pub fn Option(
       self.unsafe_unwrap()
     }
 
-    pub fn contains(self: Option(T), value: T): bool {
+    pub const contains = fn(self: Option(T), value: T): bool {
       self.is_some() and self.unsafe_unwrap() == value
     }
 
-    pub fn expect(self: Option(T), err: str): T {
+    pub const expect = fn(self: Option(T), err: str): T {
       if self.is_none() {
         panic!("{}", err)
       }
@@ -29,21 +29,21 @@ pub fn Option(
       self.unsafe_unwrap()
     }
 
-    pub fn unwrap_or(self: Option(T), or_value: T): T {
+    pub const unwrap_or = fn(self: Option(T), or_value: T): T {
       if self.is_some() { self.unsafe_unwrap() } else { or_value }
     }
 
-    pub fn unsafe_unwrap(self: Option(T)): T {
+    pub const unsafe_unwrap = fn(self: Option(T)): T {
       self as Some
     }
   }
 }
 
-pub fn Some(value: untyped): Option(typeof!(value)) {
+pub const Some = fn(value: untyped): Option(typeof!(value)) {
   Option(typeof!(value)).Some(value)
 }
 
-fn get_option_base_type(): type {
+const get_option_base_type = fn(): type {
   const context_type = caller!().context_type
 
   if context_type.get_element_type() == bad_type!() or
@@ -55,34 +55,34 @@ fn get_option_base_type(): type {
   }
 }
 
-pub fn None(
+pub const None = fn(
   static optionType: type = static get_option_base_type()
 ): Option(optionType) {
   Option(optionType).None()
 }
 
-test "some" {
+(. test .) const some = fn {
   let mut x = Some(10)
   x = Some(1)
   assert!(x.unwrap() == 1)
 }
 
-test "none" {
+(. test .) const none = fn {
   let x: Option(i32) = None()
   assert!(x.is_none())
 }
 
-test "none explicit" {
+(. test .) const none_explicit = fn {
   let x = None(i32)
   assert!(!x.is_some())
 }
 
-test "some contains" {
+(. test .) const some_contains = fn {
   let x = Some(1)
   assert!(x.contains(1))
 }
 
-test "some expect" {
+(. test .) const some_expect = fn {
   let x = Some(1)
   let y = x.expect("unwrapping 1")
 }

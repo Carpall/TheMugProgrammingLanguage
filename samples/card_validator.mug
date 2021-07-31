@@ -8,7 +8,7 @@ const Result = std.result.Result
 const NoErr = std.result.NoErr
 const Err = std.result.Err
 
-fn check_number(num: str): Result(NoErr, void) {
+const check_number = fn(num: str): Result(NoErr, void) {
   let mut i: usize = 0
 
   while i < num.len {
@@ -18,7 +18,7 @@ fn check_number(num: str): Result(NoErr, void) {
   }
 }
 
-fn to_single(twodigit: u32): u32 {
+const to_single = fn(twodigit: u32): u32 {
   let single: u32 = 0
   while twodigit != 0 {
     single += twodigit % 10
@@ -28,7 +28,7 @@ fn to_single(twodigit: u32): u32 {
   single
 }
 
-fn identify(chunk: str): str {
+const identify = fn(chunk: str): str {
   let two = parse(u32, chunk[0..2])
   let three = parse(u32, chunk[0..3])
   let four = parse(u32, chunk)
@@ -44,12 +44,12 @@ fn identify(chunk: str): str {
   }
 }
 
-|return: false| fn error(msg: str) {
+(. return: false .) const error = fn(msg: str) {
   println!("Error: {}", msg)
   exit(1)
 }
 
-fn main {
+const main = fn {
   let num = io.readln("↓ Enter the card number ↓")
 
   check_number(num).catch!({ error("Invalid card") })

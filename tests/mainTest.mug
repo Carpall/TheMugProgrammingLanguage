@@ -1,7 +1,0 @@
-const y = fn(): i32 {
-  return
-}
-
-const main = fn {
-  let x = y()
-}

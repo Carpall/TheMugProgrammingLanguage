@@ -25,7 +25,7 @@ const Account = struct {
   pub let username: str
   pub let password: sha256.SHA
 
-  pub fn create(username: str, password: sha256.SHA): Self {
+  pub const create = fn(username: str, password: sha256.SHA): Self {
     new { username: username, password: password }
   }
 }
@@ -34,14 +34,14 @@ const Login = struct {
   let accounts: Vector(Account)
   let mut current: *Account
 
-  pub fn login(self: Self, ) {
+  pub const login = fn(self: Self, ) {
     for account in self.accounts {
 
     }
   }
 }
 
-fn get_menu_option(): u8 {
+const get_menu_option = fn(): u8 {
   io.write(menu_message)
 
   while true {
@@ -57,11 +57,11 @@ fn get_menu_option(): u8 {
   }
 }
 
-|return: false| fn exit {
+(. return: false .) const exit = fn {
   std.process.exit(0)
 }
 
-fn manage_option(option: u8): bool {
+const manage_option = fn(option: u8): bool {
   let mut login = Login.create()
 
   match option {
@@ -71,7 +71,7 @@ fn manage_option(option: u8): bool {
   }
 }
 
-fn main {
+const main = fn {
   while true {
     manage_option(get_menu_option())
   }

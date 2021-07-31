@@ -20,7 +20,9 @@ namespace Mug.Syntax
 
         private Pragmas _pragmas = null;
 
-        private ImmutableArray<TokenKind>.Builder _modifiers = ImmutableArray.CreateBuilder<TokenKind>(2);
+        private readonly ImmutableArray<TokenKind>.Builder _modifiers = ImmutableArray.CreateBuilder<TokenKind>(2);
+
+        private bool ExpectingType { get; set; }
 
         public void SetTokens(ImmutableArray<Token> tokens)
         {
@@ -149,28 +151,16 @@ namespace Mug.Syntax
             return match;
         }
 
-        private Token ExpectConstant(string error)
-        {
-            var match = MatchConstantAdvance();
-
-            if (match)
-                return Back;
-
-            Report(error);
-
-            return new();
-        }
-
-        private ParameterNode ExpectParameter(int count)
+        private ParameterNode ExpectParameter(int count, bool expectIdentifier = true)
         {
             if (count > 0)
                 Expect(TokenKind.Comma);
 
             var isStatic = MatchAdvance(TokenKind.KeyStatic);
-            var name = Expect(TokenKind.Identifier);
+            var name = expectIdentifier ? Expect(TokenKind.Identifier) : default;
             var result = new ParameterNode(null, name.Value, CreateBadNode(), isStatic, name.Position);
 
-            if (MatchAdvance(TokenKind.Colon))
+            if (!expectIdentifier | MatchAdvance(TokenKind.Colon))
                 result.Type = ExpectType();
 
             return result;
@@ -602,7 +592,11 @@ namespace Mug.Syntax
 
         private INode ExpectType(params TokenKind[] end)
         {
-            return ExpectExpression(false, false, false, false, end);
+            var old = ExpectingType;
+            ExpectingType = true;
+            var result = ExpectExpression(false, false, false, false, end);
+            ExpectingType = old;
+            return result;
         }
 
         private INode ExpectExpression(
@@ -936,11 +930,11 @@ namespace Mug.Syntax
 
         private ParameterNode[] ExpectParameterListDeclaration(ModulePosition position, out INode type)
         {
-            type = Token.NewInfo(TokenKind.Identifier, "void", position);
+            type = GetVoidReturnType(position);
 
             if (Match(TokenKind.OpenBrace))
                 return Array.Empty<ParameterNode>();
-            
+
             Expect(TokenKind.OpenPar);
 
             var parameters = new List<ParameterNode>();
@@ -949,13 +943,23 @@ namespace Mug.Syntax
             while (!MatchAdvance(TokenKind.ClosePar))
                 parameters.Add(ExpectParameter(count++));
 
-            if (MatchAdvance(TokenKind.Colon))
-                type = ExpectType();
+            CollectReturnType(ref type);
 
             var result = parameters.ToArray();
             FixImplicitlyTypedParameters(ref result);
 
             return result;
+        }
+
+        private static Token GetVoidReturnType(ModulePosition position)
+        {
+            return Token.NewInfo(TokenKind.Identifier, "void", position);
+        }
+
+        private void CollectReturnType(ref INode type)
+        {
+            if (MatchAdvance(TokenKind.Colon))
+                type = ExpectType();
         }
 
         private void FixImplicitlyTypedParameters(ref ParameterNode[] parameters)
@@ -1027,7 +1031,10 @@ namespace Mug.Syntax
             if (!MatchAdvance(TokenKind.KeyFunc, out var key)) // <func>
                 return false;
 
-            var parameters = ExpectParameterListDeclaration(key.Position, out var type); // func name<(..)>
+            var parameters =
+                ExpectingType ?
+                    ExpectParameterTypesList(key.Position, out var type) :
+                    ExpectParameterListDeclaration(key.Position, out type); // func name<(..)>
 
             var prototype = new FunctionNode
             {
@@ -1041,6 +1048,23 @@ namespace Mug.Syntax
 
             node = prototype;
             return true;
+        }
+
+        private ParameterNode[] ExpectParameterTypesList(ModulePosition position, out INode type)
+        {
+            type = GetVoidReturnType(position);
+            var result = new List<ParameterNode>();
+            var count = 0;
+
+            Expect(TokenKind.OpenPar);
+
+
+            while (!MatchAdvance(TokenKind.ClosePar))
+                result.Add(ExpectParameter(count++, false));
+
+            CollectReturnType(ref type);
+
+            return result.ToArray();
         }
 
         private FieldNode ExpectFieldDefinition()
@@ -1205,7 +1229,7 @@ namespace Mug.Syntax
 
         private void CollectPragmas()
         {
-            if (!MatchAdvance(TokenKind.OpenBracket))
+            if (!MatchAdvance(TokenKind.OpenPragmaList))
                 return;
 
             _pragmas = new();
@@ -1214,12 +1238,12 @@ namespace Mug.Syntax
             {
                 var name = Expect(TokenKind.Identifier);
                 var value = MatchAdvance(TokenKind.Colon) ?
-                    ExpectConstant("Non-constant expressions not allowed in pragmas") : Token.NewInfo(TokenKind.ConstantBoolean, "true");
+                    ExpectExpression() : Token.NewInfo(TokenKind.ConstantBoolean, "true");
 
                 _pragmas.SetPragma(name.Value, value, Tower, name.Position);
             } while (MatchAdvance(TokenKind.Comma));
 
-            Expect(TokenKind.CloseBracket);
+            Expect(TokenKind.ClosePragmaList);
         }
 
         private void CollectModifiers()

@@ -1,9 +1,9 @@
 const Shape = struct(GameObject) {
-  pub fn from(pos: Position2D): Shape {
+  pub const from = fn(pos: Position2D): Shape {
     new { pos: pos }
   }
 
-  pub fn render(self: Shape) {
+  pub const render = fn(self: Shape) {
   }
 }
 
@@ -11,7 +11,7 @@ const Position2D = struct {
   pub let mut x: f128
   pub let mut y: f128
 
-  pub fn from(x, y: f128): Position2D {
+  pub const from = fn(x, y: f128): Position2D {
     new { x: x, y: y }
   }
 }
@@ -22,7 +22,7 @@ const GameObject = trait {
   pub const render: fn(self)
 }
 
-fn main {
+const main = fn {
   let start_pos = Position2D.from(0, 0)
   let object: GameObject = Shape.from(start_pos)
   let pos = object.pos

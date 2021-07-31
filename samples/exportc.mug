@@ -1,14 +1,14 @@
-|extern: "mug_add"|
-fn add(a, b: i32): i32 { a + b }
+(. export: "mug_add" .)
+const add = fn(a, b: i32): i32 { a + b }
 
-test "add(1, 2)" {
+(. test .) const add_positive = fn {
   assert!(add(1, 2) == 3)
 }
 
-test "add(-1, -1)" {
+(. test .) const add_negatives = fn {
   assert!(add(-1, -1) == -2)
 }
 
-test "add(0, 0)" {
+(. test .) const add_zero = fn {
   assert!(add(0, 0) == 0)
 }
