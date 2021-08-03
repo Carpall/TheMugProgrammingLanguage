@@ -23,6 +23,8 @@ namespace Mug.Semantic
 
         public readonly bool NotFound;
 
+        public bool IsConst => Value is not VariableNode variable || variable.IsConst;
+
         public MemoryDetail(string name, bool isMutable, object value, IType type, bool isGlobal, bool notFound = false)
         {
             Name = name;
@@ -33,6 +35,6 @@ namespace Mug.Semantic
             NotFound = notFound;
         }
 
-        internal static MemoryDetail Undeclared => new(default, default, default, default, default, true);
+        internal static MemoryDetail Undeclared => new(default, default, default, IType.BadType, default, true);
     }
 }

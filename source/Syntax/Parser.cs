@@ -722,7 +722,7 @@ namespace Mug.Syntax
             return MatchAdvance(TokenKind.Colon) ? ExpectType() : CreateBadNode();
         }
 
-        private bool VariableDefinition(out INode statement)
+        private bool VariableDefinition(bool isLocal, out INode statement)
         {
             statement = CreateBadNode();
 
@@ -743,6 +743,7 @@ namespace Mug.Syntax
                 Modifiers = modifiers,
                 Pragmas = pragmas,
                 IsMutable = isMutable,
+                IsLocal = isLocal,
                 Body = body,
                 Name = name.Value.ToString(),
                 Position = name.Position,
@@ -892,7 +893,7 @@ namespace Mug.Syntax
         {
             var multipleStatementsOnTheSameLine = !isfirst && !Current.IsOnNewLine;
 
-            if (!VariableDefinition(out var statement) && // var x = value;
+            if (!VariableDefinition(true, out var statement) && // var x = value;
                 !ReturnDeclaration(out statement) && // return value;
                 !ForLoopDefinition(out statement) && // for x: type to, in value {}
                 !LoopManagerDefintion(out statement)) // continue, break
@@ -1147,7 +1148,7 @@ namespace Mug.Syntax
                 CollectModifiers();
                 CollectPragmas();
 
-                if (VariableDefinition(out var node))
+                if (VariableDefinition(false, out var node))
                     statement.BodyMembers.Add(node as VariableNode);
                 else
                     statement.BodyFields.Add(ExpectFieldDefinition());
@@ -1294,7 +1295,7 @@ namespace Mug.Syntax
 
         private VariableNode ExpectGlobalVariableDefinition()
         {
-            if (!VariableDefinition(out var globalStatement))
+            if (!VariableDefinition(false, out var globalStatement))
             {
                 Report("Expected variable definition");
                 Advance();

@@ -31,6 +31,8 @@ namespace Mug.Semantic
 
         private FunctionType CurrentFunctionType { get; set; }
 
+        private VariableNode CurrentVariable { get; set; }
+
         public SemanticChecker(CompilationInstance tower) : base(tower)
         {
         }
@@ -60,21 +62,30 @@ namespace Mug.Semantic
                 DeclareAllBuiltinMembers();
                 DeclareAllGlobalMembers();
 
-                if (!SearchForInMemory(EntryPointName, out var entryPoint))
-                    CompilationInstance.Throw("Expected entrypoint");
+                var main = GetMain();
 
-                var main = (VariableNode)entryPoint.Value;
+                EvaluateVariable(main, false);
 
-                EvaluateVariable(main);
-
-                if (
-                    main.NodeType is not FunctionType fnType
-                    || fnType.ParameterTypes.Length > 0
-                    || fnType.ReturnType is not VoidType)
-                    Tower.Report(main.Position, $"Entrypoint must be of type 'fn(): void'");
+                ReportEntrypointWrongType(main);
             });
 
             return AST;
+        }
+
+        private VariableNode GetMain()
+        {
+            if (!SearchForInMemory(EntryPointName, out var entryPoint))
+                CompilationInstance.Throw("Expected entrypoint");
+
+            return (VariableNode)entryPoint.Value;
+        }
+
+        private void ReportEntrypointWrongType(VariableNode main)
+        {
+            if (main.NodeType is not FunctionType fnType
+                || fnType.ParameterTypes.Length > 0
+                || fnType.ReturnType is not VoidType)
+                Tower.Report(main.Position, $"Entrypoint must be of type 'fn(): void'");
         }
 
         private void DoWithContextType(IType type, Action action)
@@ -92,11 +103,11 @@ namespace Mug.Semantic
             return result;
         }
 
-        private void EvaluateVariable(VariableNode variable, bool isStatic = false)
+        private void EvaluateVariable(VariableNode variable, bool isStatic)
         {
             if (isStatic)
             {
-                EvaluateVariableBody(variable);
+                evaluateVariableBody();
                 return;
             }
 
@@ -105,13 +116,16 @@ namespace Mug.Semantic
 
             PutInProgress(variable.Name);
 
-            EvaluateVariableBody(variable);
+            evaluateVariableBody();
 
             RemoveFromInProgress(variable.Name);
+
+            void evaluateVariableBody() => EvaluateVariableBody(variable);
         }
 
         private void EvaluateVariableBody(VariableNode variable)
         {
+            CurrentVariable = variable;
             DoWithMemoryConfiguration(() => TypeNode(variable, CheckExpression(variable.Body).Type));
         }
 
@@ -202,12 +216,7 @@ namespace Mug.Semantic
         private List<MemoryDetail> ConfigureMemory()
         {
             var old = Memory;
-            Memory = new();
-
-            foreach (var detail in old)
-                if (detail.IsGlobal)
-                    Memory.Add(detail);
-
+            Memory = new(Memory);
             return old;
         }
 
@@ -244,8 +253,13 @@ namespace Mug.Semantic
 
         private void CheckVariable(VariableNode variable)
         {
+            variable.DeclarationIndex = Memory.Count;
+
             if (variable.IsConst)
-                CompilationInstance.Todo("implement const in local scope");
+            {
+                DeclareLazyLocalConstantVariable(variable);
+                return;
+            }
 
             var explicitType = EvaluateType(variable.Type);
             var body = DoWithContextType(explicitType, () => CheckExpression(variable.Body));
@@ -253,8 +267,16 @@ namespace Mug.Semantic
 
             CheckTypes(type, body.Type, variable.Body.Position);
 
+            if (body.IsSpecial() & !variable.IsConst)
+                Tower.Report(variable.Body.Position, $"Special value needs constant context");
+
             TypeNode(variable, type);
             DeclareLocalMember(variable.Name, variable.IsMutable, variable.NodeType, variable.Position);
+        }
+
+        private void DeclareLazyLocalConstantVariable(VariableNode variable)
+        {
+            DeclareMember(new(variable.Name, false, variable, IType.BadType, false), variable.Position);
         }
 
         private static IType RealTypeOr(IType type, IType or) => type is not AutoType ? type : or;
@@ -276,6 +298,7 @@ namespace Mug.Semantic
                 return ReportWrongNumberOfParameter(call, fnType);
 
             var canCall = true;
+            var isStatic = IsStatic(fnType);
 
             for (int i = 0; i < call.Parameters.Count; i++)
             {
@@ -287,9 +310,9 @@ namespace Mug.Semantic
             }
 
             if (canCall)
-                EvaluateVariable(variable, IsStatic(fnType));
+                EvaluateVariable(variable, isStatic);
 
-            return new(fnType.ReturnType, null, false);
+            return new(fnType.ReturnType, isStatic & fnType.ReturnType is not VoidType ? GetStaticParameter() : null, false);
         }
 
         private Value ReportWrongNumberOfParameter(CallNode call, FunctionType fnType)
@@ -396,12 +419,15 @@ namespace Mug.Semantic
 
         private bool SearchForInMemory(string name, out MemoryDetail detail)
         {
-            foreach (var obj in Memory)
+            for (int i = 0; i < Memory.Count; i++)
+            {
+                var obj = Memory[i];
                 if (obj.Name == name)
                 {
                     detail = obj;
-                    return true;
+                    return obj.IsConst && (CurrentVariable is null || !CurrentVariable.IsLocal || i <= CurrentVariable.DeclarationIndex);
                 }
+            }
 
             detail = default;
             return false;
@@ -463,18 +489,27 @@ namespace Mug.Semantic
                 Tower.Report(position, $"Expected expression of type 'type'");
                 return memoryObject.Type;
             }
-
-            return (IType)memoryObject.Value;
+            
+            return
+                memoryObject.Value is IType t ?
+                    t :
+                    (IType)GetValueFromLazyEvaluatedVariable((VariableNode)memoryObject.Value).ConstantValue;
         }
 
-        private MemoryDetail GetFromMemory(string value, ModulePosition position)
+        private Value GetValueFromLazyEvaluatedVariable(VariableNode variable)
         {
-            foreach (var obj in Memory)
-                if (obj.Name == value)
-                    return obj;
+            return CheckExpression(variable.Body);
+        }
 
-            Tower.Report(position, $"'{value}' not declared");
-            return MemoryDetail.Undeclared;
+        private MemoryDetail GetFromMemory(string name, ModulePosition position)
+        {
+            if (!SearchForInMemory(name, out var result))
+            {
+                Tower.Report(position, $"'{name}' not declared");
+                return MemoryDetail.Undeclared;
+            }
+
+            return result;
         }
 
         private FunctionType MakeFunctionType(FunctionNode func, out IType returnType) =>
@@ -506,7 +541,6 @@ namespace Mug.Semantic
             _contextTypes.Clear();
             _inProgressMembers.Clear();
             SeekType = false;
-            CurrentFunctionType = default;
         }
     }
 }

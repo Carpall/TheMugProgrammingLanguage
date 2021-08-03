@@ -1,0 +1,5 @@
+const main = fn {
+  const T = i32
+  
+  let y: T = 1
+}
