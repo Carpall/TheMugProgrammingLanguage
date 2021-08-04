@@ -276,7 +276,13 @@ namespace Mug.Semantic
 
         private void DeclareLazyLocalConstantVariable(VariableNode variable)
         {
-            DeclareMember(new(variable.Name, false, variable, IType.BadType, false), variable.Position);
+            var explicitType = EvaluateType(variable.Type);
+            var bodyType = CheckTypeExpression(variable.Body);
+            var type = RealTypeOr(explicitType, bodyType);
+
+            CheckTypes(explicitType, bodyType, variable.Body.Position);
+
+            DeclareMember(new(variable.Name, false, variable, type, false), variable.Position);
         }
 
         private static IType RealTypeOr(IType type, IType or) => type is not AutoType ? type : or;
@@ -446,6 +452,8 @@ namespace Mug.Semantic
             DeclareBuiltinMember("i16", IType.Int(16, true));
             DeclareBuiltinMember("i32", IType.Int(32, true));
             DeclareBuiltinMember("i64", IType.Int(64, true));
+
+            DeclareBuiltinMember("type", IType.Type);
         }
 
         private void DeclareBuiltinMember(string name, IType value) =>
@@ -493,7 +501,9 @@ namespace Mug.Semantic
             return
                 memoryObject.Value is IType t ?
                     t :
-                    (IType)GetValueFromLazyEvaluatedVariable((VariableNode)memoryObject.Value).ConstantValue;
+                    GetValueFromLazyEvaluatedVariable((VariableNode)memoryObject.Value).ConstantValue is IType tt ?
+                        tt :
+                        IType.BadType;
         }
 
         private Value GetValueFromLazyEvaluatedVariable(VariableNode variable)

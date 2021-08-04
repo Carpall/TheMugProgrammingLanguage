@@ -200,33 +200,11 @@ namespace Mug.Grammar
         }
 
         /// <summary>
-        /// checks if there is '#['
-        /// </summary>
-        private bool MatchStartMultiLineComment()
-        {
-            return HasNext() && Current == '/' && GetNext() == '*';
-        }
-
-        /// <summary>
-        /// checks if there is ']#'
-        /// </summary>
-        private bool MatchEndMultiLineComment()
-        {
-            return HasNext() && Current == '*' && GetNext() == '/';
-        }
-
-        /// <summary>
         /// eats comments
         /// </summary>
         private void ConsumeComments()
         {
-            if (MatchStartMultiLineComment())
-            {
-                EatFirstTwoCommentChars();
-                EatMultiLineComment();
-                EatLastTwoCommentChars();
-            }
-            else if (MatchInlineComment())
+            if (MatchInlineComment())
                 EatInlineComment();
         }
 
@@ -234,23 +212,6 @@ namespace Mug.Grammar
         {
             while (!MatchEolOrEof())
                 CurrentIndex++;
-        }
-
-        private void EatLastTwoCommentChars()
-        {
-            if (MatchEndMultiLineComment())
-                CurrentIndex += 2;
-        }
-
-        private void EatMultiLineComment()
-        {
-            while (!MatchEndMultiLineComment() && CurrentIndex != SourceCode.Length)
-                CurrentIndex++;
-        }
-
-        private void EatFirstTwoCommentChars()
-        {
-            CurrentIndex += 2;
         }
 
         /// <summary>
