@@ -17,7 +17,7 @@ namespace Mug.Syntax.AST
         public ModulePosition Position { get; set; }
         public ConditionalNode ElseNode { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public override string ToString()
         {

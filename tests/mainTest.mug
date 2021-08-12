@@ -1,2 +1,3 @@
 const main = fn {
+  let mut x = 10
 }

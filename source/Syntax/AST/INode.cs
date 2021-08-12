@@ -11,18 +11,11 @@ namespace Mug.Syntax.AST
         [JsonIgnore]
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; }
-
         public string Dump()
         {
             return JsonConvert.SerializeObject(this, Formatting.Indented);
         }
 
         public abstract string ToString();
-        
-        public void TypeNode(IType type)
-        {
-            NodeType = type;
-        }
     }
 }

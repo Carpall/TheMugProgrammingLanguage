@@ -13,7 +13,7 @@ namespace Mug.Syntax.AST
         public readonly List<INode> Statements = new();
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public override string ToString()
         {

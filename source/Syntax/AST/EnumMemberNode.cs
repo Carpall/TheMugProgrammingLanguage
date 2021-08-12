@@ -11,7 +11,7 @@ namespace Mug.Syntax.AST
         public INode Value { get; set; }
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public bool IsImplicitelyEnumerated() => Value is BadNode;
 

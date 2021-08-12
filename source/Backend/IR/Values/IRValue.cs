@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mug.Backend
+namespace Mug.Backend.IR.Values
 {
-    public struct MugIR
+    public interface IRValue
     {
-        
     }
 }

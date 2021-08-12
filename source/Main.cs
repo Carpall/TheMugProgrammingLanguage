@@ -16,7 +16,7 @@ var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.Read
 if (!unit.HasErrors())
     Console.WriteLine((ast as INode).Dump());*/
     
-Console.Write("( [1] ast | [2] ast check ): ");
+Console.Write("( [1] ast | [2] ir ): ");
 var r = Console.ReadKey().KeyChar;
 Console.WriteLine();
 

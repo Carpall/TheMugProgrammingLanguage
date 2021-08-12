@@ -18,7 +18,7 @@ namespace Mug.Syntax.AST
         }
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; }
+        
     }
 
     public class SwitchCaseNode : INode
@@ -28,6 +28,6 @@ namespace Mug.Syntax.AST
         public List<CaseNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; }
+        
     }
 }

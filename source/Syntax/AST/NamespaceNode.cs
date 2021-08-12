@@ -13,7 +13,7 @@ namespace Mug.Syntax.AST
         public List<VariableNode> Members { get; set; }
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public NamespaceNode()
         {

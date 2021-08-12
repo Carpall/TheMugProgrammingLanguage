@@ -12,7 +12,7 @@ namespace Mug.Syntax.AST
         public List<EnumMemberNode> Body { get; set; } = new();
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public bool IsAuto() => BaseType is BadNode;
 

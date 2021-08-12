@@ -8,12 +8,12 @@ namespace Mug.Syntax.AST
         public string NodeName => "BadNode";
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; }
+        
 
         public BadNode(ModulePosition position)
         {
             Position = position;
-            NodeType = null;
+            
         }
 
         public override string ToString()

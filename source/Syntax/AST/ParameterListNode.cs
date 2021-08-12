@@ -8,13 +8,12 @@ namespace Mug.Syntax.AST
     public struct ParameterNode : INode
     {
         public string NodeName => "Parameter";
-        public INode Type;
-        public string Name { get; }
+
+        public INode Type { get; set; }
+        public string Name { get; set; }
         public INode DefaultConstantValue { get; }
         public bool IsStatic { get; set; }
         public ModulePosition Position { get; set; }
-
-        public IType NodeType { get; set; }
 
         public ParameterNode(INode type, string name, INode defaultConstValue, bool isStatic, ModulePosition position)
         {
@@ -23,7 +22,6 @@ namespace Mug.Syntax.AST
             Position = position;
             DefaultConstantValue = defaultConstValue;
             IsStatic = isStatic;
-            NodeType = null;
         }
 
         public override string ToString()

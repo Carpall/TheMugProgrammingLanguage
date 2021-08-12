@@ -10,7 +10,7 @@ namespace Mug.Syntax.AST
         public INode IndexExpression { get; set; }
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public override string ToString()
         {

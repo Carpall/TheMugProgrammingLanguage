@@ -14,7 +14,7 @@ namespace Mug.Syntax.AST
         public List<VariableNode> BodyMembers { get; set; } = new();
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public override string ToString()
         {

@@ -14,7 +14,7 @@ namespace Mug.Syntax
         private readonly List<INode> _nodes = new();
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public int Count => _nodes.Count;
         public bool IsReadOnly => false;

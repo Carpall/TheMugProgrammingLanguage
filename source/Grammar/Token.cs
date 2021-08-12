@@ -16,7 +16,7 @@ namespace Mug.Grammar
         [JsonIgnore]
         public bool IsOnNewLine { get; }
 
-        public IType NodeType { get; set; }
+        
 
         public Token(TokenKind kind, string value, ModulePosition position, bool isonnewline)
         {
@@ -24,7 +24,7 @@ namespace Mug.Grammar
             Value = value;
             Position = position;
             IsOnNewLine = isonnewline;
-            NodeType = null;
+            
         }
 
         public static Token NewInfo(TokenKind kind, string value)

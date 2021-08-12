@@ -11,12 +11,12 @@ namespace Mug.Syntax.AST
     {
         public string NodeName => "Function";
 
-        public INode Type;
+        public INode Type { get; set; }
         public ParameterNode[] ParameterList { get; set; } = null;
         public BlockNode Body { get; set; }
         public ModulePosition Position { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public bool IsPrototype => Body is null;
 

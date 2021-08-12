@@ -7,7 +7,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Immutable;
 using System.Buffers;
-using Mug.Semantic;
+using Mug.Backend;
+using Mug.Backend.IR;
 
 namespace Mug.Compilation
 {
@@ -28,13 +29,13 @@ namespace Mug.Compilation
             return new(value, Diagnostic.GetException());
         }
 
-        public CompilerResult<NamespaceNode> GenerateASTAndCheck()
+        public CompilerResult<MugIR> GenerateIR()
         {
             var ast = GenerateAST().Value;
-            var generator = new SemanticChecker(this);
+            var generator = new Generator(this);
             generator.SetAST(ast);
 
-            try { return NewCompilerResult(generator.Check()); }
+            try { return NewCompilerResult(generator.Generate()); }
             catch (CompilationException e) { return new(e); }
         }
 

@@ -15,9 +15,9 @@ namespace Mug.Syntax.AST
         
         public string Name { get; set; }
 
-        public INode Type;
+        public INode Type { get; set; }
 
-        public INode Body;
+        public INode Body { get; set; }
 
         public ModulePosition Position { get; set; }
 
@@ -25,12 +25,10 @@ namespace Mug.Syntax.AST
         public bool IsMutable { get; set; }
         public bool IsLocal { get; set; }
 
-        public IType NodeType { get; set; } = null;
+        
 
         public bool IsAssigned() => !(Body is BadNode or null);
         public bool IsAuto() => Type is BadNode;
-
-        internal int DeclarationIndex = -1;
 
         public override string ToString()
         {
