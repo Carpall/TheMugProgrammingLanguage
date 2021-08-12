@@ -23,7 +23,7 @@ Console.WriteLine();
 printResult(
     r switch {
         '1' => compiler.GenerateAST(),
-        '2' => compiler.GenerateASTAndCheck(),
+        '2' => compiler.GenerateIR(),
         _ => null
     }
 );

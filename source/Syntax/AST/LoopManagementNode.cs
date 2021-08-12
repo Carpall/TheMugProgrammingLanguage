@@ -11,5 +11,10 @@ namespace Mug.Syntax.AST
         public ModulePosition Position { get; set; }
 
         public IType NodeType { get; set; } = null;
+
+        public override string ToString()
+        {
+            return Kind.GetDescription();
+        }
     }
 }
