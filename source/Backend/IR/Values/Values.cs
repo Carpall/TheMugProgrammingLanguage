@@ -23,7 +23,7 @@ namespace Mug.Backend.IR.Values
 
         public override string ToString()
         {
-            return $"fn() -> {ReturnType} {Block}";
+            return $"fn({string.Join<IRValue>(", ", ParameterTypes)}) -> {ReturnType} {Block}";
         }
     }
 
@@ -161,5 +161,51 @@ namespace Mug.Backend.IR.Values
         }
 
         public override string ToString() => $"declare_variable !{Kind} %{Name} -> {Type} = {Value}";
+    }
+
+    public struct BinInst : IRValue
+    {
+        public enum OpKind
+        {
+            Add,
+            Sub,
+            Mul,
+            Div
+        }
+
+        public OpKind Kind { get; }
+
+        public IRValue Left { get; }
+
+        public IRValue Right { get; }
+
+        public BinInst(OpKind kind, IRValue left, IRValue right)
+        {
+            Kind = kind;
+            Left = left;
+            Right = right;
+        }
+
+        public override string ToString() => $"bin_op !{Kind} {Left}, {Right}";
+    }
+
+    public struct CallInst : IRValue
+    {
+        public IRValue Name { get; }
+
+        public IRValue[] Parameters { get; }
+
+        public CallInst(IRValue name, IRValue[] parameters)
+        {
+            Name = name;
+            Parameters = parameters;
+        }
+
+        public override string ToString() => $"call %({Name}), [{string.Join<IRValue>(", ", Parameters)}]";
+    }
+
+    public struct DequeueParameterInst : IRValue
+    {
+        public override string ToString() => $"dequeue_parameter";
     }
 }

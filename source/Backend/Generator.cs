@@ -7,8 +7,8 @@ using Mug.Backend.IR;
 using Mug.Backend.IR.Values;
 using Mug.Compilation;
 using Mug.Syntax.AST;
-using System.Linq;
 using Mug.Grammar;
+using Mug.Syntax;
 
 namespace Mug.Backend
 {
@@ -54,8 +54,35 @@ namespace Mug.Backend
         private IRValue GenerateExpression(INode node) => node switch
         {
             Token token => GenerateToken(token),
+            BinaryExpressionNode binary => GenerateBinary(binary),
             FunctionNode function => GenerateFunction(function),
+            CallNode call => GenerateCall(call),
             BadNode => new BadIRValue()
+        };
+        
+        private CallInst GenerateCall(CallNode call) => new(
+            GenerateExpression(call.Name),
+            GenerateCallParameters(call.Parameters));
+
+        private IRValue[] GenerateCallParameters(NodeBuilder parameters)
+        {
+            var result = new IRValue[parameters.Count];
+
+            for (int i = 0; i < parameters.Count; i++)
+                result[i] = GenerateExpression(parameters[i]);
+
+            return result;
+        }
+
+        private BinInst GenerateBinary(BinaryExpressionNode binary) => new(
+            GetBinInstOpKind(binary), GenerateExpression(binary.Left), GenerateExpression(binary.Right));
+
+        private BinInst.OpKind GetBinInstOpKind(BinaryExpressionNode binary) => binary.Operator.Kind switch
+        {
+            TokenKind.Plus => BinInst.OpKind.Add,
+            TokenKind.Minus => BinInst.OpKind.Sub,
+            TokenKind.Star => BinInst.OpKind.Mul,
+            TokenKind.Slash => BinInst.OpKind.Div,
         };
 
         private static IRValue GenerateToken(Token token) => token.Kind switch
@@ -69,7 +96,7 @@ namespace Mug.Backend
         };
 
         private FunctionValue GenerateFunction(FunctionNode function) => new(
-            GenerateBlock(function.Body),
+            GenerateBlock(function.Body, function.ParameterList),
             GenerateFunctionParameters(function.ParameterList),
             GenerateExpression(function.Type));
 
@@ -82,14 +109,26 @@ namespace Mug.Backend
             return result;
         }
 
-        private IRBlock GenerateBlock(BlockNode body)
+        private IRBlock GenerateBlock(BlockNode body, ParameterNode[] parameters)
         {
             var result = new IRBlock();
+
+            DeclareParameters(result, parameters);
 
             foreach (var statement in body.Statements)
                 result.Values.Add(GenerateStatement(statement));
 
             return result;
+        }
+
+        private void DeclareParameters(IRBlock result, ParameterNode[] parameters)
+        {
+            foreach (var parameter in parameters)
+                result.Values.Add(new DeclareVariableInst(
+                    DeclareVariableInst.VariableKind.Let,
+                    parameter.Name,
+                    GenerateExpression(parameter.Type),
+                    new DequeueParameterInst()));
         }
 
         private IRValue GenerateStatement(INode statement) => statement switch
@@ -99,12 +138,17 @@ namespace Mug.Backend
         };
 
         private DeclareVariableInst GenerateVariable(VariableNode variable) => new(
+            GetVariableKind(variable),
+            variable.Name,
+            GenerateExpression(variable.Type),
+            GenerateExpression(variable.Body));
+
+        private DeclareVariableInst.VariableKind GetVariableKind(VariableNode variable) =>
             variable.IsConst ?
                 DeclareVariableInst.VariableKind.Const :
                 !variable.IsMutable ?
                     DeclareVariableInst.VariableKind.Let :
-                    DeclareVariableInst.VariableKind.LetMut,
-            variable.Name, GenerateExpression(variable.Type), GenerateExpression(variable.Body));
+                    DeclareVariableInst.VariableKind.LetMut;
 
         private ReturnInst GenerateReturn(ReturnNode returnNode) => new(GenerateExpression(returnNode.Body));
 
