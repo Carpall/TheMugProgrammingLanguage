@@ -1,5 +1,10 @@
+const std = import!("std")
+const Box = std.mem.Box
+
 const main = fn {
-  const fib = fn(x: u32): u32 {
-    return fib(x - 1) + fib(x - 2)
+  const fib = fn(n: u32): u32 {
+    return fib(n - 1) + fib(n - 2)
   }
+
+  let x = Box(i32).from(fib(12))
 }

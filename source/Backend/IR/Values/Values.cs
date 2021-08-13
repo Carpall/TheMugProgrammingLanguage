@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mug.Compilation;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,28 +7,31 @@ using System.Threading.Tasks;
 
 namespace Mug.Backend.IR.Values
 {
-    public struct FunctionValue : IRValue
+    public struct LoadFunctionInst : IRValue
     {
         public IRBlock Block { get; }
 
-        public IRValue[] ParameterTypes { get; }
+        public IRUnsolvedType[] ParameterTypes { get; }
 
-        public IRValue ReturnType { get; }
+        public IRUnsolvedType ReturnType { get; }
 
-        public FunctionValue(IRBlock block, IRValue[] parameterTypes, IRValue returnType)
+        public ModulePosition Position { get; }
+
+        public LoadFunctionInst(IRBlock block, IRUnsolvedType[] parameterTypes, IRUnsolvedType returnType, ModulePosition position)
         {
             Block = block;
             ParameterTypes = parameterTypes;
             ReturnType = returnType;
+            Position = position;
         }
 
         public override string ToString()
         {
-            return $"fn({string.Join<IRValue>(", ", ParameterTypes)}) -> {ReturnType} {Block}";
+            return $"load_fn({string.Join(", ", ParameterTypes)}) -> {ReturnType} {Block}";
         }
     }
 
-    public class IRBlock : IRValue
+    public class IRBlock
     {
         private static string _indentation = "";
 
@@ -48,91 +52,111 @@ namespace Mug.Backend.IR.Values
 
     public struct BadIRValue : IRValue
     {
+        public ModulePosition Position { get; }
+
         public override string ToString() => "?";
     }
 
-    public struct NameValue: IRValue
+    public struct LoadNameInst: IRValue
     {
         public string Name { get; }
 
-        public NameValue(string name)
+        public ModulePosition Position { get; }
+
+        public LoadNameInst(string name, ModulePosition position)
         {
             Name = name;
+            Position = position;
         }
 
-        public override string ToString() => $"name '{Name}'";
+        public override string ToString() => $"load_name '{Name}'";
     }
 
-    public struct IntegerValue : IRValue
+    public struct LoadIntegerInst : IRValue
     {
         public ulong Integer { get; }
 
-        public IntegerValue(ulong value)
+        public ModulePosition Position { get; }
+
+        public LoadIntegerInst(ulong value, ModulePosition position)
         {
             Integer = value;
+            Position = position;
         }
 
-        public override string ToString() => $"integer {Integer}";
+        public override string ToString() => $"load_integer {Integer}";
     }
 
-    public struct DecimalValue : IRValue
+    public struct LoadDecimalInst : IRValue
     {
         public decimal Decimal { get; }
 
-        public DecimalValue(decimal value)
+        public ModulePosition Position { get; }
+
+        public LoadDecimalInst(decimal value, ModulePosition position)
         {
             Decimal = value;
+            Position = position;
         }
 
-        public override string ToString() => $"decimal {Decimal}";
+        public override string ToString() => $"load_decimal {Decimal}";
     }
 
-    public struct BooleanValue : IRValue
+    public struct LoadBooleanInst : IRValue
     {
         public bool Boolean { get; }
 
-        public BooleanValue(bool value)
+        public ModulePosition Position { get; }
+
+        public LoadBooleanInst(bool value, ModulePosition position)
         {
             Boolean = value;
+            Position = position;
         }
 
-        public override string ToString() => $"boolean {Boolean}";
+        public override string ToString() => $"load_boolean {Boolean}";
     }
 
-    public struct CharValue : IRValue
+    public struct LoadCharInst : IRValue
     {
         public char Value { get; }
 
-        public CharValue(char value)
+        public ModulePosition Position { get; }
+
+        public LoadCharInst(char value, ModulePosition position)
         {
             Value = value;
+            Position = position;
         }
 
-        public override string ToString() => $"char '{Value}'";
+        public override string ToString() => $"load_char '{Value}'";
     }
 
-    public struct StringValue : IRValue
+    public struct LoadStringInst : IRValue
     {
         public string Value { get; }
 
-        public StringValue(string value)
+        public ModulePosition Position { get; }
+
+        public LoadStringInst(string value, ModulePosition position)
         {
             Value = value;
+            Position = position;
         }
 
-        public override string ToString() => $"string '{Value}'";
+        public override string ToString() => $"load_string '{Value}'";
     }
 
     public struct ReturnInst : IRValue
     {
-        public IRValue Value { get; }
+        public ModulePosition Position { get; }
 
-        public ReturnInst(IRValue value)
+        public ReturnInst(ModulePosition position)
         {
-            Value = value;
+            Position = position;
         }
 
-        public override string ToString() => $"ret {Value}";
+        public override string ToString() => $"ret";
     }
 
     public struct DeclareVariableInst : IRValue
@@ -148,19 +172,19 @@ namespace Mug.Backend.IR.Values
 
         public string Name { get; }
 
-        public IRValue Type { get; }
+        public IRUnsolvedType Type { get; }
 
-        public IRValue Value { get; }
+        public ModulePosition Position { get; }
 
-        public DeclareVariableInst(VariableKind kind, string name, IRValue type, IRValue value)
+        public DeclareVariableInst(VariableKind kind, string name, IRUnsolvedType type, ModulePosition position)
         {
             Kind = kind;
             Name = name;
             Type = type;
-            Value = value;
+            Position = position;
         }
 
-        public override string ToString() => $"declare_variable !{Kind} %{Name} -> {Type} = {Value}";
+        public override string ToString() => $"declare_variable !{Kind} %{Name} -> {Type}";
     }
 
     public struct BinInst : IRValue
@@ -175,37 +199,76 @@ namespace Mug.Backend.IR.Values
 
         public OpKind Kind { get; }
 
-        public IRValue Left { get; }
+        public ModulePosition Position { get; }
 
-        public IRValue Right { get; }
-
-        public BinInst(OpKind kind, IRValue left, IRValue right)
+        public BinInst(OpKind kind, ModulePosition position)
         {
             Kind = kind;
-            Left = left;
-            Right = right;
+            Position = position;
         }
 
-        public override string ToString() => $"bin_op !{Kind} {Left}, {Right}";
+        public override string ToString() => $"bin_op !{Kind}";
     }
 
     public struct CallInst : IRValue
     {
-        public IRValue Name { get; }
+        public uint ParametersCount { get; }
 
-        public IRValue[] Parameters { get; }
+        public bool Builtin { get; }
 
-        public CallInst(IRValue name, IRValue[] parameters)
+        public ModulePosition Position { get; }
+
+        public CallInst(uint parametersCount, bool builtin, ModulePosition position)
         {
-            Name = name;
-            Parameters = parameters;
+            ParametersCount = parametersCount;
+            Builtin = builtin;
+            Position = position;
         }
 
-        public override string ToString() => $"call %({Name}), [{string.Join<IRValue>(", ", Parameters)}]";
+        public override string ToString() => $"call !{ParametersCount}{(Builtin ? ", !builtin" : null)}";
     }
 
     public struct DequeueParameterInst : IRValue
     {
+        public ModulePosition Position { get; }
+
+        public DequeueParameterInst(ModulePosition position)
+        {
+            Position = position;
+        }
+
         public override string ToString() => $"dequeue_parameter";
+    }
+
+    public struct IRUnsolvedType : IRValue
+    {
+        public IRBlock Type { get; }
+
+        public ModulePosition Position { get; }
+
+        public IRUnsolvedType(IRBlock type, ModulePosition position)
+        {
+            Type = type;
+            Position = position;
+        }
+
+        public override string ToString() => $"@({Type})";
+
+        public static IRUnsolvedType Auto => new(null, default);
+    }
+
+    public struct LoadMemberInst : IRValue
+    {
+        public string Name { get; }
+
+        public ModulePosition Position { get; }
+
+        public LoadMemberInst(string name, ModulePosition position)
+        {
+            Name = name;
+            Position = position;
+        }
+
+        public override string ToString() => $"load_member '{Name}'";
     }
 }

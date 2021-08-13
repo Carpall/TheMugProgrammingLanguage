@@ -10,10 +10,15 @@ namespace Mug.Syntax.AST
         internal static string Indent = "";
 
         public string NodeName => "Block";
-        public readonly List<INode> Statements = new();
+
+        public List<INode> Statements { get; }
+
         public ModulePosition Position { get; set; }
 
-        
+        public BlockNode(List<INode> statements = null)
+        {
+            Statements = statements ?? new();
+        }
 
         public override string ToString()
         {

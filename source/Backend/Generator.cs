@@ -16,6 +16,8 @@ namespace Mug.Backend
     {
         private NamespaceNode AST { get; set; }
 
+        private IRBlock CurrentBlock { get; set; }
+
         public MugIR IR { get; private set; }
 
         public Generator(CompilationInstance tower) : base(tower)
@@ -46,38 +48,67 @@ namespace Mug.Backend
         {
             ExpectConstAtTopLevel(variable);
 
-            DeclareFunction(variable.Name, GenerateExpression(variable.Type), GenerateExpression(variable.Body));
+            DeclareFunction(
+                variable.Name,
+                EvaluateType(variable.Type),
+                EvaluateFunctionBlock(GetBlockFromNode(variable.Body)));
         }
 
-        private void DeclareFunction(string name, IRValue type, IRValue value) => IR.Functions.Add((name, type, value));
+        private static BlockNode GetBlockFromNode(INode body) => new(new() { new ReturnNode { Body = body, Position = body.Position } });
 
-        private IRValue GenerateExpression(INode node) => node switch
+        private void DeclareFunction(string name, IRUnsolvedType type, IRBlock block) => IR.Functions.Add((name, type, block));
+
+        private void GenerateExpression(INode node)
         {
-            Token token => GenerateToken(token),
-            BinaryExpressionNode binary => GenerateBinary(binary),
-            FunctionNode function => GenerateFunction(function),
-            CallNode call => GenerateCall(call),
-            BadNode => new BadIRValue()
-        };
-        
-        private CallInst GenerateCall(CallNode call) => new(
-            GenerateExpression(call.Name),
-            GenerateCallParameters(call.Parameters));
+            switch (node)
+            {
+                case MemberNode member:
+                    GenerateMember(member);
+                    break;
+                case Token token:
+                    GenerateToken(token);
+                    break;
+                case BinaryExpressionNode binary:
+                    GenerateBinary(binary);
+                    break;
+                case FunctionNode function:
+                    GenerateFunction(function);
+                    break;
+                case CallNode call:
+                    GenerateCall(call);
+                    break;
+            }
+        }
 
-        private IRValue[] GenerateCallParameters(NodeBuilder parameters)
+        private void GenerateMember(MemberNode member)
         {
-            var result = new IRValue[parameters.Count];
+            GenerateExpression(member.Base);
+            EmitInstruction(new LoadMemberInst(member.Member.Value, member.Position));
+        }
 
+        private void GenerateCall(CallNode call)
+        {
+            GenerateExpression(call.Name);
+            GenerateCallParameters(call.Parameters);
+            EmitInstruction(new CallInst((uint)call.Parameters.Count, call.IsBuiltIn, call.Position));
+        }
+
+        private void EmitInstruction(IRValue instruction) => CurrentBlock.Values.Add(instruction);
+
+        private void GenerateCallParameters(NodeBuilder parameters)
+        {
             for (int i = 0; i < parameters.Count; i++)
-                result[i] = GenerateExpression(parameters[i]);
-
-            return result;
+                GenerateExpression(parameters[i]);
         }
 
-        private BinInst GenerateBinary(BinaryExpressionNode binary) => new(
-            GetBinInstOpKind(binary), GenerateExpression(binary.Left), GenerateExpression(binary.Right));
+        private void GenerateBinary(BinaryExpressionNode binary)
+        {
+            GenerateExpression(binary.Left);
+            GenerateExpression(binary.Right);
+            EmitInstruction(new BinInst(GetBinInstOpKind(binary), binary.Position));
+        }
 
-        private BinInst.OpKind GetBinInstOpKind(BinaryExpressionNode binary) => binary.Operator.Kind switch
+        private static BinInst.OpKind GetBinInstOpKind(BinaryExpressionNode binary) => binary.Operator.Kind switch
         {
             TokenKind.Plus => BinInst.OpKind.Add,
             TokenKind.Minus => BinInst.OpKind.Sub,
@@ -85,72 +116,109 @@ namespace Mug.Backend
             TokenKind.Slash => BinInst.OpKind.Div,
         };
 
-        private static IRValue GenerateToken(Token token) => token.Kind switch
-        {
-            TokenKind.Identifier => new NameValue(token.Value),
-            TokenKind.ConstantDigit => new IntegerValue(ulong.Parse(token.Value)),
-            TokenKind.ConstantFloatDigit => new DecimalValue(decimal.Parse(token.Value)),
-            TokenKind.ConstantBoolean => new BooleanValue(bool.Parse(token.Value)),
-            TokenKind.ConstantChar => new CharValue(char.Parse(token.Value)),
-            TokenKind.ConstantString => new StringValue(token.Value)
-        };
+        private void GenerateToken(Token token) =>
+            EmitInstruction(token.Kind switch
+            {
+                TokenKind.Identifier => new LoadNameInst(token.Value, token.Position),
+                TokenKind.ConstantDigit => new LoadIntegerInst(ulong.Parse(token.Value), token.Position),
+                TokenKind.ConstantFloatDigit => new LoadDecimalInst(decimal.Parse(token.Value), token.Position),
+                TokenKind.ConstantBoolean => new LoadBooleanInst(bool.Parse(token.Value), token.Position),
+                TokenKind.ConstantChar => new LoadCharInst(char.Parse(token.Value), token.Position),
+                TokenKind.ConstantString => new LoadStringInst(token.Value, token.Position)
+            });
 
-        private FunctionValue GenerateFunction(FunctionNode function) => new(
-            GenerateBlock(function.Body, function.ParameterList),
-            GenerateFunctionParameters(function.ParameterList),
-            GenerateExpression(function.Type));
-
-        private IRValue[] GenerateFunctionParameters(ParameterNode[] parameterList)
+        private void GenerateFunction(FunctionNode function)
         {
-            var result = new IRValue[parameterList.Length];
+            EmitInstruction(new LoadFunctionInst(
+                EvaluateFunctionBlock(function.Body, function.ParameterList),
+                GetParameterTypes(function.ParameterList),
+                EvaluateType(function.Type),
+                function.Position));
+        }
+
+        private IRUnsolvedType[] GetParameterTypes(ParameterNode[] parameterList)
+        {
+            var result = new IRUnsolvedType[parameterList.Length];
             for (int i = 0; i < parameterList.Length; i++)
-                result[i] = GenerateExpression(parameterList[i].Type);
+                result[i] = EvaluateType(parameterList[i].Type);
 
             return result;
         }
 
-        private IRBlock GenerateBlock(BlockNode body, ParameterNode[] parameters)
+        private IRBlock EvaluateFunctionBlock(BlockNode body, ParameterNode[] parameters = null)
         {
-            var result = new IRBlock();
+            var old = SetupBlock();
 
-            DeclareParameters(result, parameters);
+            if (parameters is not null) DeclareParameters(parameters);
 
             foreach (var statement in body.Statements)
-                result.Values.Add(GenerateStatement(statement));
+                GenerateStatement(statement);
 
+            return RestoreCurrentBlock(old);
+        }
+
+        private IRBlock SetupBlock()
+        {
+            var old = CurrentBlock;
+            CurrentBlock = new();
+            return old;
+        }
+
+        private IRBlock RestoreCurrentBlock(IRBlock old)
+        {
+            var result = CurrentBlock;
+            CurrentBlock = old;
             return result;
         }
 
-        private void DeclareParameters(IRBlock result, ParameterNode[] parameters)
+        private void DeclareParameters(ParameterNode[] parameters)
         {
             foreach (var parameter in parameters)
-                result.Values.Add(new DeclareVariableInst(
+            {
+                EmitInstruction(new DequeueParameterInst(parameter.Position));
+                EmitInstruction(new DeclareVariableInst(
                     DeclareVariableInst.VariableKind.Let,
-                    parameter.Name,
-                    GenerateExpression(parameter.Type),
-                    new DequeueParameterInst()));
+                    parameter.Name, 
+                    EvaluateType(parameter.Type),
+                    parameter.Position));
+            }
         }
 
-        private IRValue GenerateStatement(INode statement) => statement switch
+        private IRUnsolvedType EvaluateType(INode type) => 
+            type is BadNode or null ?
+                IRUnsolvedType.Auto :
+                new(EvaluateFunctionBlock(GetBlockFromNode(type)), type.Position);
+
+        private void GenerateStatement(INode statement)
         {
-            ReturnNode returnNode => GenerateReturn(returnNode),
-            VariableNode variable => GenerateVariable(variable),
-        };
+            switch (statement) {
+                case ReturnNode returnNode: GenerateReturn(returnNode); break;
+                case VariableNode variable: GenerateVariable(variable); break;
+            }
+        }
 
-        private DeclareVariableInst GenerateVariable(VariableNode variable) => new(
-            GetVariableKind(variable),
-            variable.Name,
-            GenerateExpression(variable.Type),
-            GenerateExpression(variable.Body));
+        private void GenerateVariable(VariableNode variable)
+        {
+            GenerateExpression(variable.Body);
+            EmitInstruction(new DeclareVariableInst(
+                GetVariableKind(variable),
+                variable.Name,
+                EvaluateType(variable.Type),
+                variable.Position));
+        }
 
-        private DeclareVariableInst.VariableKind GetVariableKind(VariableNode variable) =>
+        private static DeclareVariableInst.VariableKind GetVariableKind(VariableNode variable) =>
             variable.IsConst ?
                 DeclareVariableInst.VariableKind.Const :
                 !variable.IsMutable ?
                     DeclareVariableInst.VariableKind.Let :
                     DeclareVariableInst.VariableKind.LetMut;
 
-        private ReturnInst GenerateReturn(ReturnNode returnNode) => new(GenerateExpression(returnNode.Body));
+        private void GenerateReturn(ReturnNode returnNode)
+        {
+            GenerateExpression(returnNode.Body);
+            EmitInstruction(new ReturnInst(returnNode.Position));
+        }
 
         private void ExpectConstAtTopLevel(VariableNode variable)
         {

@@ -12,7 +12,7 @@ namespace Mug.Backend.IR
     {
         public string Filename { get; }
 
-        public List<(string Name, IRValue Type, IRValue Value)> Functions { get; } = new();
+        public List<(string Name, IRUnsolvedType Type, IRBlock Block)> Functions { get; } = new();
 
         public MugIR(string name)
         {
@@ -23,7 +23,7 @@ namespace Mug.Backend.IR
         {
             var result = new StringBuilder($"!filename = '{Filename}'\n\n");
             foreach (var variable in Functions)
-                result.AppendLine($"%{variable.Name} -> {variable.Type} = {variable.Value};");
+                result.AppendLine($"%{variable.Name} -> {variable.Type} = {variable.Block};\n");
 
             return result.ToString();
         }

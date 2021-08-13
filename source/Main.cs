@@ -6,8 +6,8 @@ using System.IO;
 
 #if DEBUG
 
-const string path = @"../tests/mainTest.mug";
-// const string path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
+// const string path = @"../tests/mainTest.mug";
+const string path = @"C:\Users\carpal\Desktop\mug\tests\mainTest.mug";
 
 var compiler = new CompilationInstance("test", ImmutableArray.Create(Source.ReadFromPath(path)));
 
